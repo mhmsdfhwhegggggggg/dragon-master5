@@ -37,6 +37,7 @@ export const appRouter = router({
   setup: setupRouter,
   antiBan: antiBanRouter,
   license: licenseRouter,
+  permission: permissionRouter,
 });
 
 export type AppRouter = typeof appRouter;
