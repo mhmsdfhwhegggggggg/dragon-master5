@@ -324,48 +324,7 @@ export async function createProxyConfig(data: any) {
   return db.insert(proxyConfigs).values(data).returning();
 }
 
-// Missing functions for bulk operations
-export async function createBulkOperation(data: any) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not connected");
-  const result = await db.insert(bulkOperations).values({
-    userId: data.userId || 1,
-    type: data.operationType || data.type || "unknown",
-    status: data.status || "pending",
-    totalTargets: data.totalItems || data.totalTargets || 0,
-    processedTargets: data.processedTargets || 0,
-    successCount: data.successCount || 0,
-    failedCount: data.failedCount || 0,
-    config: JSON.stringify(data.targetData || data.config || {}),
-    messageTemplate: data.messageTemplate,
-    delayMs: data.delayMs || 1000,
-    autoRepeat: data.autoRepeat || false,
-  }).returning();
-  return result[0];
-}
-
-export async function updateBulkOperation(id: number, data: any) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not connected");
-  return db.update(bulkOperations).set({
-    ...data,
-    status: data.status,
-    successCount: data.successCount,
-    failedCount: data.failedCount,
-    completedAt: data.completedAt,
-  }).where(eq(bulkOperations.id, id)).returning();
-}
-
-export async function createActivityLog(data: any) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not connected");
-  return db.insert(activityLogs).values({
-    userId: data.userId,
-    accountId: data.accountId,
-    action: data.action,
-    details: data.actionDetails ? JSON.stringify(data.actionDetails) : data.details,
-  }).returning();
-}
+// Helper functions for bulk operations (using existing functions above)
 
 // Export all
 export * from "../drizzle/schema-sqlite";
