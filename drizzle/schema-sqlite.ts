@@ -234,6 +234,52 @@ export type SessionHistory = typeof sessionHistory.$inferSelect;
 export type InsertSessionHistory = typeof sessionHistory.$inferInsert;
 
 /**
+ * App Permissions Table
+ * Stores app permissions for developer control
+ */
+export const appPermissions = sqliteTable("app_permissions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  deviceId: text("device_id").notNull().unique(),
+  deviceName: text("device_name"),
+  userId: integer("user_id"),
+  permissionKey: text("permission_key").notNull().unique(),
+  status: text("status").notNull().default("active"), // active, suspended, expired, revoked
+  permissionType: text("permission_type").notNull().default("trial"), // trial, basic, premium, unlimited
+  maxAccounts: integer("max_accounts").default(1),
+  maxMessagesPerDay: integer("max_messages_per_day").default(100),
+  maxOperationsPerDay: integer("max_operations_per_day").default(10),
+  features: text("features"), // JSON array
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  activatedAt: integer("activated_at", { mode: "timestamp" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  suspendedAt: integer("suspended_at", { mode: "timestamp" }),
+  suspendReason: text("suspend_reason"),
+  usageCount: integer("usage_count").default(0),
+  notes: text("notes"),
+  ipAddress: text("ip_address"),
+  country: text("country"),
+});
+
+export type AppPermission = typeof appPermissions.$inferSelect;
+export type InsertAppPermission = typeof appPermissions.$inferInsert;
+
+/**
+ * Permission Usage Logs Table
+ */
+export const permissionUsageLogs = sqliteTable("permission_usage_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  permissionId: integer("permission_id").notNull(),
+  action: text("action").notNull(),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  timestamp: integer("timestamp", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export type PermissionUsageLog = typeof permissionUsageLogs.$inferSelect;
+export type InsertPermissionUsageLog = typeof permissionUsageLogs.$inferInsert;
+
+/**
  * Group Metadata Table
  * Stores metadata about Telegram groups
  */
