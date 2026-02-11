@@ -59,6 +59,20 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="arrow.up.arrow.down" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="channel-management"
+        options={{
+          title: "إدارة القنوات",
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="auto-reply"
+        options={{
+          title: "الردود التلقائية",
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bubble.left.bubble" color={color} />,
+        }}
+      />
 
       <Tabs.Screen
         name="bulk-ops"

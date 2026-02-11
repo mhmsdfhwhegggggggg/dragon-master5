@@ -687,6 +687,9 @@ interface OperationHistory {
   operations: Operation[];
 }
 
+// Export alias for compatibility
+export const RiskDetector = RiskDetectionSystem;
+
 interface Operation {
   timestamp: Date;
   type: OperationType;

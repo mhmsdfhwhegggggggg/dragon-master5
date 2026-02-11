@@ -1,7 +1,7 @@
 import { TelegramClient } from "telegram";
 
 export class EntityResolver {
-  async resolveChat(client: TelegramClient, input: string | number): Promise<any> {
+  async resolveEntity(client: TelegramClient, input: string | number): Promise<any> {
     try {
       // If numeric, use directly
       if (typeof input === "number" || /^\d+$/.test(String(input))) {
