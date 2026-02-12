@@ -171,7 +171,7 @@ export const proxyConfigs = pgTable('proxy_configs', {
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
-// Export all tables and types
+// Export all tables
 export const schema = {
   users,
   licenses,
@@ -185,15 +185,3 @@ export const schema = {
   antiBanRules,
   proxyConfigs,
 };
-
-// Export types for inserts
-export type InsertUser = typeof users.$inferInsert;
-export type InsertLicense = typeof licenses.$inferInsert;
-export type InsertSubscription = typeof subscriptions.$inferInsert;
-export type InsertLicenseUsageLog = typeof licenseUsageLogs.$inferInsert;
-export type InsertTelegramAccount = typeof telegramAccounts.$inferInsert;
-export type InsertExtractedMember = typeof extractedMembers.$inferInsert;
-export type InsertBulkOperation = typeof bulkOperations.$inferInsert;
-export type InsertActivityLog = typeof activityLogs.$inferInsert;
-export type InsertAntiBanRule = typeof antiBanRules.$inferInsert;
-export type InsertProxyConfig = typeof proxyConfigs.$inferInsert;

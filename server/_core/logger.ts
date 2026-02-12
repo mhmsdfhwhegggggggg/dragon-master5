@@ -188,6 +188,9 @@ class Logger {
 // Export default logger instance
 export const logger = new Logger();
 
+// Export Logger class for direct use
+export { Logger };
+
 // Export function to create contextual loggers
 export function createLogger(context: string): Logger {
   return new Logger(context);

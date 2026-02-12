@@ -12,6 +12,10 @@ import { setupRouter } from "./routers/setup.router";
 import { antiBanRouter } from "./routers/anti-ban";
 import { licenseRouter } from "./routers/license";
 import { permissionRouter } from "./routers/permission.router";
+import { extractAddRouter } from "./routers/extract-add.router";
+import { channelManagementRouter } from "./routers/channel-management.router";
+import { autoReplyRouter } from "./routers/auto-reply.router";
+import { contentClonerRouter } from "./routers/content-cloner.router";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -28,16 +32,20 @@ export const appRouter = router({
   }),
 
   // Dragon Telegram Pro routers
-  dashboard: dashboardRouter,
   accounts: accountsRouter,
   extraction: extractionRouter,
   bulkOps: bulkOpsRouter,
   stats: statsRouter,
   proxies: proxiesRouter,
+  dashboard: dashboardRouter,
   setup: setupRouter,
   antiBan: antiBanRouter,
   license: licenseRouter,
   permission: permissionRouter,
+  extractAdd: extractAddRouter,
+  channelManagement: channelManagementRouter,
+  autoReply: autoReplyRouter,
+  contentCloner: contentClonerRouter,
 });
 
 export type AppRouter = typeof appRouter;

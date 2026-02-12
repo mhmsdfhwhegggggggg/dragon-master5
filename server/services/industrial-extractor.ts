@@ -1,12 +1,6 @@
 /**
- * Industrial Extraction Engine v7.0.0 - ULTIMATE EDITION
- * 
- * The most powerful extraction engine designed for 24/7 industrial scale:
- * - Universal Source Support: Public, Private, Restricted, Closed.
- * - Advanced Error Recovery: Auto-retry on RPC errors and session timeouts.
- * - Intelligent Pacing: Dynamically adjusts speed based on account health.
- * - Massive Scale: Capable of extracting 100k+ members without crashes.
- * - Server-Side Heavy Lifting: Zero impact on user device performance.
+ * Industrial Extractor - High-performance member extraction
+ * Optimized for massive scale extraction with server-side filtering
  */
 
 import { TelegramClient } from 'telegram';
@@ -25,9 +19,9 @@ export interface IndustrialFilters {
 export class IndustrialExtractor {
   private static instance: IndustrialExtractor;
   private cache = getCache();
-  
+
   private constructor() {}
-  
+
   static getInstance(): IndustrialExtractor {
     if (!this.instance) {
       this.instance = new IndustrialExtractor();
@@ -50,7 +44,7 @@ export class IndustrialExtractor {
     if (!check.allowed) throw new Error(`Industrial Safety: ${check.reason}`);
 
     console.log(`[IndustrialExtractor] Starting massive extraction for ${sourceId}...`);
-    
+
     try {
       // 2. Resolve Entity with fallback logic
       let target;
@@ -76,12 +70,12 @@ export class IndustrialExtractor {
               filter: new Api.ChannelParticipantsRecent(),
               offset: offset,
               limit: batchSize,
-              hash: BigInt(0),
+              hash: 0n,
             })
           );
 
           if (!(result instanceof Api.channels.ChannelParticipants)) break;
-          
+
           const users = result.users as Api.User[];
           if (users.length === 0) break;
 
@@ -90,7 +84,7 @@ export class IndustrialExtractor {
             if (filters.hasUsername && !u.username) return false;
             if (filters.hasPhoto && !u.photo) return false;
             if (filters.premiumStatus && !u.premium) return false;
-            
+
             if (filters.activityDays && u.status instanceof Api.UserStatusOffline) {
               const days = (Date.now() / 1000 - u.status.wasOnline) / 86400;
               if (days > filters.activityDays) return false;
@@ -99,53 +93,48 @@ export class IndustrialExtractor {
           }).map(u => ({
             id: u.id.toString(),
             username: u.username,
-            name: u.firstName,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            isBot: u.bot,
             isPremium: u.premium,
-            lastSeen: u.status instanceof Api.UserStatusOffline ? u.status.wasOnline : undefined
+            lastSeen: u.status instanceof Api.UserStatusOffline ? u.status.wasOnline : null,
           }));
 
-          if (processed.length > 0) {
-            count += processed.length;
-            if (onDataBatch) await onDataBatch(processed);
+          // 5. Batch Processing
+          if (onDataBatch) {
+            await onDataBatch(processed);
           }
 
-          offset += users.length;
-          consecutiveErrors = 0; // Reset errors on success
-          
-          // 5. Real-time Status Update (Redis)
-          await this.cache.set(`industrial:extract:status:${accountId}`, {
-            count,
-            offset,
-            status: 'pumping',
-            lastUpdate: Date.now()
-          }, { ttl: 600 });
+          count += processed.length;
+          offset += batchSize;
+          consecutiveErrors = 0;
 
-          console.log(`[IndustrialExtractor] Pumping ${count} users (Offset: ${offset})...`);
+          // 6. Progress Update
+          if (count % 1000 === 0) {
+            console.log(`[IndustrialExtractor] Extracted ${count} members...`);
+          }
 
-          // 6. Dynamic Pacing (Anti-Detection)
-          const baseDelay = check.riskLevel === 'low' ? 500 : 1500;
-          await new Promise(r => setTimeout(r, baseDelay + Math.random() * 500));
-          
-          if (users.length < batchSize) break;
+          // 7. Smart Delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
 
-        } catch (loopError: any) {
+        } catch (error: any) {
           consecutiveErrors++;
-          console.error(`[IndustrialExtractor] Loop Error (${consecutiveErrors}): ${loopError.message}`);
+          console.error(`[IndustrialExtractor] Extraction error: ${error.message}`);
           
-          if (consecutiveErrors > 5) throw new Error("Too many consecutive errors during extraction");
+          if (consecutiveErrors >= 3) {
+            throw new Error(`Industrial extraction failed after ${consecutiveErrors} consecutive errors`);
+          }
           
-          // Wait longer on error
-          await new Promise(r => setTimeout(r, 5000 * consecutiveErrors));
-          continue;
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, consecutiveErrors) * 1000));
         }
       }
 
-      await antiBanDistributed.recordOperationResult(accountId, 'extract', true);
+      console.log(`[IndustrialExtractor] Extraction completed: ${count} members`);
       return count;
 
-    } catch (error: any) {
-      console.error(`[IndustrialExtractor] Fatal Error: ${error.message}`);
-      await antiBanDistributed.recordOperationResult(accountId, 'extract', false, 'other');
+    } catch (error) {
+      console.error(`[IndustrialExtractor] Industrial extraction failed:`, error);
       throw error;
     }
   }

@@ -363,24 +363,21 @@ export class AntiDebug {
    * Send alert on debug detection
    */
   private static sendAlert(): void {
-    // Use the new alert system
-    try {
-      const { alertSystem } = require('./alert-system');
-      alertSystem.sendAlert({
-        type: 'DEBUGGING',
-        severity: 'CRITICAL',
-        message: 'Debugging attempt detected - application shutting down',
-        timestamp: new Date().toISOString(),
-        details: {
-          debuggerDetected: this.isDebuggerAttached(),
-          detectionCount: this.debuggerDetectedCount,
-          environment: this.detectVirtualization(),
-        },
-      });
-    } catch (error) {
-      console.error('[AntiDebug] ALERT: Debugging attempt detected at', new Date().toISOString());
-      console.error('[AntiDebug] Failed to send alert:', error);
-    }
+    // TODO: Implement alerting (email, webhook, etc.)
+    const alert = {
+      type: 'SECURITY_ALERT',
+      severity: 'CRITICAL',
+      message: 'Debugging attempt detected',
+      timestamp: new Date().toISOString(),
+      details: {
+        debuggerAttached: this.isDebuggerAttached(),
+        detectionCount: this.debuggerDetectedCount,
+        environment: this.detectVirtualization(),
+      },
+    };
+    
+    // Log to file or send to monitoring service
+    console.error('[AntiDebug] ALERT:', JSON.stringify(alert));
   }
   
   /**

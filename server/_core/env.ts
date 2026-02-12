@@ -29,7 +29,7 @@ export const ENV = {
   expoPort: getEnvNumber("EXPO_PORT", 8081),
 
   // Database
-  databaseUrl: getEnvVar("DATABASE_URL"),
+  databaseUrl: getEnvVar("DATABASE_URL", "file:./dev.db"),
 
   // Redis
   redisUrl: getEnvVar("REDIS_URL", "redis://127.0.0.1:6379"),

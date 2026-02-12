@@ -347,23 +347,8 @@ export class IntegrityChecker {
    * Send alert on tampering
    */
   private static sendAlert(): void {
-    // Use the new alert system
-    try {
-      const { alertSystem } = require('./alert-system');
-      alertSystem.sendAlert({
-        type: 'TAMPERING',
-        severity: 'CRITICAL',
-        message: 'Application integrity compromised - tampering detected',
-        timestamp: new Date().toISOString(),
-        details: {
-          checkedFiles: this.checksums.size,
-          alertSource: 'IntegrityChecker',
-        },
-      });
-    } catch (error) {
-      console.error('[Integrity] ALERT: Tampering detected at', new Date().toISOString());
-      console.error('[Integrity] Failed to send alert:', error);
-    }
+    // TODO: Implement alerting (email, webhook, etc.)
+    console.error('[Integrity] ALERT: Tampering detected at', new Date().toISOString());
   }
   
   /**

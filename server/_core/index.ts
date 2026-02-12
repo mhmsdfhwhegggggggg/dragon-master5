@@ -10,6 +10,7 @@ import { ENV } from "./env";
 import { redis } from "./queue";
 import * as db from "../db";
 import { healthCheck, readinessCheck, livenessCheck } from "./health";
+import { CacheSystem } from "./cache-system";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -31,6 +32,15 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // Initialize CacheSystem with Redis (if available)
+  try {
+    if (redis) {
+      CacheSystem.getInstance(redis);
+    }
+  } catch (error) {
+    console.warn('[CacheSystem] Failed to initialize with Redis:', error);
+  }
+
   const app = express();
   const server = createServer(app);
 

@@ -638,6 +638,9 @@ export class ProxyIntelligenceManager {
 // التصدير والأنواع
 export const proxyIntelligence = ProxyIntelligenceManager.getInstance();
 
+// Export alias for compatibility
+export const ProxyIntelligence = ProxyIntelligenceManager;
+
 // أنواع البيانات
 interface ProxyPerformance {
   proxyId: string;
