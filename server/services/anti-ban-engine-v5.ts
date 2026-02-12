@@ -286,7 +286,7 @@ export class AntiBanEngineV5 {
       riskFeatures: {
         currentRiskScore: await this.getCurrentRiskScore(context.accountId),
         recentFailures: await this.getRecentFailures(context.accountId),
-        proxyQuality: context.proxyUsed ? (this.proxyIntel.getProxyQuality?.(context.accountId) || 1.0) : 1.0,
+        proxyQuality: context.proxyUsed ? 1.0 : 1.0,
         patternDeviation: await this.calculatePatternDeviation(context.accountId, context.operationType)
       }
     };

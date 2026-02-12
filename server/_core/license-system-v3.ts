@@ -362,7 +362,9 @@ export class LicenseSystemV3 {
       // Update license if provided
       if (response.data.license && this.license) {
         this.license = { ...this.license, ...response.data.license };
-        await this.saveLocalLicense(this.license);
+        if (this.license) {
+          await this.saveLocalLicense(this.license);
+        }
       }
 
       // Reset failure counter

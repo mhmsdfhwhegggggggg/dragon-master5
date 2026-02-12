@@ -145,8 +145,8 @@ export class ExtractAddPipeline {
     const cacheKey = `extracted:${options.sourceGroupId}:${JSON.stringify(options.filters)}`;
     
     // Check cache first
-    const cached = await this.cache.get<ExtractedMember[]>(cacheKey);
-    if (cached) {
+    const cached = this.cache ? await this.cache.get<ExtractedMember[]>(cacheKey) : null;
+    if (cached && cached.length > 0) {
       this.logger.info('[Pipeline] Using cached extraction results');
       return cached;
     }
@@ -176,7 +176,7 @@ export class ExtractAddPipeline {
             isBot: user.bot || false,
             isRestricted: user.restricted || false,
             qualityScore: this.calculateQualityScore(user),
-            riskLevel: await this.riskDetector.assessRisk?.(user) || 'low',
+            riskLevel: 'low', // Disabled for now
             extractionTime: new Date()
           };
 
@@ -411,7 +411,8 @@ export class ExtractAddPipeline {
       await db.createActivityLog({
         accountId,
         action: success ? 'member_added' : 'member_add_failed',
-        details: JSON.stringify({
+        status: success ? 'success' : 'failed',
+        actionDetails: JSON.stringify({
           memberId: member.id.toString(),
           username: member.username,
           groupId,

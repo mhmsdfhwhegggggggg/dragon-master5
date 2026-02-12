@@ -8,7 +8,10 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { ENV } from "./env";
 import { redis } from "./queue";
-import * as db from "../db";
+
+// Type assertion for redis
+const redisClient = redis as any;
+import { db, getDb } from "../db";
 import { healthCheck, readinessCheck, livenessCheck } from "./health";
 import { CacheSystem } from "./cache-system";
 
@@ -34,8 +37,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   // Initialize CacheSystem with Redis (if available)
   try {
-    if (redis) {
-      CacheSystem.getInstance(redis);
+    if (redisClient) {
+      CacheSystem.getInstance(redisClient);
     }
   } catch (error) {
     console.warn('[CacheSystem] Failed to initialize with Redis:', error);
@@ -86,8 +89,10 @@ async function startServer() {
     let redisOk = false;
     let dbOk = false;
     try {
-      const pong = await redis.ping();
-      redisOk = pong === "PONG";
+      if (redisClient && typeof redisClient.ping === 'function') {
+        const pong = await redisClient.ping();
+        redisOk = pong === "PONG";
+      }
     } catch {}
     try {
       const conn = await db.getDb();

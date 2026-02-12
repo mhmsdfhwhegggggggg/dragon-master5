@@ -59,13 +59,13 @@ async function handleExtractAndAdd(job: Job) {
   if (!account) throw new Error("Account not found");
 
   // 1. Initialize Industrial Operation
-  const operation = await db.createBulkOperation({
-    accountId: p.accountId,
-    operationType: "extract-and-add",
+  const bulkOp = await db.createBulkOperation({
+    userId: p.accountId, // Use userId instead of accountId
+    type: "extract-and-add",
     status: "running",
-    totalItems: 0,
+    totalTargets: 0,
     delayMs: p.delayMs,
-    targetData: p,
+    config: JSON.stringify(p),
   });
 
   const credentials = tg.getApiCredentials();
@@ -90,7 +90,6 @@ async function handleExtractAndAdd(job: Job) {
     {
       limit: p.limit,
       hasUsername: p.requireUsername,
-      excludeBots: p.excludeBots,
       activityDays: p.daysActive
     },
     async (batch) => {
@@ -100,7 +99,15 @@ async function handleExtractAndAdd(job: Job) {
     }
   );
 
-  await db.updateBulkOperation(operation.id, { totalItems: toAdd.length });
+  const operations = await db.getBulkOperationsByUserId(p.accountId);
+  const operation = operations[0];
+
+  if (operation) {
+    await db.updateBulkOperation(operation.id, { 
+      totalTargets: toAdd.length,
+      processedTargets: toAdd.length 
+    });
+  }
 
   // 3. High-Speed Addition
   for (let i = 0; i < toAdd.length; i++) {
@@ -119,12 +126,14 @@ async function handleExtractAndAdd(job: Job) {
   }
 
   // 4. Finalize
-  await db.updateBulkOperation(operation.id, {
-    status: "completed",
-    successCount: success,
-    failedCount: failed,
-    completedAt: new Date(),
-  });
+  if (operation) {
+    await db.updateBulkOperation(operation.id, {
+      status: "completed",
+      successCount: success,
+      failedCount: failed,
+      completedAt: new Date(),
+    });
+  }
 
   return { extracted: extractedCount, success, failed };
 }

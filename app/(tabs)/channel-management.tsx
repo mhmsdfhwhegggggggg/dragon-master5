@@ -285,7 +285,7 @@ export default function ChannelManagementScreen() {
                 ].map((template, index) => (
                   <TouchableOpacity
                     key={index}
-                    onPress={() => setPostContent({
+                    onPress={() => setPostContentState({
                       type: template.title.includes('نص') ? 'text' : template.title.includes('صورة') ? 'image' : template.title.includes('فيديو') ? 'video' : 'file',
                       content: template.content
                     })}

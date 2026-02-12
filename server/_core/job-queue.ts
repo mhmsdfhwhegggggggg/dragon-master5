@@ -263,3 +263,6 @@ export class JobQueueSystem {
     for (const events of this.queueEvents.values()) await events.close();
   }
 }
+
+// Export singleton instance
+export const getJobQueue = () => new JobQueue();

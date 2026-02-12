@@ -108,10 +108,9 @@ let bulkOpsEvents: QueueEvents | null = null;
 async function initializeQueue() {
   try {
     connection = new IORedis(Secrets.getRedisUrl() || ENV.redisUrl, {
-      maxRetriesPerRequest: null,
+      maxRetriesPerRequest: 3,
       retryDelayOnFailover: 100,
       enableReadyCheck: false,
-      maxRetriesPerRequest: 3,
       lazyConnect: true,
       // Skip version check for older Redis versions
       skipVersionCheck: true,

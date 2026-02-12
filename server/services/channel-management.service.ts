@@ -283,30 +283,38 @@ export class ChannelManagementService {
           break;
 
         case 'video':
+          const videoBuffer = fs.readFileSync(content.mediaPath!);
           const videoFile = await client.uploadFile({
-            file: fs.readFileSync(content.mediaPath!),
+            file: {
+              name: `video-${Date.now()}.mp4`,
+              data: videoBuffer,
+              mimeType: 'video/mp4'
+            },
             workers: 1
           });
 
           message = await client.sendFile(channelId, {
             file: videoFile,
             caption: content.caption,
-            silent: content.silent,
-            schedule: content.schedule
+            silent: content.silent
           });
           break;
 
         case 'file':
+          const fileBuffer = fs.readFileSync(content.mediaPath!);
           const dataFile = await client.uploadFile({
-            file: fs.readFileSync(content.mediaPath!),
+            file: {
+              name: `file-${Date.now()}.bin`,
+              data: fileBuffer,
+              mimeType: 'application/octet-stream'
+            },
             workers: 1
           });
 
           message = await client.sendFile(channelId, {
             file: dataFile,
             caption: content.caption,
-            silent: content.silent,
-            schedule: content.schedule
+            silent: content.silent
           });
           break;
 
@@ -316,10 +324,12 @@ export class ChannelManagementService {
 
       // Pin message if requested
       if (content.pinned && message) {
-        await client.invoke(new Api.messages.PinMessage({
+        await client.invoke({
+          _: 'messages.updatePinnedMessage',
           peer: channelId,
-          id: message.id
-        } as any));
+          id: message.id,
+          pinned: true
+        });
       }
 
       this.logger.info('[Channel] Content posted successfully', { messageId: message.id });

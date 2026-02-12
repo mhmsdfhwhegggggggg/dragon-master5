@@ -73,7 +73,7 @@ export class SovereignExtractor {
             filter: new Api.ChannelParticipantsRecent(),
             offset: offset,
             limit: batchSize,
-            hash: BigInt(0),
+            hash: BigInt(0) as any,
           })
         );
 

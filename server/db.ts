@@ -1,8 +1,9 @@
 // Database connection and utilities
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { Secrets } from "./_core/secrets";
 import { encryptString, decryptString } from "./_core/crypto";
+import { and, eq, like, gte, lte, desc, asc, sql } from "drizzle-orm";
 import {
   InsertUser,
   InsertTelegramAccount,
@@ -17,10 +18,10 @@ import {
   statistics,
   antiBanRules,
   proxyConfigs,
-} from "../drizzle/schema-sqlite";
+} from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
-let _client: Database.Database | null = null;
+let _client: ReturnType<typeof postgres> | null = null;
 
 /**
  * Get or create database connection
@@ -29,11 +30,9 @@ export async function getDb() {
   const url = Secrets.getDatabaseUrl();
   if (!_db && url) {
     try {
-      // Extract file path from URL (remove 'file:' prefix if present)
-      const dbPath = url.replace(/^file:/, "");
-      _client = new Database(dbPath);
+      _client = postgres(url);
       _db = drizzle(_client);
-      console.log("[Database] Connected successfully to SQLite:", dbPath);
+      console.log("[Database] Connected successfully to PostgreSQL:", url.replace(/\/\/.*@/, '//***@'));
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -48,12 +47,19 @@ export async function getDb() {
  */
 export async function closeDb() {
   if (_client) {
-    _client.close();
+    await _client.end();
     _db = null;
     _client = null;
     console.log("[Database] Connection closed");
   }
 }
+
+// Create a proxy for backward compatibility
+export const db = new Proxy({}, {
+  get() {
+    throw new Error('Database not initialized. Use getDb() to get database instance.');
+  }
+}) as any;
 
 /**
  * Database helper functions
@@ -145,16 +151,21 @@ export async function createExtractedMember(data: InsertExtractedMember) {
   return db.insert(extractedMembers).values(data).returning();
 }
 
-export async function getExtractedMembersByAccountId(accountId: number) {
+export async function getExtractedMembers(accountId: number, groupId?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
+  if (groupId) {
+    return db.select().from(extractedMembers).where(
+      and(eq(extractedMembers.accountId, accountId), eq(extractedMembers.groupId, groupId))
+    );
+  }
   return db.select().from(extractedMembers).where(eq(extractedMembers.accountId, accountId));
 }
 
 export async function getExtractedMembersByGroupId(groupId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
-  return db.select().from(extractedMembers).where(eq(extractedMembers.sourceGroupId, groupId));
+  return db.select().from(extractedMembers).where(eq(extractedMembers.groupId, groupId));
 }
 
 // Bulk Operations
@@ -167,7 +178,7 @@ export async function createBulkOperation(data: InsertBulkOperation) {
 export async function getBulkOperationsByUserId(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
-  return db.select().from(bulkOperations).where(eq(bulkOperations.userId, userId));
+  return db.select().from(bulkOperations).where(eq(bulkOperations.accountId, userId));
 }
 
 export async function getBulkOperationById(id: number) {
@@ -192,21 +203,21 @@ export async function createActivityLog(data: InsertActivityLog) {
 export async function getActivityLogsByUserId(userId: number, limit = 50) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
-  return db.select().from(activityLogs).where(eq(activityLogs.userId, userId)).limit(limit);
+  return db.select().from(activityLogs).where(eq(activityLogs.accountId, userId)).limit(limit);
 }
 
 // Statistics
 export async function getStatisticsByUserId(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
-  return db.select().from(statistics).where(eq(statistics.userId, userId));
+  return db.select().from(statistics).where(eq(statistics.accountId, userId));
 }
 
 export async function getStatisticsByDate(userId: number, date: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
   return db.select().from(statistics).where(
-    and(eq(statistics.userId, userId), eq(statistics.date, date))
+    and(eq(statistics.accountId, userId), eq(statistics.date, date))
   ).limit(1);
 }
 
@@ -230,8 +241,8 @@ export async function getActiveProxyConfigs() {
   return db.select().from(proxyConfigs).where(eq(proxyConfigs.isActive, true));
 }
 
-// Import eq, and, and other operators
-import { eq, and, or } from "drizzle-orm";
+// Export all
+export * from "../drizzle/schema";
 
 // Additional helper functions
 export async function upsertUser(data: InsertUser) {
@@ -255,48 +266,14 @@ export async function getExtractedMembersByAccountAndGroup(accountId: number, gr
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
   return db.select().from(extractedMembers).where(
-    and(eq(extractedMembers.accountId, accountId), eq(extractedMembers.sourceGroupId, groupId))
+    and(eq(extractedMembers.accountId, accountId), eq(extractedMembers.groupId, groupId))
   );
-}
-
-export async function getOrCreateAntiBanRules(accountId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not connected");
-  const existing = await db.select().from(antiBanRules).where(eq(antiBanRules.accountId, accountId));
-  if (existing.length > 0) {
-    return existing;
-  }
-  // Create default rules
-  const defaultRules = [
-    {
-      accountId,
-      ruleType: "rate_limit",
-      config: JSON.stringify({ maxPerHour: 30, maxPerDay: 100 }),
-      isActive: true,
-      priority: 1,
-    },
-    {
-      accountId,
-      ruleType: "delay",
-      config: JSON.stringify({ minDelay: 2000, maxDelay: 5000 }),
-      isActive: true,
-      priority: 2,
-    },
-  ];
-  return db.insert(antiBanRules).values(defaultRules).returning();
-}
-
-export async function updateAntiBanRules(accountId: number, data: any) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not connected");
-  return db.update(antiBanRules).set(data).where(eq(antiBanRules.accountId, accountId)).returning();
 }
 
 export async function getBulkOperationsByAccountId(accountId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
-  // Get operations for accounts belonging to this account's user
-  return db.select().from(bulkOperations);
+  return db.select().from(bulkOperations).where(eq(bulkOperations.accountId, accountId));
 }
 
 export async function getOrCreateStatistics(accountId: number, date: string) {
@@ -323,8 +300,3 @@ export async function createProxyConfig(data: any) {
   if (!db) throw new Error("Database not connected");
   return db.insert(proxyConfigs).values(data).returning();
 }
-
-// Helper functions for bulk operations (using existing functions above)
-
-// Export all
-export * from "../drizzle/schema-sqlite";

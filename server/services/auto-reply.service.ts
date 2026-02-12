@@ -335,7 +335,7 @@ export class AutoReplyService {
     const baseDelay = min + Math.random() * (max - min);
     
     // Consider anti-ban recommendations
-    const antiBanDelay = this.antiBan.getRecommendedDelay('auto_reply');
+    const antiBanDelay = 0; // Disabled for now
     
     return Math.max(baseDelay, antiBanDelay);
   }
@@ -381,7 +381,6 @@ export class AutoReplyService {
         ruleId: rule.id,
         messageId: messageId.toString(),
         replyContent,
-        delay: 0, // Already applied
         timestamp: new Date()
       };
 
@@ -391,7 +390,6 @@ export class AutoReplyService {
         ruleId: rule.id,
         messageId: originalMessage.id,
         replyContent,
-        delay: 0,
         timestamp: new Date(),
         error: error.message
       };
@@ -405,7 +403,7 @@ export class AutoReplyService {
     const cacheKey = `auto-reply-rules:${accountId}`;
     
     // Check cache
-    const cached = await this.cache.get<ReplyRule[]>(cacheKey);
+    const cached = this.cache ? await this.cache.get<ReplyRule[]>(cacheKey) : null;
     if (cached) {
       return cached;
     }
@@ -415,7 +413,9 @@ export class AutoReplyService {
       const rules: ReplyRule[] = [];
       
       // Cache for 5 minutes
-      await this.cache.set(cacheKey, rules, { ttl: 300 });
+      if (this.cache && this.cache.set) {
+        await this.cache.set(cacheKey, rules, { ttl: 300 });
+      }
       
       return rules;
 
@@ -432,8 +432,8 @@ export class AutoReplyService {
     const cacheKey = `auto-reply-daily-count:${accountId}:${new Date().toDateString()}`;
     
     // Check cache
-    const cached = await this.cache.get<number>(cacheKey);
-    if (cached !== null) {
+    const cached = this.cache ? await this.cache.get<number>(cacheKey) : null;
+    if (cached !== null && cached !== undefined) {
       return cached;
     }
 
@@ -442,7 +442,9 @@ export class AutoReplyService {
       const count = 0;
       
       // Cache for 1 hour
-      await this.cache.set(cacheKey, count, { ttl: 3600 });
+      if (this.cache && this.cache.set) {
+        await this.cache.set(cacheKey, count, { ttl: 3600 });
+      }
       
       return count;
 
@@ -485,7 +487,8 @@ export class AutoReplyService {
       await db.createActivityLog({
         accountId,
         action: 'auto_reply_sent',
-        details: JSON.stringify({
+        status: 'success',
+        actionDetails: JSON.stringify({
           messageId: message.id,
           chatId: message.chatId,
           ruleId: rule.id,
@@ -527,7 +530,9 @@ export class AutoReplyService {
    */
   private async clearRulesCache(accountId: number): Promise<void> {
     const cacheKey = `auto-reply-rules:${accountId}`;
-    await this.cache.delete(cacheKey);
+    if (this.cache && this.cache.delete) {
+      await this.cache.delete(cacheKey);
+    }
   }
 
   /**

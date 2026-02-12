@@ -17,6 +17,13 @@ import { channelManagementRouter } from "./routers/channel-management.router";
 import { autoReplyRouter } from "./routers/auto-reply.router";
 import { contentClonerRouter } from "./routers/content-cloner.router";
 
+// Export types for anti-ban integration
+export type { 
+  ComprehensiveAccountStatus, 
+  OperationApproval, 
+  SystemStatistics 
+} from "./services/anti-ban-integration";
+
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
