@@ -15,7 +15,7 @@ import { BigInteger } from 'big-integer';
 import { logger } from '../_core/logger';
 import { CacheSystem } from '../_core/cache-system';
 import { RiskDetector } from './risk-detection';
-import { ProxyIntelligence } from './proxy-intelligence';
+import { ProxyIntelligenceManager } from './proxy-intelligence';
 import * as db from '../db';
 
 export interface ExtractAddOptions {

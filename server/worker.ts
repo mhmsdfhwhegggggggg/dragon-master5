@@ -60,10 +60,10 @@ async function handleExtractAndAdd(job: Job) {
 
   // 1. Initialize Industrial Operation
   const bulkOp = await db.createBulkOperation({
-    userId: p.accountId, // Use userId instead of accountId
-    type: "extract-and-add",
+    accountId: p.accountId,
+    operationType: "extract-and-add",
     status: "running",
-    totalTargets: 0,
+    totalItems: 0,
     delayMs: p.delayMs,
     config: JSON.stringify(p),
   });
@@ -99,13 +99,13 @@ async function handleExtractAndAdd(job: Job) {
     }
   );
 
-  const operations = await db.getBulkOperationsByUserId(p.accountId);
+  const operations = await db.getBulkOperationsByAccountId(p.accountId);
   const operation = operations[0];
 
   if (operation) {
     await db.updateBulkOperation(operation.id, { 
       totalTargets: toAdd.length,
-      processedTargets: toAdd.length 
+      processedItems: toAdd.length 
     });
   }
 

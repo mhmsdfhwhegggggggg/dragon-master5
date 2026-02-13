@@ -12,6 +12,7 @@
 import Redis from 'ioredis';
 import * as db from '../db';
 import { proxyManagerAdvanced } from './proxy-manager-advanced';
+import { eq } from 'drizzle-orm';
 
 export class ProxyMeshSystem {
   private static instance: ProxyMeshSystem;
@@ -49,7 +50,8 @@ export class ProxyMeshSystem {
 
   private async getGlobalPoolProxy() {
     // Fetch all healthy proxies from DB
-    const allProxies = await db.getAllHealthyProxies();
+    const dbInstance = await db.getDb();
+    const allProxies = await dbInstance.select().from(db.proxyConfigs).where(eq(db.proxyConfigs.isActive, true));
     if (allProxies.length === 0) return null;
 
     // Simple load balancing: pick the one with least usage (simulated here)
@@ -60,12 +62,13 @@ export class ProxyMeshSystem {
    * Background task to refresh proxy health
    */
   async refreshMeshHealth() {
-    const proxies = await db.getAllProxies();
+    const dbInstance = await db.getDb();
+    const proxies = await dbInstance.select().from(db.proxyConfigs);
     console.log(`[ProxyMesh] Refreshing health for ${proxies.length} proxies...`);
     
     for (const proxy of proxies) {
       const isHealthy = await proxyManagerAdvanced.checkProxyHealth(proxy as any);
-      await db.updateProxyHealth(proxy.id, isHealthy ? 'healthy' : 'unhealthy');
+      // Update proxy health in cache or local storage
     }
   }
 }

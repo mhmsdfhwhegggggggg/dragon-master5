@@ -1,8 +1,8 @@
 import { antiBanCore, OperationDecision, OperationResult } from './anti-ban-core';
 import { smartDelaySystem, SmartDelay, CompletedOperation } from './smart-delay-system';
 import { riskDetection, RiskAssessment, PendingOperation, OperationHistory } from './risk-detection';
-import { proxyIntelligence, OptimalProxyResult } from './proxy-intelligence';
-import { antiBanMLEngine } from './anti-ban-ml-engine';
+import { proxyIntelligenceManager, OptimalProxyResult } from './proxy-intelligence';
+import { AntiBanMLEngine } from './anti-ban-ml-engine';
 import { antiBanMonitoring } from './anti-ban-monitoring';
 
 /**

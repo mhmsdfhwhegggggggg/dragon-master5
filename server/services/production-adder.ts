@@ -91,7 +91,7 @@ export class ProductionAdder {
       else if (msg.includes('privacy')) errorType = 'restriction';
       else if (msg.includes('banned')) errorType = 'ban';
 
-      await antiBanDistributed.recordOperationResult(accountId, 'add_user', false, errorType);
+      await antiBanDistributed.recordOperationResult(accountId, 'add_user', false, errorType as 'restriction' | 'spam' | 'flood' | 'ban' | 'network' | 'other');
       return { success: false, error: error.message, errorType };
     }
   }

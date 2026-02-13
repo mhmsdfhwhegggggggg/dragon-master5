@@ -95,7 +95,7 @@ async function startServer() {
       }
     } catch {}
     try {
-      const conn = await db.getDb();
+      const conn = await getDb();
       dbOk = !!conn;
     } catch {}
     res.json({ ok: redisOk && dbOk, redis: redisOk, db: dbOk, timestamp: now });

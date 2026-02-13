@@ -70,7 +70,7 @@ export class IndustrialExtractor {
               filter: new Api.ChannelParticipantsRecent(),
               offset: offset,
               limit: batchSize,
-              hash: 0n,
+              hash: 0 as any,
             })
           );
 
