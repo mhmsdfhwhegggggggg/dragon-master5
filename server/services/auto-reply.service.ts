@@ -16,7 +16,7 @@ import { logger } from '../_core/logger';
 import { CacheSystem } from '../_core/cache-system';
 import { antiBanEngineV5 } from './anti-ban-engine-v5';
 import { telegramClientService } from './telegram-client.service';
-import { NewMessage } from 'telegram/events';
+import { NewMessage } from 'telegram/events/index.js';
 import * as db from '../db';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { aiChatEngine } from './ai-chat-engine';

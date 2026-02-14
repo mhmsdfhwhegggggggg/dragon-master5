@@ -1,6 +1,6 @@
 import { TelegramClient, Api } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
-import { NewMessage } from "telegram/events";
+import { NewMessage } from "telegram/events/index.js";
 import * as db from "../db";
 import { Secrets } from "../_core/secrets";
 import { entityResolver } from "./entity-resolver";
