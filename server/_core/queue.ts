@@ -106,19 +106,30 @@ let bulkOpsQueue: Queue | MockQueue;
 let bulkOpsEvents: QueueEvents | null = null;
 
 async function initializeQueue() {
+  const redisUrl = Secrets.getRedisUrl() || ENV.redisUrl;
+
+  if (!redisUrl) {
+    console.info('[Queue] No Redis URL provided, using mock queue by default.');
+    connection = null;
+    bulkOpsQueue = new MockQueue();
+    return;
+  }
+
   try {
-    connection = new IORedis(Secrets.getRedisUrl() || ENV.redisUrl, {
+    connection = new IORedis(redisUrl, {
       maxRetriesPerRequest: 3,
       enableReadyCheck: false,
       lazyConnect: true,
-      // Skip version check for older Redis versions
     });
 
     // Test connection
     connection.on('error', (err) => {
-      console.warn('[Queue] Redis connection error, falling back to mock queue:', err.message);
-      connection = null;
-      bulkOpsQueue = new MockQueue();
+      // Only warn if we haven't already fallen back
+      if (connection) {
+        console.warn('[Queue] Redis connection error, falling back to mock queue:', err.message);
+        connection = null;
+        bulkOpsQueue = new MockQueue();
+      }
     });
 
     // Try to connect

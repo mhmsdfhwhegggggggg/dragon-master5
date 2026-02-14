@@ -68,8 +68,12 @@ export async function getDb() {
       _client = postgres(url);
       _db = drizzle(_client);
       console.log("[Database] Connected successfully to PostgreSQL:", url.replace(/\/\/.*@/, '//***@'));
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+    } catch (error: any) {
+      if (error.code === '28P01') {
+        console.error("[Database] AUTHENTICATION FAILED: The password for your database is incorrect. Please check DATABASE_URL in Render dashboard.");
+      } else {
+        console.warn("[Database] Failed to connect:", error.message || error);
+      }
       _db = null;
       _client = null;
     }
