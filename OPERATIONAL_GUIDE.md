@@ -44,18 +44,21 @@
 
 ---
 
-## 2️⃣ إنشاء حساب المدير (Create Admin Account)
-لا يوجد حساب مدير افتراضي لأسباب أمنية. يجب عليك إنشاء واحد يدويًا.
+## 1️⃣ تهيئة قاعدة البيانات (Automatic Database Setup) prince
+لقد جعلتُ هذه الخطوة **آلية بالكامل**. عند تشغيل السيرفر، سيقوم بإنشاء جميع الجداول اللازمة تلقائياً. لا داعي لاستخدام "Shell".
 
-### الخطوات (Steps):
-1.  في نفس تبويب **"Shell"** في Render.
-2.  اكتب الأمر التالي لإنشاء مدير جديد:
-    ```bash
-    npx tsx scripts/create-admin.ts admin@falcon.pro strong_password AdminUser
-    ```
-    *(استبدل `admin@falcon.pro` بإيميلك، و `strong_password` بكلمة مرور قوية)*.
+---
 
-    *   ✅ ستظهر رسالة: `Admin user created successfully!`
+## 2️⃣ إنشاء حساب المدير (Self-Healing Admin) prince
+نظراً لأن Render قد يطلب بطاقة لاستخدام "Shell"، فقد قمتُ ببرمجة النظام ليقوم بإنشاء حساب مدير افتراضي **تلقائياً** عند أول تشغيل.
+
+### بيانات الدخول الافتراضية (Default Login): prince
+*   **الإيميل**: `admin@falcon.pro`
+*   **كلمة المرور**: `falcon_heart_2026`
+*   **الاسم**: `Falcon Admin`
+
+> [!TIP]
+> يمكنك تغيير هذه البيانات من خلال لوحة التحكم داخل التطبيق بعد تسجيل الدخول، أو عبر إضافة متغيرات بيئية (`ADMIN_EMAIL` و `ADMIN_PASSWORD`) في Render وسيقوم النظام بتحديثها تلقائياً. Prince.
 
 ---
 

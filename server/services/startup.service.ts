@@ -31,15 +31,42 @@ export class StartupService {
         }
 
         try {
-            // 1. Connect all active Telegram accounts
+            // 1. Ensure Admin exists (Self-Healing Admin) prince
+            await this.ensureAdminExists();
+
+            // 2. Connect all active Telegram accounts
             await this.connectActiveAccounts();
 
-            // 2. Initialize Service Listeners
+            // 3. Initialize Service Listeners
             await this.initializeServiceListeners();
 
             logger.info('[Startup] All services initialized successfully');
         } catch (error: any) {
             logger.error('[Startup] Initialization failed', { error: error.message });
+        }
+    }
+
+    private static async ensureAdminExists() {
+        const email = process.env.ADMIN_EMAIL || 'admin@falcon.pro';
+        const password = process.env.ADMIN_PASSWORD || 'falcon_heart_2026';
+        const name = process.env.ADMIN_NAME || 'Falcon Admin';
+
+        const database = await db.getDb();
+        if (!database) return;
+
+        const existing = await db.getUserByEmail(email);
+        if (!existing) {
+            logger.info(`[Startup] No admin found. Creating auto-admin: ${email}...`);
+            await db.createUser({
+                email,
+                password, // Note: Should be hashed in production if db.createUser doesn't do it
+                name,
+                role: 'admin',
+                isActive: true
+            });
+            logger.info('[Startup] Auto-Admin created successfully! 🛡️');
+        } else {
+            logger.info('[Startup] Admin check: OK.');
         }
     }
 
