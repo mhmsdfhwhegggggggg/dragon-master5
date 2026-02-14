@@ -42,16 +42,23 @@ export class AIChatEngine {
   private getClient(): OpenAI | null {
     if (this.client) return this.client;
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
+    // Support for multiple providers (OpenAI, DeepSeek, Groq)
+    // Using OpenAI SDK as it's compatible with most free/low-cost providers
+    const apiKey = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
+    const baseURL = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
+
+    if (!apiKey && !process.env.USE_FREE_AI_MOCK) {
       return null;
     }
 
     try {
-      this.client = new OpenAI({ apiKey });
+      this.client = new OpenAI({
+        apiKey: apiKey || 'free-tier-dummy-key',
+        baseURL
+      });
       return this.client;
     } catch (error) {
-      console.error('[AIChatEngine] Failed to initialize OpenAI client:', error);
+      console.error('[AIChatEngine] Failed to initialize AI client:', error);
       return null;
     }
   }

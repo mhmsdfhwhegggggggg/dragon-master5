@@ -20,6 +20,7 @@ import { RiskDetector } from './risk-detection';
 import { proxyIntelligenceManager } from './proxy-intelligence';
 import * as db from '../db';
 import { telegramClientService } from './telegram-client.service';
+import { channelShield } from './channel-shield';
 
 export interface AntiBanConfig {
   accountId: number;
@@ -515,6 +516,23 @@ export class AntiBanEngineV5 {
     context: OperationContext,
     behaviorPattern?: BehaviorPattern
   ): Promise<AntiBanRecommendation> {
+    // 0. Channel-Shield Check
+    let shieldMultiplier = 1.0;
+    if (context.targetId) {
+      const shieldCheck = await channelShield.checkChannelSafety(context.targetId, context.operationType);
+      if (!shieldCheck.safe) {
+        return {
+          action: 'delay',
+          delay: 30000 * shieldCheck.suggestedDelayMultiplier, // Aggressive safety delay
+          confidence: 0.95,
+          reason: `CHANNEL SHIELD: ${shieldCheck.reason}`,
+          riskScore: 90,
+          alternativeStrategies: ['wait_for_cooldown']
+        };
+      }
+      shieldMultiplier = shieldCheck.suggestedDelayMultiplier;
+    }
+
     // Check for critical anomalies first
     const criticalAnomaly = anomalies.find(a => a.severity === 'critical');
     if (criticalAnomaly) {
@@ -553,7 +571,7 @@ export class AntiBanEngineV5 {
     }
 
     // Medium risk - delay
-    if (riskScore > 60) {
+    if (riskScore > 60 || shieldMultiplier > 1.5) {
       const delay = await this.calculateDelay(context.operationType, context.accountId, {
         riskScore,
         speed: 'slow'
@@ -561,28 +579,11 @@ export class AntiBanEngineV5 {
 
       return {
         action: 'delay',
-        delay,
+        delay: delay * shieldMultiplier,
         confidence: 0.8,
-        reason: 'Elevated risk detected',
+        reason: shieldMultiplier > 1.5 ? 'Channel protection active' : 'Elevated risk detected',
         riskScore,
         alternativeStrategies: ['use_proxy', 'reduce_frequency']
-      };
-    }
-
-    // Low-medium risk - use proxy
-    if (riskScore > 40 && !context.proxyUsed) {
-      const delay = await this.calculateDelay(context.operationType, context.accountId, {
-        riskScore,
-        speed: 'medium'
-      });
-
-      return {
-        action: 'use_proxy',
-        delay,
-        confidence: 0.7,
-        reason: 'Moderate risk - proxy recommended',
-        riskScore,
-        alternativeStrategies: ['delay', 'slow_down']
       };
     }
 
@@ -593,7 +594,7 @@ export class AntiBanEngineV5 {
 
     return {
       action: 'proceed',
-      delay,
+      delay: delay * shieldMultiplier,
       confidence: 0.9,
       reason: 'Low risk - operation safe',
       riskScore,

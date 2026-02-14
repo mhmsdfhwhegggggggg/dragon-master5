@@ -17,6 +17,7 @@ import { proxyIntelligenceManager } from './proxy-intelligence';
 import { antiBanEngineV5 } from './anti-ban-engine-v5';
 import { telegramClientService } from './telegram-client.service';
 import { ultraExtractor } from './ultra-extractor';
+import { channelShield } from './channel-shield';
 import * as db from '../db';
 
 export interface ExtractAddOptions {
@@ -320,6 +321,9 @@ export class ExtractAddPipeline {
           // Add member with delay
           await this.addMemberWithDelay(client, targetGroupId, member, delay);
 
+          // Record activity for Channel-Shield
+          await channelShield.recordChannelActivity(targetGroupId, 'add');
+
           results.push({
             memberId: member.id,
             success: true,
@@ -331,6 +335,11 @@ export class ExtractAddPipeline {
           await this.saveAddResult(options.accountId, targetGroupId, member, true);
 
         } catch (error: any) {
+          // If suspicious leave or other reporting signal is detected, record it
+          if (error.message.includes("PEER_FLOOD") || error.message.includes("USER_BANNED_IN_CHANNEL")) {
+            await channelShield.recordChannelActivity(targetGroupId, 'leave');
+          }
+
           results.push({
             memberId: member.id,
             success: false,
