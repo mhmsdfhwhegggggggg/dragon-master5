@@ -78,6 +78,18 @@ async function startServer() {
 
   registerOAuthRoutes(app);
 
+  // Root status page prince
+  app.get("/", (req, res) => {
+    res.status(200).send(`
+      <div style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+        <h1 style="color: #2563eb;">🚀 FALCON Server is Active</h1>
+        <p>Heart-Beat Security Core V6.0.0 is running.</p>
+        <p style="color: #64748b;">Visit <a href="/health">/health</a> for system status.</p>
+        <div style="margin-top: 20px; font-size: 0.8em; color: #94a3b8;">Prince Edition</div>
+      </div>
+    `);
+  });
+
   // Health check endpoints
   app.get("/health", healthCheck);
   app.get("/api/health", healthCheck);
