@@ -69,7 +69,6 @@ export const Secrets = {
   getDatabaseUrl(): string | null {
     const s = readSecrets();
     let url = s.DATABASE_URL || process.env.DATABASE_URL || null;
-
     if (url && (url.startsWith("psql '") || url.startsWith("psql \""))) {
       // Clean psql 'postgresql://...' format
       const match = url.match(/['"](postgresql:\/\/.*?)['"]/);
@@ -79,6 +78,15 @@ export const Secrets = {
     } else if (url && url.startsWith("psql ")) {
       // Clean psql postgresql://... format
       url = url.replace("psql ", "").trim();
+    }
+
+    // Aggressive cleanup for Neon/Pooler params that might cause auth issues
+    if (url) {
+      url = url.replace(/[&?]channel_binding=require/g, "");
+      // Ensure sslmode=require is present if it's a neon URL but don't double up
+      if (url.includes("neon.tech") && !url.includes("sslmode=")) {
+        url += (url.includes("?") ? "&" : "?") + "sslmode=require";
+      }
     }
 
     return url;
