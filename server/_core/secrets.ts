@@ -68,7 +68,20 @@ export const Secrets = {
 
   getDatabaseUrl(): string | null {
     const s = readSecrets();
-    return s.DATABASE_URL || process.env.DATABASE_URL || null;
+    let url = s.DATABASE_URL || process.env.DATABASE_URL || null;
+
+    if (url && (url.startsWith("psql '") || url.startsWith("psql \""))) {
+      // Clean psql 'postgresql://...' format
+      const match = url.match(/['"](postgresql:\/\/.*?)['"]/);
+      if (match && match[1]) {
+        url = match[1];
+      }
+    } else if (url && url.startsWith("psql ")) {
+      // Clean psql postgresql://... format
+      url = url.replace("psql ", "").trim();
+    }
+
+    return url;
   },
 
   setDatabaseUrl(url: string) {

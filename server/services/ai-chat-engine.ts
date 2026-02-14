@@ -29,9 +29,7 @@ export class AIChatEngine {
   private client: OpenAI;
 
   private constructor() {
-    this.client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    // Client will be initialized on first use if key is available
   }
 
   static getInstance(): AIChatEngine {
@@ -41,14 +39,36 @@ export class AIChatEngine {
     return this.instance;
   }
 
+  private getClient(): OpenAI | null {
+    if (this.client) return this.client;
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return null;
+    }
+
+    try {
+      this.client = new OpenAI({ apiKey });
+      return this.client;
+    } catch (error) {
+      console.error('[AIChatEngine] Failed to initialize OpenAI client:', error);
+      return null;
+    }
+  }
+
   /**
    * Generate a human-like response based on context
    */
   async generateResponse(context: ChatContext): Promise<string> {
+    const client = this.getClient();
+    if (!client) {
+      return this.getFallbackResponse(context.personality);
+    }
+
     try {
       const systemPrompt = this.buildSystemPrompt(context);
 
-      const response = await this.client.chat.completions.create({
+      const response = await client.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
