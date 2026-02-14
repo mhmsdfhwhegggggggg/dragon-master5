@@ -21,6 +21,7 @@ import { proxyIntelligenceManager } from './proxy-intelligence';
 import * as db from '../db';
 import { telegramClientService } from './telegram-client.service';
 import { channelShield } from './channel-shield';
+import { Api } from 'telegram';
 
 export interface AntiBanConfig {
   accountId: number;
@@ -131,13 +132,57 @@ export class AntiBanEngineV5 {
   };
 
   private godModeEnabled = true; // Default to true for industrial strength
+  private heartBeatV6Enabled = true; // Heart-Beat Core Alpha Version 6.0.0 prince
 
   private constructor() {
     this.loadBehaviorPatterns();
     this.loadLearningData();
-    if (this.godModeEnabled) {
-      this.logger.info('[AntiBanV5] GOD MODE ENABLED: Extreme protection active 🛡️');
+    if (this.heartBeatV6Enabled) {
+      this.logger.info('[AntiBanV6] HEART-BEAT CORE ACTIVE: Invisible Signature Mode ON 🛡️💓');
     }
+  }
+
+  /**
+   * Generate a randomized hardware signature for "Signature Randomization"
+   */
+  async generateHardwareSignature() {
+    const devices = ['iPhone 15 Pro', 'Samsung S24 Ultra', 'Google Pixel 8', 'Xiaomi 14', 'OnePlus 12'];
+    const systems = ['iOS 17.4.1', 'Android 14', 'iOS 17.5', 'Android 13'];
+
+    return {
+      device: devices[Math.floor(Math.random() * devices.length)],
+      system: systems[Math.floor(Math.random() * systems.length)],
+      appVersion: `10.${Math.floor(Math.random() * 9)}.${Math.floor(Math.random() * 5)}`,
+      lang: 'ar-SA',
+      tz: 'Asia/Riyadh'
+    };
+  }
+
+  /**
+   * Simulate "Reading/Browsing" behavior (Heart-Beat)
+   */
+  async simulateDeepInteraction(client: any, chatId: string) {
+    if (!this.heartBeatV6Enabled) return;
+
+    this.logger.info(`[Heart-Beat] Simulating organic browsing in ${chatId}...`);
+
+    // 1. Mark as read
+    try {
+      await client.invoke(new Api.messages.ReadHistory({ peer: chatId, maxId: 0 }));
+    } catch (e) { }
+
+    // 2. Random thinking delay (GHOST MODE)
+    const thinkingTime = 2000 + Math.random() * 5000;
+    await new Promise(r => setTimeout(r, thinkingTime));
+
+    // 3. Simulating "Typing" or "Looking" state
+    try {
+      await client.invoke(new Api.messages.SetTyping({
+        peer: chatId,
+        action: new Api.SendMessageTypingAction()
+      }));
+      await new Promise(r => setTimeout(r, 1500));
+    } catch (e) { }
   }
 
   static getInstance(): AntiBanEngineV5 {

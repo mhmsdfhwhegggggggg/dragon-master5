@@ -24,6 +24,7 @@ export interface ExtractAddOptions {
   sourceGroupId: string;
   targetGroupIds: string[];
   accountId: number;
+  userId?: number; // Added for multi-account load balancing
   filters: MemberFilters;
   speed: 'slow' | 'medium' | 'fast';
   maxMembers?: number;
@@ -302,40 +303,73 @@ export class ExtractAddPipeline {
    */
   private async addMembers(members: ExtractedMember[], options: ExtractAddOptions): Promise<AddResult[]> {
     const results: AddResult[] = [];
-    const client = await this.getTelegramClient(options.accountId);
+
+    // HEART-BEAT: Multi-Account Load Balancing prince
+    const allAccounts = await db.getTelegramAccountsByUserId(options.userId || 1);
+    const activeAccounts = allAccounts.filter((a: any) => a.status === 'active');
+    let currentAccountIdx = activeAccounts.findIndex((a: any) => a.id === options.accountId);
+    if (currentAccountIdx === -1) currentAccountIdx = 0;
+
+    this.logger.info(`[Heart-Beat] Multi-Account Sentinel: Load balancing across ${activeAccounts.length} active accounts.`);
 
     for (let i = 0; i < members.length; i++) {
       const member = members[i];
 
+      // HEART-BEAT: Rotate account every 5 adds to balance heat prince
+      if (i > 0 && i % 5 === 0 && activeAccounts.length > 1) {
+        currentAccountIdx = (currentAccountIdx + 1) % activeAccounts.length;
+        this.logger.info(`[Heart-Beat] Rotating to next account: ${activeAccounts[currentAccountIdx].id}`);
+      }
+
+      const currentAccount = activeAccounts[currentAccountIdx];
+      const client = await this.getTelegramClient(currentAccount.id);
+
       for (const targetGroupId of options.targetGroupIds) {
         try {
-          // Calculate delay based on anti-ban system
-          const delay = await this.antiBan.calculateDelay(
-            'add_member',
-            options.accountId,
-            {
-              speed: options.speed
+          // 1. HEART-BEAT: Risk Analysis & Recommendation prince
+          const recommendation = await antiBanEngineV5.analyzeOperation({
+            accountId: currentAccount.id,
+            operationType: 'add_member',
+            targetId: targetGroupId,
+            speed: options.speed || 'medium',
+            timeOfDay: new Date().getHours(),
+            dayOfWeek: new Date().getDay(),
+            accountAge: 180,
+            recentActivityCount: i,
+            proxyUsed: false
+          });
+
+          if (recommendation.action === 'stop_operation' || recommendation.action === 'emergency_shutdown') {
+            this.logger.warn(`[Heart-Beat] Account ${currentAccount.id} high risk, trying rotation...`);
+            if (activeAccounts.length > 1) {
+              currentAccountIdx = (currentAccountIdx + 1) % activeAccounts.length;
+              continue; // Try with next account
             }
-          );
+            throw new Error(`Heart-Beat Security: ${recommendation.reason}`);
+          }
 
-          // Add member with delay
-          await this.addMemberWithDelay(client, targetGroupId, member, delay);
+          // 2. HEART-BEAT: Deep Interaction (Browsing Simulation) prince
+          await antiBanEngineV5.simulateDeepInteraction(client, targetGroupId);
 
-          // Record activity for Channel-Shield
+          // 3. Add member with dynamic delay prince
+          const finalDelay = recommendation.delay || 5000;
+          await this.addMemberWithDelay(client, targetGroupId, member, finalDelay);
+
+          // 4. Record activity for Channel-Shield prince
           await channelShield.recordChannelActivity(targetGroupId, 'add');
 
           results.push({
             memberId: member.id,
             success: true,
-            delay,
+            delay: finalDelay,
             timestamp: new Date()
           });
 
           // Save to database
-          await this.saveAddResult(options.accountId, targetGroupId, member, true);
+          await this.saveAddResult(currentAccount.id, targetGroupId, member, true);
 
         } catch (error: any) {
-          // If suspicious leave or other reporting signal is detected, record it
+          // If suspicious leave or other reporting signal is detected, record it prince
           if (error.message.includes("PEER_FLOOD") || error.message.includes("USER_BANNED_IN_CHANNEL")) {
             await channelShield.recordChannelActivity(targetGroupId, 'leave');
           }
@@ -349,7 +383,7 @@ export class ExtractAddPipeline {
           });
 
           // Save failed attempt
-          await this.saveAddResult(options.accountId, targetGroupId, member, false, error.message);
+          await this.saveAddResult(currentAccount.id, targetGroupId, member, false, error.message);
         }
       }
     }
