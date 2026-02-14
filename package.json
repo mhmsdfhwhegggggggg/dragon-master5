@@ -70,6 +70,7 @@
     "ioredis": "^5.4.1",
     "javascript-obfuscator": "^5.3.0",
     "jose": "6.1.0",
+    "jsonwebtoken": "^9.0.2",
     "lru-cache": "^11.2.5",
     "mysql2": "^3.16.0",
     "nanoid": "^5.1.6",
