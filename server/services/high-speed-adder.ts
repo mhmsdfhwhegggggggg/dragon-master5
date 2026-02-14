@@ -10,21 +10,21 @@
  */
 
 import { TelegramClient } from 'telegram';
-import { Api } from 'telegram/tl';
+import { Api } from 'telegram';
 import { antiBanDistributed } from './anti-ban-distributed';
 
 export class HighSpeedAdder {
   private static instance: HighSpeedAdder;
-  
-  private constructor() {}
-  
+
+  private constructor() { }
+
   static getInstance(): HighSpeedAdder {
     if (!this.instance) {
       this.instance = new HighSpeedAdder();
     }
     return this.instance;
   }
-  
+
   /**
    * Add a single user to a group with industrial safety checks
    */
@@ -40,7 +40,7 @@ export class HighSpeedAdder {
       console.warn(`[HighSpeedAdder] Safety block for account ${accountId}: ${check.reason}`);
       return { success: false, reason: 'rate_limited', waitMs: check.waitMs };
     }
-    
+
     try {
       // 2. Execute Addition
       await client.invoke(
@@ -49,39 +49,39 @@ export class HighSpeedAdder {
           users: [userId],
         })
       );
-      
+
       // 3. Record Success
       await antiBanDistributed.recordOperationResult(accountId, 'add_user', true);
       return { success: true };
-      
+
     } catch (error: any) {
       // 4. Advanced Error Handling
       const errorType = this.categorizeError(error);
       console.error(`[HighSpeedAdder] Error adding user ${userId}: ${error.message} (Type: ${errorType})`);
-      
+
       await antiBanDistributed.recordOperationResult(accountId, 'add_user', false, errorType);
-      
-      return { 
-        success: false, 
-        reason: error.message, 
+
+      return {
+        success: false,
+        reason: error.message,
         errorType,
         isTemporary: errorType === 'flood' || errorType === 'network'
       };
     }
   }
-  
+
   /**
    * Categorize Telegram RPC errors for intelligent response
    */
   private categorizeError(error: any): 'flood' | 'spam' | 'ban' | 'restriction' | 'network' | 'other' {
     const msg = error.message.toLowerCase();
-    
+
     if (msg.includes('flood') || msg.includes('wait')) return 'flood';
     if (msg.includes('privacy') || msg.includes('restricted')) return 'restriction';
     if (msg.includes('spam')) return 'spam';
     if (msg.includes('banned') || msg.includes('deactivated')) return 'ban';
     if (msg.includes('network') || msg.includes('timeout') || msg.includes('connection')) return 'network';
-    
+
     return 'other';
   }
 }

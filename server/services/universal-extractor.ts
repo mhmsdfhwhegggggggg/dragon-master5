@@ -13,7 +13,7 @@
  */
 
 import { TelegramClient } from 'telegram';
-import { Api } from 'telegram/tl';
+import { Api } from 'telegram';
 import { antiBanDistributed } from './anti-ban-distributed';
 import { getCache } from '../_core/cache-system';
 
@@ -30,9 +30,9 @@ export interface UltraFilter {
 export class UniversalExtractor {
   private static instance: UniversalExtractor;
   private cache = getCache();
-  
-  private constructor() {}
-  
+
+  private constructor() { }
+
   static getInstance(): UniversalExtractor {
     if (!this.instance) {
       this.instance = new UniversalExtractor();
@@ -54,7 +54,7 @@ export class UniversalExtractor {
     if (!safety.allowed) throw new Error(`Production Safety: ${safety.reason}`);
 
     console.log(`[UniversalExtractor] Starting giant extraction for ${chatId}...`);
-    
+
     try {
       let entity;
       // Resolve entity for both public and private sources
@@ -83,7 +83,7 @@ export class UniversalExtractor {
         );
 
         if (!(participants instanceof Api.channels.ChannelParticipants)) break;
-        
+
         const users = participants.users as Api.User[];
         if (users.length === 0) break;
 
@@ -93,7 +93,7 @@ export class UniversalExtractor {
           if (filters.mustHaveUsername && !user.username) return false;
           if (filters.mustHavePhoto && !user.photo) return false;
           if (filters.isPremium && !user.premium) return false;
-          
+
           // Activity Check
           if (filters.onlyActiveWithinDays && user.status instanceof Api.UserStatusOffline) {
             const lastSeen = user.status.wasOnline;
@@ -115,7 +115,7 @@ export class UniversalExtractor {
         })));
 
         offset += users.length;
-        
+
         // Report progress to Redis for real-time UI updates without stressing the mobile
         await this.cache.set(`extract_progress:${accountId}`, {
           current: allUsers.length,
@@ -127,7 +127,7 @@ export class UniversalExtractor {
 
         // Human-like adaptive delay
         await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
-        
+
         if (users.length < batchSize) break;
       }
 

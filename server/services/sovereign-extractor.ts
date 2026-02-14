@@ -13,7 +13,7 @@
  */
 
 import { TelegramClient } from 'telegram';
-import { Api } from 'telegram/tl';
+import { Api } from 'telegram';
 import { antiBanDistributed } from './anti-ban-distributed';
 import { getCache } from '../_core/cache-system';
 
@@ -28,9 +28,9 @@ export interface SovereignFilters {
 export class SovereignExtractor {
   private static instance: SovereignExtractor;
   private cache = getCache();
-  
-  private constructor() {}
-  
+
+  private constructor() { }
+
   static getInstance(): SovereignExtractor {
     if (!this.instance) {
       this.instance = new SovereignExtractor();
@@ -52,7 +52,7 @@ export class SovereignExtractor {
     if (!safety.allowed) throw new Error(`Sovereign Security Block: ${safety.reason}`);
 
     console.log(`[SovereignExtractor] Launching sovereign extraction for ${sourceId}...`);
-    
+
     try {
       let entity;
       try {
@@ -78,7 +78,7 @@ export class SovereignExtractor {
         );
 
         if (!(result instanceof Api.channels.ChannelParticipants)) break;
-        
+
         const users = result.users as Api.User[];
         if (users.length === 0) break;
 
@@ -87,7 +87,7 @@ export class SovereignExtractor {
           if (filters.requireUsername && !user.username) return false;
           if (filters.requirePhoto && !user.photo) return false;
           if (filters.premiumOnly && !user.premium) return false;
-          
+
           if (filters.activityWindowDays && user.status instanceof Api.UserStatusOffline) {
             const days = (Date.now() / 1000 - user.status.wasOnline) / 86400;
             if (days > filters.activityWindowDays) return false;
@@ -109,7 +109,7 @@ export class SovereignExtractor {
         }
 
         offset += users.length;
-        
+
         // Update global status in Redis for zero-latency dashboard updates
         await this.cache.set(`sovereign:progress:${accountId}`, {
           extracted: totalExtracted,
@@ -120,7 +120,7 @@ export class SovereignExtractor {
 
         // Intelligent pacing to avoid detection
         await new Promise(r => setTimeout(r, 800 + Math.random() * 500));
-        
+
         if (users.length < batchSize) break;
       }
 

@@ -10,7 +10,7 @@
  */
 
 import { TelegramClient } from 'telegram';
-import { Api } from 'telegram/tl';
+import { Api } from 'telegram';
 import { OpenAI } from 'openai';
 import { antiBanDistributed } from './anti-ban-distributed';
 import * as db from '../db';

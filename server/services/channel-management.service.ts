@@ -13,7 +13,7 @@
  */
 
 import { TelegramClient } from 'telegram';
-import { Api } from 'telegram/tl';
+import { Api } from 'telegram';
 import { logger } from '../_core/logger';
 import { CacheSystem } from '../_core/cache-system';
 import { antiBanEngineV5 } from './anti-ban-engine-v5';

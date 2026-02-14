@@ -13,15 +13,15 @@
  */
 
 import { TelegramClient } from 'telegram';
-import { Api } from 'telegram/tl';
+import { Api } from 'telegram';
 import { antiBanDistributed } from './anti-ban-distributed';
 import { getAccountDistributor } from './account-distributor';
 
 export class ProductionAdder {
   private static instance: ProductionAdder;
-  
-  private constructor() {}
-  
+
+  private constructor() { }
+
   static getInstance(): ProductionAdder {
     if (!this.instance) {
       this.instance = new ProductionAdder();
@@ -38,14 +38,14 @@ export class ProductionAdder {
     accountIds: number[]
   ) {
     console.log(`[ProductionAdder] Starting massive addition of ${users.length} users using ${accountIds.length} accounts...`);
-    
+
     const distributor = getAccountDistributor();
     const batchSize = Math.ceil(users.length / accountIds.length);
-    
+
     // Distribute work across accounts
     const promises = accountIds.map(async (accountId, index) => {
       const userBatch = users.slice(index * batchSize, (index + 1) * batchSize);
-      
+
       for (const user of userBatch) {
         // Schedule on server worker to keep mobile free
         await distributor.scheduleTask(accountId, 'add_user', {
@@ -86,7 +86,7 @@ export class ProductionAdder {
     } catch (error: any) {
       const msg = error.message.toLowerCase();
       let errorType = 'other';
-      
+
       if (msg.includes('flood')) errorType = 'flood';
       else if (msg.includes('privacy')) errorType = 'restriction';
       else if (msg.includes('banned')) errorType = 'ban';

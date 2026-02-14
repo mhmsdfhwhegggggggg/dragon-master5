@@ -4,7 +4,7 @@
  */
 
 import { TelegramClient } from 'telegram';
-import { Api } from 'telegram/tl';
+import { Api } from 'telegram';
 import { antiBanDistributed } from './anti-ban-distributed';
 import { getCache } from '../_core/cache-system';
 
@@ -20,7 +20,7 @@ export class IndustrialExtractor {
   private static instance: IndustrialExtractor;
   private cache = getCache();
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): IndustrialExtractor {
     if (!this.instance) {
@@ -120,11 +120,11 @@ export class IndustrialExtractor {
         } catch (error: any) {
           consecutiveErrors++;
           console.error(`[IndustrialExtractor] Extraction error: ${error.message}`);
-          
+
           if (consecutiveErrors >= 3) {
             throw new Error(`Industrial extraction failed after ${consecutiveErrors} consecutive errors`);
           }
-          
+
           // Exponential backoff
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, consecutiveErrors) * 1000));
         }

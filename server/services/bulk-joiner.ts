@@ -12,21 +12,21 @@
  */
 
 import { TelegramClient } from 'telegram';
-import { Api } from 'telegram/tl';
+import { Api } from 'telegram';
 import { antiBanDistributed } from './anti-ban-distributed';
 
 export class BulkJoiner {
   private static instance: BulkJoiner;
-  
-  private constructor() {}
-  
+
+  private constructor() { }
+
   static getInstance(): BulkJoiner {
     if (!this.instance) {
       this.instance = new BulkJoiner();
     }
     return this.instance;
   }
-  
+
   /**
    * Join a group or channel with smart protection
    */
@@ -40,10 +40,10 @@ export class BulkJoiner {
     if (!check.allowed) {
       return { success: false, reason: 'rate_limited', waitMs: check.waitMs };
     }
-    
+
     try {
       console.log(`[BulkJoiner] Account ${accountId} joining ${chatIdentifier}...`);
-      
+
       if (chatIdentifier.includes('t.me/joinchat/') || chatIdentifier.includes('t.me/+')) {
         // Private invite link
         const hash = chatIdentifier.split('/').pop()?.replace('+', '');
@@ -55,14 +55,14 @@ export class BulkJoiner {
         const username = chatIdentifier.replace('https://t.me/', '').replace('@', '');
         await client.invoke(new Api.channels.JoinChannel({ channel: username }));
       }
-      
+
       await antiBanDistributed.recordOperationResult(accountId, 'join_group', true);
       return { success: true };
-      
+
     } catch (error: any) {
       const errorType = error.message.includes('FLOOD') ? 'flood' : 'other';
       await antiBanDistributed.recordOperationResult(accountId, 'join_group', false, errorType);
-      
+
       return { success: false, reason: error.message };
     }
   }
