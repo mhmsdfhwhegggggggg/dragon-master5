@@ -1,4 +1,4 @@
-import { TelegramClient } from "telegram";
+import { TelegramClient, Api } from "telegram";
 
 export class EntityResolver {
   async resolveEntity(client: TelegramClient, input: string | number): Promise<any> {
@@ -12,8 +12,20 @@ export class EntityResolver {
       if (text.startsWith("https://t.me/") || text.startsWith("t.me/")) {
         const slug = text.replace(/^https?:\/\/t\.me\//i, "");
         // If it's a joinchat link, attempt import
-        if (/^\+/.test(slug) || /joinchat\//i.test(text)) {
-          return { _: "inputChatInvite", link: text };
+        if (slug.startsWith("+") || slug.startsWith("joinchat/")) {
+          const hash = slug.replace("+", "").replace("joinchat/", "");
+          try {
+            const result = await client.invoke(new Api.messages.ImportChatInvite({ hash }));
+            console.log(`[EntityResolver] Successfully joined group via invite link`);
+            return (result as any).chats[0];
+          } catch (e: any) {
+            if (e.message.includes("USER_ALREADY_PARTICIPANT")) {
+              // Get the chat from the invite info instead
+              const invite = await client.invoke(new Api.messages.CheckChatInvite({ hash }));
+              return (invite as any).chat;
+            }
+            throw e;
+          }
         }
         return await (client as any).getEntity(slug);
       }

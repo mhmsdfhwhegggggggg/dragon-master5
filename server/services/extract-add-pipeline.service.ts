@@ -16,6 +16,7 @@ import { RiskDetector } from './risk-detection';
 import { proxyIntelligenceManager } from './proxy-intelligence';
 import { antiBanEngineV5 } from './anti-ban-engine-v5';
 import { telegramClientService } from './telegram-client.service';
+import { ultraExtractor } from './ultra-extractor';
 import * as db from '../db';
 
 export interface ExtractAddOptions {
@@ -201,33 +202,36 @@ export class ExtractAddPipeline {
     const members: ExtractedMember[] = [];
 
     try {
-      // Get all participants
-      const participants = await client.getParticipants(options.sourceGroupId, {
-        limit: options.maxMembers || 10000,
-        search: ''
-      });
-
-      for (const participant of participants) {
-        if ((participant as any).className === 'ChannelParticipant') {
-          const user = (participant as any).user as Api.User;
-
-          const member: ExtractedMember = {
-            id: user.id.toString(),
-            username: user.username,
-            firstName: user.firstName || '',
-            lastName: user.lastName || '',
-            bio: (user as any).about || '',
-            hasPhoto: !!user.photo,
-            isPremium: user.premium || false,
-            isBot: user.bot || false,
-            isRestricted: user.restricted || false,
-            qualityScore: this.calculateQualityScore(user),
-            riskLevel: 'low', // Disabled for now
-            extractionTime: new Date()
-          };
-
-          members.push(member);
+      // Use UltraExtractor with God-Mode (Standard + History Scraper + Auto-Join)
+      const participants = await ultraExtractor.extractMembers(
+        client,
+        options.accountId,
+        options.sourceGroupId,
+        {
+          limit: options.maxMembers || 10000,
+          mustHaveUsername: options.filters.hasUsername,
+          mustHavePhoto: options.filters.hasPhoto,
+          minDaysActive: options.filters.daysActive
         }
+      );
+
+      for (const user of participants) {
+        const member = {
+          id: user.id.toString(),
+          username: user.username,
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          bio: (user as any).about || '',
+          hasPhoto: !!user.photo,
+          isPremium: user.premium || false,
+          isBot: user.bot || false,
+          isRestricted: user.restricted || false,
+          qualityScore: this.calculateQualityScore(user),
+          riskLevel: 'low',
+          extractionTime: new Date()
+        } as ExtractedMember;
+
+        members.push(member);
       }
 
       // Cache results for 1 hour
