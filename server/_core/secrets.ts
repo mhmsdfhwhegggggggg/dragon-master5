@@ -78,6 +78,9 @@ export const Secrets = {
     } else if (url && url.startsWith("psql ")) {
       // Clean psql postgresql://... format
       url = url.replace("psql ", "").trim();
+    } else if (url && (url.startsWith("'") || url.startsWith("\""))) {
+      // Clean 'postgresql://...' format (just quotes)
+      url = url.replace(/['"]/g, "").trim();
     }
 
     // Aggressive cleanup for Neon/Pooler params that might cause auth issues
