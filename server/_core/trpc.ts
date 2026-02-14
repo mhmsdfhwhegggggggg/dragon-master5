@@ -43,3 +43,27 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+export const licenseProtectedProcedure = protectedProcedure.use(
+  t.middleware(async (opts) => {
+    const { ctx, next } = opts;
+    const { licenseManager } = await import("../services/license-manager");
+
+    // Fetch the active license for the current user from DB
+    const license = await licenseManager.getUserActiveLicense(ctx.user!.id);
+
+    if (!license || license.status !== "active") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "A valid and active license is required to access this feature.",
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        license,
+      },
+    });
+  }),
+);

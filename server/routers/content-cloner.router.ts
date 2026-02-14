@@ -9,11 +9,12 @@
  * - Advanced filtering & scheduling
  * 
  * @version 6.0.0
- * @author Dragon Team
+ * @author FALCON Team
  */
 
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
+import { contentClonerService } from "../services/content-cloner.service";
 
 /**
  * Content Cloner Router
@@ -70,19 +71,12 @@ export const contentClonerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloner rule creation
-        const clonerRule = {
-          id: 'cloner-' + Date.now(),
-          ...input,
-          createdAt: new Date(),
-          lastRun: null,
-          totalCloned: 0,
-          successRate: 0
-        };
+        const ruleInput: any = { ...input, userId: ctx.user.id };
+        const rule = await contentClonerService.createRule(ruleInput);
 
         return {
           success: true,
-          data: clonerRule,
+          data: rule,
           message: 'Auto cloner rule created successfully'
         };
 
@@ -106,67 +100,15 @@ export const contentClonerRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloner rules retrieval
-        const rules = [
-          {
-            id: 'cloner-1',
-            name: 'Competitor Monitor - Tech News',
-            accountId: input.accountId,
-            sourceChannelIds: ['@competitor1', '@competitor2'],
-            targetChannelIds: ['@mychannel1', '@mychannel2', '@mychannel3'],
-            isActive: true,
-            createdAt: new Date('2026-02-01'),
-            lastRun: new Date('2026-02-09T15:30:00Z'),
-            totalCloned: 45,
-            successRate: 98,
-            filters: {
-              mediaType: 'image',
-              minViews: 1000,
-              keywords: ['breaking', 'news', 'tech']
-            },
-            modifications: {
-              replaceUsernames: [
-                { old: '@competitor', new: '@mychannel' }
-              ],
-              replaceLinks: [
-                { old: 'competitor.com', new: 'mywebsite.com' }
-              ]
-            }
-          },
-          {
-            id: 'cloner-2',
-            name: 'Content Aggregator - Multiple Sources',
-            accountId: input.accountId,
-            sourceChannelIds: ['@source1', '@source2', '@source3', '@source4'],
-            targetChannelIds: ['@aggregator'],
-            isActive: true,
-            createdAt: new Date('2026-02-05'),
-            lastRun: new Date('2026-02-09T16:45:00Z'),
-            totalCloned: 120,
-            successRate: 95,
-            filters: {
-              mediaType: 'all',
-              minViews: 500,
-              excludeKeywords: ['spam', 'advertisement']
-            },
-            modifications: {
-              addPrefix: '📰 ',
-              addSuffix: ' #aggregated',
-              removeLinks: false,
-              removeHashtags: true
-            }
-          }
-        ];
-
-        const filtered = input.isActive !== undefined 
-          ? rules.filter(r => r.isActive === input.isActive)
-          : rules;
+        const rules = await contentClonerService.getRules(input.accountId, {
+          isActive: input.isActive
+        });
 
         return {
           success: true,
           data: {
-            rules: filtered.slice(0, input.limit),
-            total: filtered.length
+            rules: rules.slice(0, input.limit),
+            total: rules.length
           }
         };
 
@@ -217,7 +159,7 @@ export const contentClonerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloner rule update
+        await contentClonerService.updateRule(input.ruleId, input.updates);
         return {
           success: true,
           message: 'Cloner rule updated successfully'
@@ -242,7 +184,7 @@ export const contentClonerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloner rule deletion
+        await contentClonerService.deleteRule(input.ruleId);
         return {
           success: true,
           message: 'Cloner rule deleted successfully'
@@ -268,81 +210,7 @@ export const contentClonerRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         // TODO: Implement cloning statistics
-        const stats = {
-          overview: {
-            totalRules: 5,
-            activeRules: 3,
-            totalCloned: 1250,
-            successRate: 96.5,
-            averageDailyClones: 42,
-            topSourceChannel: '@competitor1',
-            topTargetChannel: '@mychannel1'
-          },
-          performance: {
-            cloningSpeed: {
-              average: 15, // posts per minute
-              peak: 25,
-              low: 8
-            },
-            successRates: {
-              text: 98,
-              image: 97,
-              video: 94,
-              file: 99
-            },
-            processingTime: {
-              average: 45000, // 45 seconds per post
-              fastest: 15000,
-              slowest: 120000
-            }
-          },
-          trends: {
-            dailyStats: [
-              { date: '2026-02-09', cloned: 45, successRate: 98 },
-              { date: '2026-02-08', cloned: 38, successRate: 95 },
-              { date: '2026-02-07', cloned: 52, successRate: 97 }
-            ],
-            weeklyStats: [
-              { week: '2026-W06', cloned: 280, successRate: 96.2 },
-              { week: '2026-W05', cloned: 310, successRate: 97.1 }
-            ],
-            monthlyStats: [
-              { month: '2026-02', cloned: 1250, successRate: 96.5 },
-              { month: '2026-01', cloned: 1180, successRate: 95.8 }
-            ]
-          },
-          sources: {
-            topPerforming: [
-              { channel: '@competitor1', cloned: 650, successRate: 99 },
-              { channel: '@competitor2', cloned: 420, successRate: 94 },
-              { channel: '@source1', cloned: 180, successRate: 98 }
-            ],
-            byType: {
-              news: 520,
-              entertainment: 380,
-              tech: 350
-            }
-          },
-          targets: {
-            distribution: [
-              { channel: '@mychannel1', posts: 450, percentage: 36 },
-              { channel: '@mychannel2', posts: 380, percentage: 30.4 },
-              { channel: '@mychannel3', posts: 320, percentage: 25.6 },
-              { channel: '@aggregator', posts: 100, percentage: 8 }
-            ],
-            engagement: {
-              averageViews: 2500,
-              averageReactions: 150,
-              averageShares: 45
-            }
-          }
-        };
-
-        return {
-          success: true,
-          data: stats
-        };
-
+        return await contentClonerService.getCloningStats(input.accountId);
       } catch (error: any) {
         return {
           success: false,
@@ -497,7 +365,7 @@ export const contentClonerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloner rule toggle
+        await contentClonerService.updateRule(input.ruleId, { isActive: input.isActive });
         return {
           success: true,
           message: `Cloner rule ${input.isActive ? 'activated' : 'deactivated'} successfully`
@@ -553,7 +421,7 @@ export const contentClonerRouter = router({
           }
         ];
 
-        const filtered = input.status 
+        const filtered = input.status
           ? queue.filter(q => q.status === input.status)
           : queue;
 
@@ -592,47 +460,14 @@ export const contentClonerRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         // TODO: Implement cloning history retrieval
-        const history = [
-          {
-            id: 'history-1',
-            ruleId: 'cloner-1',
-            ruleName: 'Competitor Monitor - Tech News',
-            runDate: new Date('2026-02-09T15:00:00Z'),
-            duration: 3600000, // 1 hour
-            postsFound: 25,
-            postsProcessed: 23,
-            postsSuccessful: 22,
-            postsFailed: 1,
-            successRate: 95.7,
-            targets: ['@mychannel1', '@mychannel2'],
-            errors: ['1 post filtered by content policy']
-          },
-          {
-            id: 'history-2',
-            ruleId: 'cloner-1',
-            ruleName: 'Competitor Monitor - Tech News',
-            runDate: new Date('2026-02-08T16:00:00Z'),
-            duration: 7200000, // 2 hours
-            postsFound: 18,
-            postsProcessed: 18,
-            postsSuccessful: 18,
-            postsFailed: 0,
-            successRate: 100,
-            targets: ['@mychannel1', '@mychannel2'],
-            errors: []
-          }
-        ];
-
-        const filtered = input.ruleId 
-          ? history.filter(h => h.ruleId === input.ruleId)
-          : history;
+        const history = await contentClonerService.getCloningHistory(input.accountId, input.limit, input.offset);
 
         return {
           success: true,
           data: {
-            history: filtered.slice(input.offset, input.offset + input.limit),
-            total: filtered.length,
-            hasMore: input.offset + input.limit < filtered.length
+            history: history.history,
+            total: history.total,
+            hasMore: input.offset + input.limit < history.total
           }
         };
 

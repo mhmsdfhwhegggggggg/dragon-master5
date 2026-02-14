@@ -1,9 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import * as db from "../db";
-import { TelegramClientService } from "../services/telegram-client.service";
-
-const telegramClientService = new TelegramClientService();
+import { telegramClientService } from "../services/telegram-client.service";
 
 /**
  * Extraction Router
@@ -46,31 +44,28 @@ export const extractionRouter = router({
         );
 
         // Save to database
-        const extractedMembers = members.map((member) => ({
-          accountId: input.accountId,
-          groupId: input.groupId,
-          groupName: input.groupName,
-          telegramUserId: String(member.userId),
-          firstName: member.firstName,
-          lastName: member.lastName,
-          username: member.username,
-          phoneNumber: member.phoneNumber,
-          isBot: member.isBot,
-          isActive: member.isActive,
-          lastSeen: member.lastSeen,
+        const extractedMembers = members.map((member: any) => ({
+          userId: ctx.user.id,
+          telegramAccountId: input.accountId,
+          sourceGroupId: input.groupId,
+          memberTelegramId: String(member.id || member.userId),
+          memberUsername: member.username,
+          memberFirstName: member.firstName,
+          memberLastName: member.lastName,
+          addedDate: new Date(),
         }));
 
         await db.createExtractedMembers(extractedMembers);
 
         // Log activity
         await db.createActivityLog({
-          accountId: input.accountId,
+          userId: ctx.user.id,
           action: "members_extracted",
-          actionDetails: {
+          details: JSON.stringify({
             groupId: input.groupId,
             count: members.length,
             type: "all",
-          },
+          }),
           status: "success",
         });
 
@@ -85,11 +80,10 @@ export const extractionRouter = router({
       } catch (error) {
         console.error("Failed to extract members:", error);
         await db.createActivityLog({
-          accountId: input.accountId,
+          userId: ctx.user.id,
           action: "members_extracted",
-          actionDetails: { groupId: input.groupId },
+          details: JSON.stringify({ groupId: input.groupId }),
           status: "failed",
-          errorMessage: error instanceof Error ? error.message : "Unknown error",
         });
         throw new Error(
           `Failed to extract members: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -117,7 +111,7 @@ export const extractionRouter = router({
         }
 
         const credentials = telegramClientService.getApiCredentials();
-        const client = await telegramClientService.initializeClient(
+        await telegramClientService.initializeClient(
           input.accountId,
           account.phoneNumber,
           account.sessionString,
@@ -131,29 +125,27 @@ export const extractionRouter = router({
           input.daysActive
         );
 
-        const extractedMembers = members.map((member) => ({
-          accountId: input.accountId,
-          groupId: input.groupId,
-          telegramUserId: String(member.userId),
-          firstName: member.firstName,
-          lastName: member.lastName,
-          username: member.username,
-          phoneNumber: member.phoneNumber,
-          isBot: member.isBot,
-          isActive: member.isActive,
-          lastSeen: member.lastSeen,
+        const extractedMembers = members.map((member: any) => ({
+          userId: ctx.user.id,
+          telegramAccountId: input.accountId,
+          sourceGroupId: input.groupId,
+          memberTelegramId: String(member.id || member.userId),
+          memberUsername: member.username,
+          memberFirstName: member.firstName,
+          memberLastName: member.lastName,
+          addedDate: new Date(),
         }));
 
         await db.createExtractedMembers(extractedMembers);
 
         await db.createActivityLog({
-          accountId: input.accountId,
+          userId: ctx.user.id,
           action: "engaged_members_extracted",
-          actionDetails: {
+          details: JSON.stringify({
             groupId: input.groupId,
             count: members.length,
             daysActive: input.daysActive,
-          },
+          }),
           status: "success",
         });
 
@@ -191,7 +183,7 @@ export const extractionRouter = router({
         }
 
         const credentials = telegramClientService.getApiCredentials();
-        const client = await telegramClientService.initializeClient(
+        await telegramClientService.initializeClient(
           input.accountId,
           account.phoneNumber,
           account.sessionString,
@@ -204,28 +196,26 @@ export const extractionRouter = router({
           input.groupId
         );
 
-        const extractedAdmins = admins.map((admin) => ({
-          accountId: input.accountId,
-          groupId: input.groupId,
-          telegramUserId: String(admin.userId),
-          firstName: admin.firstName,
-          lastName: admin.lastName,
-          username: admin.username,
-          phoneNumber: admin.phoneNumber,
-          isBot: admin.isBot,
-          isActive: admin.isActive,
-          lastSeen: admin.lastSeen,
+        const extractedAdmins = admins.map((admin: any) => ({
+          userId: ctx.user.id,
+          telegramAccountId: input.accountId,
+          sourceGroupId: input.groupId,
+          memberTelegramId: String(admin.id || admin.userId),
+          memberUsername: admin.username,
+          memberFirstName: admin.firstName,
+          memberLastName: admin.lastName,
+          addedDate: new Date(),
         }));
 
         await db.createExtractedMembers(extractedAdmins);
 
         await db.createActivityLog({
-          accountId: input.accountId,
+          userId: ctx.user.id,
           action: "admins_extracted",
-          actionDetails: {
+          details: JSON.stringify({
             groupId: input.groupId,
             count: admins.length,
-          },
+          }),
           status: "success",
         });
 
@@ -263,7 +253,7 @@ export const extractionRouter = router({
         }
 
         const members = await db.getExtractedMembersByAccountAndGroup(
-          input.accountId,
+          ctx.user.id,
           input.groupId
         );
 

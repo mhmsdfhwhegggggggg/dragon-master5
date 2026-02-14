@@ -5,6 +5,8 @@ import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
+const trpcAny = trpc as any;
+
 /**
  * Extraction Screen - Industrial Edition
  * 
@@ -16,7 +18,7 @@ export default function ExtractionScreen() {
   const [groupId, setGroupId] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [extractedCount, setExtractedCount] = useState(0);
-  
+
   // Advanced Filters
   const [extractMode, setExtractMode] = useState<'all' | 'engaged' | 'admins'>('all');
   const [daysActive, setDaysActive] = useState('7');
@@ -26,32 +28,63 @@ export default function ExtractionScreen() {
   const [limit, setLimit] = useState('5000');
 
   // Fetch accounts for selection
-  const { data: accounts, isLoading: loadingAccounts } = trpc.accounts.getAll.useQuery();
-  
-  // API Mutations
-  const extractMutation = trpc.extraction.extractAllMembers.useMutation({
-    onSuccess: (data) => {
-      setExtractedCount(data.membersCount);
-      Alert.alert("نجاح", `تم استخراج ${data.membersCount} عضو بنجاح وتخزينهم في السيرفر`);
-    },
-    onError: (error) => {
-      Alert.alert("خطأ", error.message || "فشل استخراج الأعضاء");
-    }
-  });
+  const { data: accounts, isLoading: loadingAccounts } = trpcAny.accounts.getAll.useQuery(undefined);
+  const status = trpcAny.setup.getStatus.useQuery(undefined);
+
+  const extractAllMutation = trpcAny.extraction.extractAllMembers.useMutation();
+
+  const extractEngagedMutation = trpcAny.extraction.extractEngagedMembers.useMutation();
+
+  const extractAdminsMutation = trpcAny.extraction.extractAdmins.useMutation();
 
   const handleStartExtraction = () => {
     if (!selectedAccountId) return Alert.alert("تنبيه", "يرجى اختيار حساب أولاً");
     if (!groupId) return Alert.alert("تنبيه", "يرجى إدخال معرّف الجروب أو الرابط");
-    
-    extractMutation.mutate({ 
-      accountId: selectedAccountId, 
-      groupId,
-      // Note: In a real production app, we would pass all filters to the backend
-      // For now, we use the existing router structure
-    });
+
+    if (extractMode === 'engaged') {
+      extractEngagedMutation.mutate({
+        accountId: selectedAccountId,
+        groupId,
+        daysActive: parseInt(daysActive) || 7
+      }, {
+        onSuccess: (data: any) => {
+          setExtractedCount(data.membersCount);
+          Alert.alert("نجاح", `تم استخراج ${data.membersCount} عضو متفاعل بنجاح`);
+        },
+        onError: (error: any) => {
+          Alert.alert("خطأ", error.message || "فشل استخراج الأعضاء المتفاعلين");
+        }
+      });
+    } else if (extractMode === 'admins') {
+      extractAdminsMutation.mutate({
+        accountId: selectedAccountId,
+        groupId
+      }, {
+        onSuccess: (data: any) => {
+          setExtractedCount(data.adminsCount);
+          Alert.alert("نجاح", `تم استخراج ${data.adminsCount} مشرف بنجاح`);
+        },
+        onError: (error: any) => {
+          Alert.alert("خطأ", error.message || "فشل استخراج المشرفين");
+        }
+      });
+    } else {
+      extractAllMutation.mutate({
+        accountId: selectedAccountId,
+        groupId
+      }, {
+        onSuccess: (data: any) => {
+          setExtractedCount(data.membersCount);
+          Alert.alert("نجاح", `تم استخراج ${data.membersCount} عضو بنجاح وتخزينهم في السيرفر`);
+        },
+        onError: (error: any) => {
+          Alert.alert("خطأ", error.message || "فشل استخراج الأعضاء");
+        }
+      });
+    }
   };
 
-  const isLoading = extractMutation.isPending;
+  const isLoading = extractAllMutation.isPending || extractEngagedMutation.isPending || extractAdminsMutation.isPending;
 
   return (
     <ScreenContainer className="bg-background">
@@ -70,7 +103,7 @@ export default function ExtractionScreen() {
               <ActivityIndicator color={colors.primary} />
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
-                {accounts?.map((account) => (
+                {(accounts as any)?.map((account: any) => (
                   <Pressable
                     key={account.id}
                     onPress={() => setSelectedAccountId(account.id)}
@@ -101,7 +134,7 @@ export default function ExtractionScreen() {
           {/* Advanced Filters */}
           <View className="gap-4 bg-surface rounded-2xl p-4 border border-border">
             <Text className="text-sm font-semibold text-foreground">فلاتر ذكية (تنفذ في السيرفر)</Text>
-            
+
             {/* Mode Selection */}
             <View className="flex-row gap-2">
               {(['all', 'engaged', 'admins'] as const).map((mode) => (

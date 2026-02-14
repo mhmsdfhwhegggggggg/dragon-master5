@@ -1,8 +1,8 @@
-# Dragon Telegram Pro Mobile - Technical Documentation
+# FALCON Telegram Pro Mobile - Technical Documentation
 
 ## Executive Summary
 
-**Dragon Telegram Pro Mobile** is a production-ready React Native application built with Expo, designed for managing multiple Telegram accounts, extracting member data, executing bulk operations, and monitoring account health with advanced anti-ban protection. The application implements a comprehensive feature set for Telegram automation while maintaining security and compliance with platform guidelines.
+**FALCON Telegram Pro Mobile** is a production-ready React Native application built with Expo, designed for managing multiple Telegram accounts, extracting member data, executing bulk operations, and monitoring account health with advanced anti-ban protection. The application implements a comprehensive feature set for Telegram automation while maintaining security and compliance with platform guidelines.
 
 ---
 
@@ -716,4 +716,4 @@ if (__DEV__) {
 
 ## Conclusion
 
-Dragon Telegram Pro Mobile is a comprehensive, production-ready application built with modern technologies and best practices. The modular architecture, comprehensive feature set, and attention to security and performance make it suitable for deployment to production environments serving thousands of concurrent users.
+FALCON Telegram Pro Mobile is a comprehensive, production-ready application built with modern technologies and best practices. The modular architecture, comprehensive feature set, and attention to security and performance make it suitable for deployment to production environments serving thousands of concurrent users.

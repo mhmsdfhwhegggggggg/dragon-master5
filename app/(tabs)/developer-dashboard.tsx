@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  Alert, 
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
   TextInput,
   RefreshControl,
   Modal,
@@ -58,7 +58,7 @@ export default function DeveloperDashboardScreen() {
   const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null);
   const [suspendReason, setSuspendReason] = useState('');
   const [extendDays, setExtendDays] = useState('30');
-  
+
   // Form state for creating new permission
   const [newPermission, setNewPermission] = useState({
     deviceId: '',
@@ -69,10 +69,10 @@ export default function DeveloperDashboardScreen() {
   });
 
   // tRPC queries
-  const { data: statsData, refetch: refetchStats, isLoading: statsLoading } = 
-    trpc.permission.getStats.useQuery();
-  const { data: permissionsData, refetch: refetchPermissions, isLoading: permissionsLoading } = 
-    trpc.permission.getAllPermissions.useQuery();
+  const { data: statsData, refetch: refetchStats, isLoading: statsLoading } =
+    trpc.permission.getStats.useQuery(undefined);
+  const { data: permissionsData, refetch: refetchPermissions, isLoading: permissionsLoading } =
+    trpc.permission.getAllPermissions.useQuery(undefined);
 
   // tRPC mutations
   const createPermission = trpc.permission.createPermission.useMutation();
@@ -94,77 +94,80 @@ export default function DeveloperDashboardScreen() {
       return;
     }
 
-    try {
-      const result = await createPermission.mutateAsync({
-        deviceId: newPermission.deviceId,
-        deviceName: newPermission.deviceName || undefined,
-        permissionType: newPermission.permissionType,
-        durationDays: parseInt(newPermission.durationDays) || 30,
-        notes: newPermission.notes || undefined,
-      });
-
-      if (result.success) {
-        Alert.alert('نجاح', `تم إنشاء التصريح بنجاح\n\nمفتاح التصريح:\n${result.permission?.permissionKey}`);
-        setNewPermission({
-          deviceId: '',
-          deviceName: '',
-          permissionType: 'trial',
-          durationDays: '30',
-          notes: '',
-        });
-        setShowCreateModal(false);
-        onRefresh();
-      } else {
-        Alert.alert('خطأ', result.error || 'فشل إنشاء التصريح');
+    createPermission.mutate({
+      deviceId: newPermission.deviceId,
+      deviceName: newPermission.deviceName || undefined,
+      permissionType: newPermission.permissionType,
+      durationDays: parseInt(newPermission.durationDays) || 30,
+      notes: newPermission.notes || undefined,
+    }, {
+      onSuccess: (result: any) => {
+        if (result.success) {
+          Alert.alert('نجاح', `تم إنشاء التصريح بنجاح\n\nمفتاح التصريح:\n${result.permission?.permissionKey}`);
+          setNewPermission({
+            deviceId: '',
+            deviceName: '',
+            permissionType: 'trial',
+            durationDays: '30',
+            notes: '',
+          });
+          setShowCreateModal(false);
+          onRefresh();
+        } else {
+          Alert.alert('خطأ', result.error || 'فشل إنشاء التصريح');
+        }
+      },
+      onError: () => {
+        Alert.alert('خطأ', 'حدث خطأ أثناء إنشاء التصريح');
       }
-    } catch (error) {
-      Alert.alert('خطأ', 'حدث خطأ أثناء إنشاء التصريح');
-    }
+    });
   };
 
-  const handleSuspend = async () => {
+  const handleSuspend = () => {
     if (!selectedPermission || !suspendReason.trim()) {
       Alert.alert('خطأ', 'يرجى إدخال سبب التعليق');
       return;
     }
 
-    try {
-      const result = await suspendPermission.mutateAsync({
-        permissionId: selectedPermission.id,
-        reason: suspendReason,
-      });
-
-      if (result.success) {
-        Alert.alert('نجاح', 'تم تعليق التصريح');
-        setShowActionModal(false);
-        setSuspendReason('');
-        onRefresh();
-      } else {
-        Alert.alert('خطأ', result.message);
+    suspendPermission.mutate({
+      permissionId: selectedPermission.id,
+      reason: suspendReason,
+    }, {
+      onSuccess: (result: any) => {
+        if (result.success) {
+          Alert.alert('نجاح', 'تم تعليق التصريح');
+          setShowActionModal(false);
+          setSuspendReason('');
+          onRefresh();
+        } else {
+          Alert.alert('خطأ', result.message);
+        }
+      },
+      onError: () => {
+        Alert.alert('خطأ', 'فشل تعليق التصريح');
       }
-    } catch (error) {
-      Alert.alert('خطأ', 'فشل تعليق التصريح');
-    }
+    });
   };
 
-  const handleActivate = async () => {
+  const handleActivate = () => {
     if (!selectedPermission) return;
 
-    try {
-      const result = await activatePermission.mutateAsync({
-        permissionId: selectedPermission.id,
-      });
-
-      if (result.success) {
-        Alert.alert('نجاح', 'تم تفعيل التصريح');
-        setShowActionModal(false);
-        onRefresh();
-      } else {
-        Alert.alert('خطأ', result.message);
+    activatePermission.mutate({
+      permissionId: selectedPermission.id,
+    }, {
+      onSuccess: (result: any) => {
+        if (result.success) {
+          Alert.alert('نجاح', 'تم تفعيل التصريح');
+          setShowActionModal(false);
+          onRefresh();
+        } else {
+          Alert.alert('خطأ', result.message);
+        }
+      },
+      onError: () => {
+        Alert.alert('خطأ', 'فشل تفعيل التصريح');
       }
-    } catch (error) {
-      Alert.alert('خطأ', 'فشل تفعيل التصريح');
-    }
+    });
   };
 
   const handleRevoke = async () => {
@@ -178,48 +181,50 @@ export default function DeveloperDashboardScreen() {
         {
           text: 'تأكيد',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await revokePermission.mutateAsync({
-                permissionId: selectedPermission.id,
-              });
-
-              if (result.success) {
-                Alert.alert('نجاح', 'تم إلغاء التصريح');
-                setShowActionModal(false);
-                onRefresh();
-              } else {
-                Alert.alert('خطأ', result.message);
+          onPress: () => {
+            revokePermission.mutate({
+              permissionId: selectedPermission.id,
+            }, {
+              onSuccess: (result: any) => {
+                if (result.success) {
+                  Alert.alert('نجاح', 'تم إلغاء التصريح');
+                  setShowActionModal(false);
+                  onRefresh();
+                } else {
+                  Alert.alert('خطأ', result.message);
+                }
+              },
+              onError: () => {
+                Alert.alert('خطأ', 'فشل إلغاء التصريح');
               }
-            } catch (error) {
-              Alert.alert('خطأ', 'فشل إلغاء التصريح');
-            }
+            });
           },
         },
       ]
     );
   };
 
-  const handleExtend = async () => {
+  const handleExtend = () => {
     if (!selectedPermission) return;
 
-    try {
-      const result = await extendPermission.mutateAsync({
-        permissionId: selectedPermission.id,
-        additionalDays: parseInt(extendDays) || 30,
-      });
-
-      if (result.success) {
-        Alert.alert('نجاح', result.message);
-        setShowActionModal(false);
-        setExtendDays('30');
-        onRefresh();
-      } else {
-        Alert.alert('خطأ', result.message);
+    extendPermission.mutate({
+      permissionId: selectedPermission.id,
+      additionalDays: parseInt(extendDays) || 30,
+    }, {
+      onSuccess: (result: any) => {
+        if (result.success) {
+          Alert.alert('نجاح', result.message);
+          setShowActionModal(false);
+          setExtendDays('30');
+          onRefresh();
+        } else {
+          Alert.alert('خطأ', result.message);
+        }
+      },
+      onError: () => {
+        Alert.alert('خطأ', 'فشل تمديد التصريح');
       }
-    } catch (error) {
-      Alert.alert('خطأ', 'فشل تمديد التصريح');
-    }
+    });
   };
 
   const handleDelete = async () => {
@@ -233,22 +238,23 @@ export default function DeveloperDashboardScreen() {
         {
           text: 'حذف',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await deletePermission.mutateAsync({
-                permissionId: selectedPermission.id,
-              });
-
-              if (result.success) {
-                Alert.alert('نجاح', 'تم حذف التصريح');
-                setShowActionModal(false);
-                onRefresh();
-              } else {
-                Alert.alert('خطأ', result.message);
+          onPress: () => {
+            deletePermission.mutate({
+              permissionId: selectedPermission.id,
+            }, {
+              onSuccess: (result: any) => {
+                if (result.success) {
+                  Alert.alert('نجاح', 'تم حذف التصريح');
+                  setShowActionModal(false);
+                  onRefresh();
+                } else {
+                  Alert.alert('خطأ', result.message);
+                }
+              },
+              onError: () => {
+                Alert.alert('خطأ', 'فشل حذف التصريح');
               }
-            } catch (error) {
-              Alert.alert('خطأ', 'فشل حذف التصريح');
-            }
+            });
           },
         },
       ]
@@ -419,22 +425,22 @@ export default function DeveloperDashboardScreen() {
                 </Text>
               </View>
               <View className="flex-row gap-2">
-                <View 
+                <View
                   className="px-2 py-1 rounded-full"
                   style={{ backgroundColor: getStatusColor(permission.status) + '20' }}
                 >
-                  <Text 
+                  <Text
                     className="text-xs font-medium"
                     style={{ color: getStatusColor(permission.status) }}
                   >
                     {getStatusText(permission.status)}
                   </Text>
                 </View>
-                <View 
+                <View
                   className="px-2 py-1 rounded-full"
                   style={{ backgroundColor: getTypeColor(permission.permissionType) + '20' }}
                 >
-                  <Text 
+                  <Text
                     className="text-xs font-medium"
                     style={{ color: getTypeColor(permission.permissionType) }}
                   >
@@ -491,9 +497,8 @@ export default function DeveloperDashboardScreen() {
           <View className="flex-row gap-2">
             <TouchableOpacity
               onPress={() => setActiveTab('overview')}
-              className={`flex-1 py-3 rounded-xl items-center ${
-                activeTab === 'overview' ? 'bg-primary' : 'bg-surface border border-border'
-              }`}
+              className={`flex-1 py-3 rounded-xl items-center ${activeTab === 'overview' ? 'bg-primary' : 'bg-surface border border-border'
+                }`}
             >
               <Text className={activeTab === 'overview' ? 'text-white font-semibold' : 'text-foreground'}>
                 نظرة عامة
@@ -501,9 +506,8 @@ export default function DeveloperDashboardScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab('permissions')}
-              className={`flex-1 py-3 rounded-xl items-center ${
-                activeTab === 'permissions' ? 'bg-primary' : 'bg-surface border border-border'
-              }`}
+              className={`flex-1 py-3 rounded-xl items-center ${activeTab === 'permissions' ? 'bg-primary' : 'bg-surface border border-border'
+                }`}
             >
               <Text className={activeTab === 'permissions' ? 'text-white font-semibold' : 'text-foreground'}>
                 التصاريح ({permissions.length})
@@ -539,7 +543,7 @@ export default function DeveloperDashboardScreen() {
                 <TextInput
                   className="bg-surface border border-border rounded-xl p-4 text-foreground"
                   value={newPermission.deviceId}
-                  onChangeText={(text) => setNewPermission({...newPermission, deviceId: text})}
+                  onChangeText={(text) => setNewPermission({ ...newPermission, deviceId: text })}
                   placeholder="أدخل معرف الجهاز الفريد"
                   placeholderTextColor={colors.muted}
                 />
@@ -550,7 +554,7 @@ export default function DeveloperDashboardScreen() {
                 <TextInput
                   className="bg-surface border border-border rounded-xl p-4 text-foreground"
                   value={newPermission.deviceName}
-                  onChangeText={(text) => setNewPermission({...newPermission, deviceName: text})}
+                  onChangeText={(text) => setNewPermission({ ...newPermission, deviceName: text })}
                   placeholder="مثال: هاتف أحمد"
                   placeholderTextColor={colors.muted}
                 />
@@ -562,16 +566,15 @@ export default function DeveloperDashboardScreen() {
                   {(['trial', 'basic', 'premium', 'unlimited'] as PermissionType[]).map((type) => (
                     <TouchableOpacity
                       key={type}
-                      onPress={() => setNewPermission({...newPermission, permissionType: type})}
-                      className={`px-4 py-2 rounded-xl ${
-                        newPermission.permissionType === type 
-                          ? 'bg-primary' 
-                          : 'bg-surface border border-border'
-                      }`}
+                      onPress={() => setNewPermission({ ...newPermission, permissionType: type })}
+                      className={`px-4 py-2 rounded-xl ${newPermission.permissionType === type
+                        ? 'bg-primary'
+                        : 'bg-surface border border-border'
+                        }`}
                     >
                       <Text className={
-                        newPermission.permissionType === type 
-                          ? 'text-white font-medium' 
+                        newPermission.permissionType === type
+                          ? 'text-white font-medium'
                           : 'text-foreground'
                       }>
                         {getTypeText(type)}
@@ -586,7 +589,7 @@ export default function DeveloperDashboardScreen() {
                 <TextInput
                   className="bg-surface border border-border rounded-xl p-4 text-foreground"
                   value={newPermission.durationDays}
-                  onChangeText={(text) => setNewPermission({...newPermission, durationDays: text})}
+                  onChangeText={(text) => setNewPermission({ ...newPermission, durationDays: text })}
                   placeholder="30"
                   placeholderTextColor={colors.muted}
                   keyboardType="numeric"
@@ -598,7 +601,7 @@ export default function DeveloperDashboardScreen() {
                 <TextInput
                   className="bg-surface border border-border rounded-xl p-4 text-foreground"
                   value={newPermission.notes}
-                  onChangeText={(text) => setNewPermission({...newPermission, notes: text})}
+                  onChangeText={(text) => setNewPermission({ ...newPermission, notes: text })}
                   placeholder="ملاحظات إضافية..."
                   placeholderTextColor={colors.muted}
                   multiline

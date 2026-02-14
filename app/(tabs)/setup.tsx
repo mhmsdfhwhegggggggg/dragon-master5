@@ -4,22 +4,15 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 
+const trpcAny = trpc as any;
+
 export default function SetupScreen() {
   const colors = useColors();
-  const status = trpc.setup.getStatus.useQuery();
+  const status = trpcAny.setup.getStatus.useQuery(undefined) as any;
 
-  const setTelegram = trpc.setup.setTelegram.useMutation({
-    onSuccess: () => { Alert.alert("تم", "تم حفظ بيانات Telegram بنجاح"); status.refetch(); },
-    onError: (e) => Alert.alert("خطأ", e.message || "فشل حفظ بيانات Telegram"),
-  });
-  const setDb = trpc.setup.setDatabase.useMutation({
-    onSuccess: () => { Alert.alert("تم", "تم حفظ Database URL"); status.refetch(); },
-    onError: (e) => Alert.alert("خطأ", e.message || "فشل حفظ Database URL"),
-  });
-  const setRedis = trpc.setup.setRedis.useMutation({
-    onSuccess: () => { Alert.alert("تم", "تم حفظ Redis URL"); status.refetch(); },
-    onError: (e) => Alert.alert("خطأ", e.message || "فشل حفظ Redis URL"),
-  });
+  const setTelegram = trpcAny.setup.setTelegram.useMutation();
+  const setDb = trpcAny.setup.setDatabase.useMutation();
+  const setRedis = trpcAny.setup.setRedis.useMutation();
 
   const [apiId, setApiId] = useState("");
   const [apiHash, setApiHash] = useState("");
@@ -48,16 +41,16 @@ export default function SetupScreen() {
             ) : (
               <>
                 <Text className="text-sm" style={{ color: colors.foreground }}>
-                  Telegram: {status.data?.hasTelegram ? "جاهز" : "غير مضبوط"}
+                  Telegram: {(status.data as any)?.hasTelegram ? "جاهز" : "غير مضبوط"}
                 </Text>
                 <Text className="text-sm" style={{ color: colors.foreground }}>
-                  تشفير الجلسات: {status.data?.hasEnc ? "جاهز" : "سيتم توليده تلقائياً"}
+                  تشفير الجلسات: {(status.data as any)?.hasEnc ? "جاهز" : "سيتم توليده تلقائياً"}
                 </Text>
                 <Text className="text-sm" style={{ color: colors.foreground }}>
-                  قاعدة البيانات: {status.data?.hasDb ? "جاهزة" : "غير مضبوطة"}
+                  قاعدة البيانات: {(status.data as any)?.hasDb ? "جاهزة" : "غير مضبوطة"}
                 </Text>
                 <Text className="text-sm" style={{ color: colors.foreground }}>
-                  Redis: {status.data?.hasRedis ? "جاهزة" : "غير مضبوطة"}
+                  Redis: {(status.data as any)?.hasRedis ? "جاهزة" : "غير مضبوطة"}
                 </Text>
               </>
             )}
@@ -85,7 +78,10 @@ export default function SetupScreen() {
               placeholderTextColor={colors.muted}
             />
             <Pressable
-              onPress={() => setTelegram.mutate({ apiId: parseInt(apiId, 10), apiHash })}
+              onPress={() => setTelegram.mutate({ apiId: parseInt(apiId, 10), apiHash }, {
+                onSuccess: () => { Alert.alert("تم", "تم حفظ بيانات Telegram بنجاح"); status.refetch(); },
+                onError: (e: any) => Alert.alert("خطأ", e.message || "فشل حفظ بيانات Telegram"),
+              })}
               disabled={disableTelegram || setTelegram.isPending}
               style={{ backgroundColor: disableTelegram || setTelegram.isPending ? colors.muted : colors.primary, paddingVertical: 12, borderRadius: 8, opacity: disableTelegram || setTelegram.isPending ? 0.6 : 1 }}
             >
@@ -107,7 +103,10 @@ export default function SetupScreen() {
               placeholderTextColor={colors.muted}
             />
             <Pressable
-              onPress={() => setDb.mutate({ url: dbUrl })}
+              onPress={() => setDb.mutate({ url: dbUrl }, {
+                onSuccess: () => { Alert.alert("تم", "تم حفظ Database URL"); status.refetch(); },
+                onError: (e: any) => Alert.alert("خطأ", e.message || "فشل حفظ Database URL"),
+              })}
               disabled={disableDb || setDb.isPending}
               style={{ backgroundColor: disableDb || setDb.isPending ? colors.muted : colors.primary, paddingVertical: 12, borderRadius: 8, opacity: disableDb || setDb.isPending ? 0.6 : 1 }}
             >
@@ -129,7 +128,10 @@ export default function SetupScreen() {
               placeholderTextColor={colors.muted}
             />
             <Pressable
-              onPress={() => setRedis.mutate({ url: redisUrl })}
+              onPress={() => setRedis.mutate({ url: redisUrl }, {
+                onSuccess: () => { Alert.alert("تم", "تم حفظ Redis URL"); status.refetch(); },
+                onError: (e: any) => Alert.alert("خطأ", e.message || "فشل حفظ Redis URL"),
+              })}
               disabled={disableRedis || setRedis.isPending}
               style={{ backgroundColor: disableRedis || setRedis.isPending ? colors.muted : colors.primary, paddingVertical: 12, borderRadius: 8, opacity: disableRedis || setRedis.isPending ? 0.6 : 1 }}
             >

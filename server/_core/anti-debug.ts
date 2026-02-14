@@ -19,7 +19,7 @@ export class AntiDebug {
   private static readonly CHECK_INTERVAL_MS = 1000; // 1 second
   private static debuggerDetectedCount = 0;
   private static readonly MAX_DETECTIONS = 3;
-  
+
   /**
    * Enable anti-debugging protection
    * Should be called at application startup in production
@@ -28,34 +28,34 @@ export class AntiDebug {
     if (this.enabled) {
       return;
     }
-    
+
     console.log('[AntiDebug] Enabling anti-debugging protection...');
-    
+
     // 1. Check if already in debug mode
     if (this.isDebuggerAttached()) {
       console.error('[AntiDebug] ⛔ Debugger detected at startup!');
       this.shutdown();
       return;
     }
-    
+
     // 2. Disable console in production
     if (process.env.NODE_ENV === 'production') {
       this.disableConsole();
     }
-    
+
     // 3. Start continuous monitoring
     this.startMonitoring();
-    
+
     // 4. Prevent inspector
     this.preventInspector();
-    
+
     // 5. Obfuscate errors
     this.obfuscateErrors();
-    
+
     this.enabled = true;
     console.log('[AntiDebug] ✅ Anti-debugging protection enabled');
   }
-  
+
   /**
    * Disable anti-debugging (for development)
    */
@@ -63,46 +63,46 @@ export class AntiDebug {
     if (!this.enabled) {
       return;
     }
-    
+
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
-    
+
     this.enabled = false;
     console.log('[AntiDebug] Anti-debugging protection disabled');
   }
-  
+
   /**
    * Check if debugger is attached
    */
   private static isDebuggerAttached(): boolean {
     // Method 1: Check for inspector
-    if (process.execArgv.some(arg => 
-      arg.includes('inspect') || 
+    if (process.execArgv.some(arg =>
+      arg.includes('inspect') ||
       arg.includes('debug')
     )) {
       return true;
     }
-    
+
     // Method 2: Check for debug port
     if (process.debugPort && process.debugPort > 0) {
       return true;
     }
-    
+
     // Method 3: Timing-based detection
     const start = Date.now();
     debugger; // This line will pause if debugger is attached
     const end = Date.now();
-    
+
     // If execution took more than 100ms, debugger is likely attached
     if (end - start > 100) {
       return true;
     }
-    
+
     return false;
   }
-  
+
   /**
    * Start continuous monitoring for debugger
    */
@@ -110,10 +110,10 @@ export class AntiDebug {
     this.checkInterval = setInterval(() => {
       if (this.isDebuggerAttached()) {
         this.debuggerDetectedCount++;
-        
-        console.error('[AntiDebug] ⚠️ Debugger detected!', 
+
+        console.error('[AntiDebug] ⚠️ Debugger detected!',
           `(${this.debuggerDetectedCount}/${this.MAX_DETECTIONS})`);
-        
+
         if (this.debuggerDetectedCount >= this.MAX_DETECTIONS) {
           console.error('[AntiDebug] ⛔ Multiple debugger detections - shutting down');
           this.shutdown();
@@ -122,9 +122,9 @@ export class AntiDebug {
         // Reset counter if no debugger detected
         this.debuggerDetectedCount = Math.max(0, this.debuggerDetectedCount - 1);
       }
-    }, this.CHECK_INTERVAL_MS);
+    }, this.CHECK_INTERVAL_MS) as any;
   }
-  
+
   /**
    * Prevent Node.js inspector from being enabled
    */
@@ -132,32 +132,32 @@ export class AntiDebug {
     // Override inspector module
     try {
       const inspector = require('inspector');
-      
+
       if (inspector.url()) {
         console.error('[AntiDebug] ⛔ Inspector is already active!');
         this.shutdown();
         return;
       }
-      
+
       // Prevent opening inspector
       const originalOpen = inspector.open;
-      inspector.open = function(...args: any[]) {
+      inspector.open = function (...args: any[]) {
         console.error('[AntiDebug] ⛔ Attempt to open inspector detected!');
         process.exit(1);
         return originalOpen.apply(this, args);
       };
-      
+
     } catch (error) {
       // Inspector module not available (older Node.js versions)
     }
   }
-  
+
   /**
    * Disable console methods in production
    */
   private static disableConsole(): void {
-    const noop = () => {};
-    
+    const noop = () => { };
+
     // Save original methods for internal use
     const originalConsole = {
       log: console.log,
@@ -167,71 +167,71 @@ export class AntiDebug {
       debug: console.debug,
       trace: console.trace,
     };
-    
+
     // Store in global for internal logging
     (global as any).__originalConsole = originalConsole;
-    
+
     // Override console methods
     console.log = noop;
     console.info = noop;
     console.warn = noop;
     console.debug = noop;
     console.trace = noop;
-    
+
     // Keep console.error for critical errors only
-    console.error = function(...args: any[]) {
+    console.error = function (...args: any[]) {
       // Only log in production if it's a critical error
       if (args[0] && typeof args[0] === 'string' && args[0].includes('[AntiDebug]')) {
         originalConsole.error(...args);
       }
     };
   }
-  
+
   /**
    * Obfuscate error stack traces
    */
   private static obfuscateErrors(): void {
     const originalPrepareStackTrace = Error.prepareStackTrace;
-    
-    Error.prepareStackTrace = function(error, stack) {
+
+    Error.prepareStackTrace = function (error, stack) {
       if (process.env.NODE_ENV === 'production') {
         // Return minimal information in production
         return `${error.name}: ${error.message}\n[Stack trace hidden for security]`;
       }
-      
+
       // Use original in development
       if (originalPrepareStackTrace) {
         return originalPrepareStackTrace(error, stack);
       }
-      
+
       return `${error.name}: ${error.message}\n${stack.map(s => `  at ${s}`).join('\n')}`;
     };
   }
-  
+
   /**
    * Detect timing attacks
    */
   static detectTimingAttack(operation: () => void): boolean {
     const iterations = 10;
     const timings: number[] = [];
-    
+
     for (let i = 0; i < iterations; i++) {
       const start = process.hrtime.bigint();
       operation();
       const end = process.hrtime.bigint();
       timings.push(Number(end - start) / 1000000); // Convert to ms
     }
-    
+
     // Calculate standard deviation
     const mean = timings.reduce((a, b) => a + b, 0) / timings.length;
     const variance = timings.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / timings.length;
     const stdDev = Math.sqrt(variance);
-    
+
     // If standard deviation is too high, timing attack is suspected
     const threshold = mean * 0.5; // 50% of mean
     return stdDev > threshold;
   }
-  
+
   /**
    * Prevent process inspection
    */
@@ -246,7 +246,7 @@ export class AntiDebug {
       'TELEGRAM_API_HASH',
       'LICENSE_SERVER_URL',
     ];
-    
+
     for (const varName of sensitiveVars) {
       if (process.env[varName]) {
         // Replace with asterisks
@@ -258,7 +258,7 @@ export class AntiDebug {
       }
     }
   }
-  
+
   /**
    * Detect virtual machine or container
    */
@@ -268,7 +268,7 @@ export class AntiDebug {
   } {
     const os = require('os');
     const fs = require('fs');
-    
+
     // Check for common VM/container indicators
     const indicators = {
       docker: fs.existsSync('/.dockerenv'),
@@ -277,16 +277,16 @@ export class AntiDebug {
       virtualbox: os.cpus()[0]?.model.toLowerCase().includes('virtualbox'),
       qemu: os.cpus()[0]?.model.toLowerCase().includes('qemu'),
     };
-    
+
     for (const [type, detected] of Object.entries(indicators)) {
       if (detected) {
         return { isVirtual: true, type };
       }
     }
-    
+
     return { isVirtual: false };
   }
-  
+
   /**
    * Check if running in known debugging environment
    */
@@ -298,19 +298,19 @@ export class AntiDebug {
       'vscode-debugger',
       'webstorm-debugger',
     ];
-    
+
     // Check loaded modules
     const loadedModules = Object.keys(require.cache);
-    
+
     for (const tool of debugTools) {
       if (loadedModules.some(mod => mod.includes(tool))) {
         return true;
       }
     }
-    
+
     return false;
   }
-  
+
   /**
    * Prevent memory dumps
    */
@@ -322,7 +322,7 @@ export class AntiDebug {
       }
     }, 60000); // Every minute
   }
-  
+
   /**
    * Get anti-debug status
    */
@@ -339,26 +339,26 @@ export class AntiDebug {
       virtualEnvironment: this.detectVirtualization().isVirtual,
     };
   }
-  
+
   /**
    * Shutdown application on debug detection
    */
   private static shutdown(): void {
     console.error('[AntiDebug] ⛔ Debugging attempt detected - shutting down for security');
-    
+
     // Stop monitoring
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
-    
+
     // Send alert
     this.sendAlert();
-    
+
     // Immediate shutdown
     process.exit(1);
   }
-  
+
   /**
    * Send alert on debug detection
    */
@@ -375,11 +375,11 @@ export class AntiDebug {
         environment: this.detectVirtualization(),
       },
     };
-    
+
     // Log to file or send to monitoring service
     console.error('[AntiDebug] ALERT:', JSON.stringify(alert));
   }
-  
+
   /**
    * Create anti-debug trap
    * Place this in critical code sections
@@ -388,12 +388,12 @@ export class AntiDebug {
     if (!this.enabled) {
       return;
     }
-    
+
     // Quick debugger check
     const start = Date.now();
     debugger;
     const end = Date.now();
-    
+
     if (end - start > 50) {
       console.error('[AntiDebug] ⛔ Trap triggered!');
       this.shutdown();

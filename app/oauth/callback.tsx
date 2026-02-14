@@ -39,10 +39,18 @@ export default function OAuthCallback() {
           if (params.user) {
             try {
               // Use atob for base64 decoding (works in both web and React Native)
-              const userJson =
-                typeof atob !== "undefined"
-                  ? atob(params.user)
-                  : Buffer.from(params.user, "base64").toString("utf-8");
+              let userJson = '';
+              try {
+                if (typeof atob !== "undefined") {
+                  userJson = atob(params.user);
+                } else {
+                  // Fallback for environments where atob is not defined
+                  userJson = decodeURIComponent(escape(atob(params.user)));
+                }
+              } catch (e) {
+                // If it fails, try simple parse or buffer if available via global
+                userJson = (params as any).user;
+              }
               const userData = JSON.parse(userJson);
               const userInfo: Auth.User = {
                 id: userData.id,

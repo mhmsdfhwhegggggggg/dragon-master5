@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { trpc } from '@/utils/trpc';
+import { trpc } from '@/lib/trpc';
 
 /**
  * Anti-Ban Machine Learning Dashboard
@@ -18,8 +18,8 @@ export default function AntiBanMLDashboardScreen() {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // tRPC queries
-  const { data: mlStats, refetch: refetchML } = trpc.antiBan.getMLStatistics.useQuery();
-  const { data: modelData, refetch: refetchModels } = trpc.antiBan.getModelPerformance.useQuery();
+  const { data: mlStats, refetch: refetchML } = (trpc.antiBan as any).getMLStatistics.useQuery(undefined);
+  const { data: modelData, refetch: refetchModels } = (trpc.antiBan as any).getModelPerformance.useQuery(undefined);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -55,7 +55,7 @@ export default function AntiBanMLDashboardScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🧠 لوحة تحكم التعلم الآلي</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.controlButton, autoRefresh && styles.controlButtonActive]}
           onPress={() => setAutoRefresh(!autoRefresh)}
         >
@@ -80,8 +80,8 @@ export default function AntiBanMLDashboardScreen() {
               selectedModel === model && styles.modelTabTextActive
             ]}>
               {model === 'all' ? 'الكل' :
-               model === 'pattern' ? 'الأنماط' :
-               model === 'anomaly' ? 'الشذوذ' : 'التنبؤ'}
+                model === 'pattern' ? 'الأنماط' :
+                  model === 'anomaly' ? 'الشذوذ' : 'التنبؤ'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -137,7 +137,7 @@ export default function AntiBanMLDashboardScreen() {
           ].map((modelItem) => {
             const currentModelData = modelData?.[modelItem.id];
             const status = getModelStatus(currentModelData);
-            
+
             return (
               <View key={modelItem.id} style={styles.modelCard}>
                 <View style={styles.modelHeader}>
@@ -149,7 +149,7 @@ export default function AntiBanMLDashboardScreen() {
                     <Text style={styles.modelStatusText}>{status.text}</Text>
                   </View>
                 </View>
-                
+
                 <View style={styles.modelMetrics}>
                   <View style={styles.modelMetric}>
                     <Text style={styles.modelMetricLabel}>الدقة:</Text>
@@ -184,7 +184,7 @@ export default function AntiBanMLDashboardScreen() {
           <Text style={styles.trainingDesc}>
             يتم تدريب النماذج تلقائياً كل 50 عملية جديدة
           </Text>
-          
+
           <View style={styles.trainingMetrics}>
             <View style={styles.trainingMetric}>
               <Text style={styles.trainingMetricLabel}>العمليات منذ آخر تدريب:</Text>
@@ -217,7 +217,7 @@ export default function AntiBanMLDashboardScreen() {
               <Text style={styles.anomalyStatLabel}>دقة الكشف</Text>
             </View>
           </View>
-          
+
           <View style={styles.recentAnomalies}>
             <Text style={styles.recentAnomaliesTitle}>الشذوذ الحديث</Text>
             <View style={styles.anomalyList}>
@@ -251,7 +251,7 @@ export default function AntiBanMLDashboardScreen() {
               <Text style={styles.patternStatLabel}>دقة التعرف</Text>
             </View>
           </View>
-          
+
           <View style={styles.patternTypes}>
             <Text style={styles.patternTypesTitle}>أنواع الأنماط المكتشفة</Text>
             <View style={styles.patternList}>

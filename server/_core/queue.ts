@@ -82,7 +82,7 @@ class MockQueue {
       processedOn: null,
       finishedOn: null,
       getState: () => 'completed',
-      moveToFailed: async () => {},
+      moveToFailed: async () => { },
       updateProgress: async (progress: number) => {
         this.jobs.set(id, { ...this.jobs.get(id), progress });
       }
@@ -109,11 +109,9 @@ async function initializeQueue() {
   try {
     connection = new IORedis(Secrets.getRedisUrl() || ENV.redisUrl, {
       maxRetriesPerRequest: 3,
-      retryDelayOnFailover: 100,
       enableReadyCheck: false,
       lazyConnect: true,
       // Skip version check for older Redis versions
-      skipVersionCheck: true,
     });
 
     // Test connection
@@ -125,13 +123,14 @@ async function initializeQueue() {
 
     // Try to connect
     await connection.connect();
+    redis = connection;
     bulkOpsQueue = new Queue("bulkOps", { connection });
     bulkOpsEvents = new QueueEvents("bulkOps", { connection });
     if (bulkOpsEvents.waitUntilReady) {
       await bulkOpsEvents.waitUntilReady();
     }
     console.log('[Queue] Connected to Redis successfully');
-  } catch (error) {
+  } catch (error: any) {
     console.warn('[Queue] Redis not available, using mock queue:', error.message);
     connection = null;
     bulkOpsQueue = new MockQueue();
@@ -174,7 +173,7 @@ class BullJobQueue {
 }
 
 export const JobQueue = new BullJobQueue();
-export const redis = connection;
+export let redis: IORedis | null = null;
 
 export async function cancelJob(jobId: string) {
   const job = await bulkOpsQueue.getJob(jobId);
@@ -184,7 +183,7 @@ export async function cancelJob(jobId: string) {
   return { found: true, cancelled: true } as const;
 }
 
-export async function listJobs(state: ("waiting"|"active"|"delayed"|"completed"|"failed")[] = ["waiting","active","delayed"], start = 0, end = 50) {
+export async function listJobs(state: ("waiting" | "active" | "delayed" | "completed" | "failed")[] = ["waiting", "active", "delayed"], start = 0, end = 50) {
   const jobs = await bulkOpsQueue.getJobs(state, start, end);
   return jobs.map((j: any) => ({ id: String(j.id), name: j.name, state: j.getState(), progress: typeof j.progress === 'number' ? j.progress : 0, timestamp: j.timestamp }));
 }

@@ -3,7 +3,9 @@ import { ScrollView, View, Text, TextInput, Pressable, ActivityIndicator, Alert 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
+const trpcAny = trpc as any;
 export default function OnboardingScreen() {
   const colors = useColors();
   const [phonesCsv, setPhonesCsv] = useState("");
@@ -11,30 +13,19 @@ export default function OnboardingScreen() {
   const [sendJobId, setSendJobId] = useState<string | null>(null);
   const [confirmJobId, setConfirmJobId] = useState<string | null>(null);
 
-  const sendMutation = trpc.accounts.bulkSendLoginCodes.useMutation({
-    onSuccess: (res) => {
-      setSendJobId(res.jobId);
-      Alert.alert("تم", "تمت إضافة مهمة إرسال الأكواد للطابور");
-    },
-    onError: (err) => Alert.alert("خطأ", err.message || "فشل إرسال الأكواد"),
-  });
+  const sendMutation = trpc.accounts.bulkSendLoginCodes.useMutation();
 
-  const confirmMutation = trpc.accounts.bulkConfirmCodes.useMutation({
-    onSuccess: (res) => {
-      setConfirmJobId(res.jobId);
-      Alert.alert("تم", "تمت إضافة مهمة تأكيد الأكواد للطابور");
-    },
-    onError: (err) => Alert.alert("خطأ", err.message || "فشل تأكيد الأكواد"),
-  });
-
-  const sendJobStatus = trpc.bulkOps.getJobStatus.useQuery(
+  const confirmMutation = trpc.accounts.bulkConfirmCodes.useMutation();
+  const { data: accounts } = (trpcAny.accounts.getAll.useQuery(undefined) as any);
+  const { data: proxies } = (trpcAny.proxies.getAll.useQuery(undefined) as any);
+  const sendJobStatus = (trpcAny.bulkOps.getJobStatus.useQuery(
     { jobId: sendJobId || "" },
-    { enabled: !!sendJobId, refetchInterval: sendJobId ? 1500 : false }
-  );
-  const confirmJobStatus = trpc.bulkOps.getJobStatus.useQuery(
+    { enabled: !!sendJobId, refetchInterval: 1000 }
+  ) as any);
+  const confirmJobStatus = (trpcAny.bulkOps.getJobStatus.useQuery(
     { jobId: confirmJobId || "" },
-    { enabled: !!confirmJobId, refetchInterval: confirmJobId ? 1500 : false }
-  );
+    { enabled: !!confirmJobId, refetchInterval: 1000 }
+  ) as any);
 
   const disableSend = useMemo(() => phonesCsv.trim().length === 0, [phonesCsv]);
   const disableConfirm = useMemo(() => confirmCsv.trim().length === 0, [confirmCsv]);
@@ -61,13 +52,25 @@ export default function OnboardingScreen() {
   const handleSendCodes = () => {
     const phones = parsePhonesFromCsv(phonesCsv);
     if (phones.length === 0) return Alert.alert("تنبيه", "أدخل أرقام هواتف صالحة");
-    sendMutation.mutate({ phoneNumbers: phones });
+    sendMutation.mutate({ phoneNumbers: phones }, {
+      onSuccess: (res: any) => {
+        setSendJobId(res.jobId);
+        Alert.alert("تم", "تمت إضافة مهمة إرسال الأكواد للطابور");
+      },
+      onError: (err: any) => Alert.alert("خطأ", err.message || "فشل إرسال الأكواد"),
+    });
   };
 
   const handleConfirmCodes = () => {
     const items = parseConfirmItemsFromCsv(confirmCsv);
     if (items.length === 0) return Alert.alert("تنبيه", "أدخل بيانات تأكيد صحيحة");
-    confirmMutation.mutate({ items });
+    confirmMutation.mutate({ items }, {
+      onSuccess: (res: any) => {
+        setConfirmJobId(res.jobId);
+        Alert.alert("تم", "تمت إضافة مهمة تأكيد الأكواد للطابور");
+      },
+      onError: (err: any) => Alert.alert("خطأ", err.message || "فشل تأكيد الأكواد"),
+    });
   };
 
   return (
@@ -116,11 +119,11 @@ export default function OnboardingScreen() {
                 <Text className="text-white font-semibold text-center">إرسال الأكواد</Text>
               </View>
             </Pressable>
-            {sendJobId && sendJobStatus.data?.found && (
+            {sendJobId && (sendJobStatus.data as any)?.found && (
               <View className="bg-surface rounded-lg p-3 border border-border">
                 <Text className="text-sm text-foreground">مهمة الإرسال: {sendJobId}</Text>
-                <Text className="text-sm text-foreground">الحالة: {sendJobStatus.data.status}</Text>
-                <Text className="text-sm text-foreground">التقدم: {sendJobStatus.data.progress}%</Text>
+                <Text className="text-sm text-foreground">الحالة: {(sendJobStatus.data as any).status}</Text>
+                <Text className="text-sm text-foreground">التقدم: {(sendJobStatus.data as any).progress}%</Text>
               </View>
             )}
           </View>
@@ -161,11 +164,11 @@ export default function OnboardingScreen() {
                 <Text className="text-white font-semibold text-center">تأكيد الأكواد وإنشاء الجلسات</Text>
               </View>
             </Pressable>
-            {confirmJobId && confirmJobStatus.data?.found && (
+            {confirmJobId && (confirmJobStatus.data as any)?.found && (
               <View className="bg-surface rounded-lg p-3 border border-border">
                 <Text className="text-sm text-foreground">مهمة التأكيد: {confirmJobId}</Text>
-                <Text className="text-sm text-foreground">الحالة: {confirmJobStatus.data.status}</Text>
-                <Text className="text-sm text-foreground">التقدم: {confirmJobStatus.data.progress}%</Text>
+                <Text className="text-sm text-foreground">الحالة: {(confirmJobStatus.data as any).status}</Text>
+                <Text className="text-sm text-foreground">التقدم: {(confirmJobStatus.data as any).progress}%</Text>
               </View>
             )}
           </View>

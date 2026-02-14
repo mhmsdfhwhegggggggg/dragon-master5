@@ -15,7 +15,7 @@ import * as db from "../db";
 export class AntiBanDatabase {
   private static instance: AntiBanDatabase;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): AntiBanDatabase {
     if (!AntiBanDatabase.instance) {
@@ -127,8 +127,8 @@ export class AntiBanDatabase {
       const consecutiveFailures = await this.getConsecutiveFailures(accountId);
 
       // Get average response time
-      const avgResponseTime = totalOperations > 0 
-        ? recentOperations.reduce((sum, op) => sum + (op.responseTime || 0), 0) / totalOperations 
+      const avgResponseTime = totalOperations > 0
+        ? recentOperations.reduce((sum, op) => sum + (op.responseTime || 0), 0) / totalOperations
         : 0;
 
       // Get risk score
@@ -203,7 +203,7 @@ export class AntiBanDatabase {
     try {
       // Get current rate limit tracking
       const rateLimit = await db.getRateLimitTracking(accountId, operationType);
-      
+
       if (!rateLimit) {
         // Create new tracking entry
         await db.createRateLimitTracking({
@@ -231,7 +231,7 @@ export class AntiBanDatabase {
   private async initializeRateLimiting(accountId: number): Promise<void> {
     try {
       const operationTypes = ['message', 'join_group', 'add_user', 'leave_group', 'extract_members'];
-      
+
       for (const operationType of operationTypes) {
         await db.createRateLimitTracking({
           accountId,
@@ -270,7 +270,7 @@ export class AntiBanDatabase {
       // Check if we need to reset daily counters
       const lastActivity = account.lastActivityAt;
       const today = new Date();
-      const needsReset = !lastActivity || 
+      const needsReset = !lastActivity ||
         lastActivity.toDateString() !== today.toDateString();
 
       if (needsReset) {
@@ -324,7 +324,7 @@ export class AntiBanDatabase {
   private async getConsecutiveFailures(accountId: number): Promise<number> {
     try {
       const recentOperations = await db.getOperationResults(
-        accountId, 
+        accountId,
         new Date(Date.now() - 60 * 60 * 1000) // Last hour
       );
 
@@ -351,8 +351,8 @@ export class AntiBanDatabase {
       let riskScore = 0;
 
       // Factor 1: Success rate (40% weight)
-      const successRate = operations.length > 0 
-        ? operations.filter(op => op.success).length / operations.length 
+      const successRate = operations.length > 0
+        ? operations.filter(op => op.success).length / operations.length
         : 1;
       riskScore += (1 - successRate) * 40;
 
@@ -370,7 +370,7 @@ export class AntiBanDatabase {
 
       // Factor 4: Account age (10% weight)
       const account = await db.getTelegramAccount(accountId);
-      const accountAge = account?.createdAt 
+      const accountAge = account?.createdAt
         ? (Date.now() - account.createdAt.getTime()) / (1000 * 60 * 60 * 24) // Days
         : 0;
       const ageRisk = Math.max(0, 10 - accountAge); // Newer accounts are riskier
@@ -410,7 +410,7 @@ export class AntiBanDatabase {
 
       // Calculate average response time from recent operations
       const recentOperations = await db.getRecentOperationResults(100); // Last 100 operations
-      const avgResponseTime = recentOperations.length > 0
+      const averageResponseTime = recentOperations.length > 0
         ? recentOperations.reduce((sum, op) => sum + (op.responseTime || 0), 0) / recentOperations.length
         : 0;
 
@@ -441,13 +441,13 @@ export class AntiBanDatabase {
   async cleanupOldData(daysToKeep: number = 30): Promise<void> {
     try {
       const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
-      
+
       // Clean old operation results
       await db.deleteOldOperationResults(cutoffDate);
-      
+
       // Clean old rate limiting entries
       await db.deleteOldRateLimitTracking(cutoffDate);
-      
+
       console.log(`🧹 Anti-Ban: Cleaned up data older than ${daysToKeep} days`);
     } catch (error) {
       console.error(`❌ Failed to cleanup old data:`, error);

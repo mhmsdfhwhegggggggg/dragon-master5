@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Dragon Telegram Pro",
-    "slug": "dragon-telegram-pro",
+    "name": "FALCON Telegram Pro",
+    "slug": "falcon-telegram-pro",
     "version": "6.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -16,14 +16,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dragan.telegrampro"
+      "bundleIdentifier": "com.falcon.telegrampro"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.dragan.telegrampro"
+      "package": "com.falcon.telegrampro"
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
@@ -41,7 +41,7 @@
         }
       ]
     ],
-    "scheme": "dragon-telegram-pro",
+    "scheme": "falcon-telegram-pro",
     "experiments": {
       "typedRoutes": true
     }

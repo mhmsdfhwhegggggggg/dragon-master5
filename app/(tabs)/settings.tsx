@@ -21,15 +21,7 @@ export default function SettingsScreen() {
   const [darkMode, setDarkMode] = useState(false);
   const [rateLimitLevel, setRateLimitLevel] = useState("medium");
 
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: async () => {
-      await Auth.clearSession();
-      router.replace("/(auth)/login");
-    },
-    onError: (error) => {
-      Alert.alert("خطأ", error.message || "فشل تسجيل الخروج");
-    }
-  });
+  const logoutMutation = trpc.auth.logout.useMutation();
 
   const handleLogout = () => {
     Alert.alert("تسجيل الخروج", "هل تريد تسجيل الخروج من التطبيق؟", [
@@ -37,7 +29,15 @@ export default function SettingsScreen() {
       {
         text: "تسجيل الخروج",
         style: "destructive",
-        onPress: () => logoutMutation.mutate(),
+        onPress: () => logoutMutation.mutate(undefined, {
+          onSuccess: async () => {
+            await Auth.clearSession();
+            router.replace("/(auth)/login");
+          },
+          onError: (error: any) => {
+            Alert.alert("خطأ", error.message || "فشل تسجيل الخروج");
+          }
+        }),
       },
     ]);
   };
@@ -79,16 +79,16 @@ export default function SettingsScreen() {
 
           {/* Security & Protection */}
           <SettingSection title="الأمان والحماية" icon="shield.fill">
-            <SettingItem 
-              label="نظام Anti-Ban" 
+            <SettingItem
+              label="نظام Anti-Ban"
               description="حماية ذكية تمنع حظر الحسابات"
               icon="lock.shield.fill"
             >
               <Switch value={antiBanEnabled} onValueChange={setAntiBanEnabled} trackColor={{ true: colors.primary }} />
             </SettingItem>
 
-            <SettingItem 
-              label="تدوير البروكسي" 
+            <SettingItem
+              label="تدوير البروكسي"
               description="تبديل تلقائي للبروكسيات عند الفشل"
               icon="network"
             >
@@ -102,7 +102,7 @@ export default function SettingsScreen() {
                   { id: "low", label: "آمن جداً" },
                   { id: "medium", label: "متوازن" },
                   { id: "high", label: "أقصى سرعة" }
-                ].map((level, index) => (
+                ].map((level: any, index: number) => (
                   <TouchableOpacity
                     key={level.id}
                     onPress={() => setRateLimitLevel(level.id)}
@@ -119,16 +119,16 @@ export default function SettingsScreen() {
 
           {/* Appearance & UI */}
           <SettingSection title="المظهر والواجهة" icon="paintbrush.fill">
-            <SettingItem 
-              label="الوضع الليلي" 
+            <SettingItem
+              label="الوضع الليلي"
               description="تغيير مظهر التطبيق للوضع الداكن"
               icon="moon.fill"
             >
               <Switch value={darkMode} onValueChange={setDarkMode} trackColor={{ true: colors.primary }} />
             </SettingItem>
 
-            <SettingItem 
-              label="لغة التطبيق" 
+            <SettingItem
+              label="لغة التطبيق"
               description="العربية (AR)"
               icon="globe"
               isLast
@@ -139,13 +139,13 @@ export default function SettingsScreen() {
 
           {/* Account & Support */}
           <SettingSection title="الحساب والدعم" icon="person.fill">
-            <SettingItem 
-              label="معلومات الاشتراك" 
+            <SettingItem
+              label="معلومات الاشتراك"
               description="خطة Pro - صالحة لـ 30 يوم"
               icon="star.fill"
             />
-            <SettingItem 
-              label="الدعم الفني" 
+            <SettingItem
+              label="الدعم الفني"
               description="تواصل معنا عبر Telegram"
               icon="questionmark.circle.fill"
               isLast

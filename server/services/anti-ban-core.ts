@@ -61,13 +61,13 @@ export class AntiBanCore {
     const oneHourAgo = now - (60 * 60 * 1000);
 
     // Count recent operations
-    const recentOps = history.filter(op => 
-      op.duration && op.duration > oneHourAgo && 
+    const recentOps = history.filter(op =>
+      op.duration && op.duration > oneHourAgo &&
       op.accountId === accountId
     );
 
     const rateLimit = this.rateLimits.get(operationType) || 10;
-    
+
     if (recentOps.length >= rateLimit) {
       return {
         allowed: false,
@@ -78,8 +78,8 @@ export class AntiBanCore {
     }
 
     // Check for recent failures
-    const recentFailures = history.filter(op => 
-      !op.success && 
+    const recentFailures = history.filter(op =>
+      !op.success &&
       op.duration && op.duration > oneHourAgo
     );
 
@@ -105,7 +105,7 @@ export class AntiBanCore {
     errorType?: string
   ): void {
     const history = this.operationHistory.get(accountId) || [];
-    
+
     const result: OperationResult = {
       success,
       errorType,
@@ -114,7 +114,7 @@ export class AntiBanCore {
     };
 
     history.push(result);
-    
+
     // Keep only last 100 operations per account
     if (history.length > 100) {
       history.splice(0, history.length - 100);
@@ -133,7 +133,7 @@ export class AntiBanCore {
     successRate: number;
   } {
     const history = this.operationHistory.get(accountId) || [];
-    
+
     const success = history.filter(op => op.success).length;
     const failure = history.filter(op => !op.success).length;
     const total = history.length;
@@ -147,7 +147,7 @@ export class AntiBanCore {
    */
   isAccountAtRisk(accountId: number): boolean {
     const stats = this.getOperationStats(accountId);
-    
+
     // Risk factors
     const lowSuccessRate = stats.successRate < 70;
     const highFailureRate = stats.failure > 10;
@@ -162,12 +162,12 @@ export class AntiBanCore {
   getRecommendedDelay(accountId: number, operationType: string): number {
     const history = this.operationHistory.get(accountId) || [];
     const now = Date.now();
-    
+
     // Find last operation of same type
     const lastOp = history
       .filter(op => op.accountId === accountId)
       .sort((a, b) => (b.duration || 0) - (a.duration || 0))
-      [0];
+    [0];
 
     if (!lastOp) {
       return 1000; // 1 second default
@@ -175,7 +175,7 @@ export class AntiBanCore {
 
     const timeSinceLastOp = now - (lastOp.duration || 0);
     const baseDelay = this.getBaseDelay(operationType);
-    
+
     // Increase delay if last operation failed
     if (!lastOp.success) {
       return Math.max(baseDelay * 3, 5000); // At least 5 seconds
@@ -193,6 +193,26 @@ export class AntiBanCore {
       case 'join_group': return 4000;  // 4 seconds
       default: return 2000;
     }
+  }
+  /**
+   * Get overall account status
+   */
+  getAccountStatus(accountId: number): {
+    isHealthy: boolean;
+    canOperate: boolean;
+    restrictions: string[];
+  } {
+    const stats = this.getOperationStats(accountId);
+    const isAtRisk = this.isAccountAtRisk(accountId);
+    const restrictions = [];
+
+    if (isAtRisk) restrictions.push('AT_RISK');
+
+    return {
+      isHealthy: !isAtRisk,
+      canOperate: !isAtRisk, // Simplified logic
+      restrictions
+    };
   }
 }
 

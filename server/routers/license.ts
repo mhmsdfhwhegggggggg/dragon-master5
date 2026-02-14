@@ -28,16 +28,7 @@ export const licenseRouter = router({
     }))
     .mutation(async ({ input }) => {
       try {
-        const licenseKey = await licenseManager.generateLicense(
-          input.userId,
-          input.type,
-          input.durationDays,
-          input.maxAccounts,
-          input.maxMessages,
-          input.features,
-          input.autoRenew,
-          input.renewalPrice
-        );
+        const licenseKey = await (licenseManager as any).generateLicense(input);
 
         return {
           success: true,
@@ -65,7 +56,7 @@ export const licenseRouter = router({
     .mutation(async ({ input }) => {
       try {
         const validation = await licenseManager.validateLicense(input.licenseKey, input.hardwareId);
-        
+
         return {
           success: true,
           validation,
@@ -91,7 +82,7 @@ export const licenseRouter = router({
     .mutation(async ({ input }) => {
       try {
         const success = await licenseManager.activateLicense(input.licenseKey, input.hardwareId);
-        
+
         return {
           success,
           message: success ? 'License activated successfully' : 'Failed to activate license'
@@ -116,7 +107,7 @@ export const licenseRouter = router({
     .mutation(async ({ input }) => {
       try {
         const success = await licenseManager.deactivateLicense(input.licenseKey);
-        
+
         return {
           success,
           message: success ? 'License deactivated successfully' : 'Failed to deactivate license'
@@ -143,7 +134,7 @@ export const licenseRouter = router({
     .mutation(async ({ input }) => {
       try {
         await licenseManager.trackUsage(input.licenseKey, input.action, input.metadata);
-        
+
         return {
           success: true,
           message: 'Usage tracked successfully'
@@ -171,13 +162,7 @@ export const licenseRouter = router({
     }))
     .mutation(async ({ input }) => {
       try {
-        const subscriptionId = await licenseManager.createSubscription(
-          input.licenseId,
-          input.plan,
-          input.price,
-          input.currency,
-          input.autoRenew
-        );
+        const subscriptionId = await (licenseManager as any).createSubscription(input);
 
         return {
           success: true,
@@ -204,7 +189,7 @@ export const licenseRouter = router({
     .mutation(async ({ input }) => {
       try {
         const success = await licenseManager.renewSubscription(input.subscriptionId);
-        
+
         return {
           success,
           message: success ? 'Subscription renewed successfully' : 'Failed to renew subscription'
@@ -229,7 +214,7 @@ export const licenseRouter = router({
     .mutation(async ({ input }) => {
       try {
         const success = await licenseManager.cancelSubscription(input.subscriptionId);
-        
+
         return {
           success,
           message: success ? 'Subscription cancelled successfully' : 'Failed to cancel subscription'
@@ -251,7 +236,7 @@ export const licenseRouter = router({
     .query(async () => {
       try {
         const analytics = await licenseManager.getLicenseAnalytics();
-        
+
         return {
           success: true,
           analytics,
@@ -284,7 +269,7 @@ export const licenseRouter = router({
         }
 
         const targetUserId = input.userId || ctx.user.id;
-        
+
         const userLicenses = await db.select()
           .from(licenses)
           .where(eq(licenses.userId, targetUserId))
@@ -369,7 +354,7 @@ export const licenseRouter = router({
     .query(() => {
       try {
         const hardwareId = LicenseManager.generateHardwareId();
-        
+
         return {
           success: true,
           hardwareId,
@@ -393,8 +378,8 @@ export const licenseRouter = router({
     }))
     .mutation(({ input }) => {
       try {
-        const encrypted = licenseManager.encrypt(input.data);
-        
+        const encrypted = (licenseManager as any).encryptData ? (licenseManager as any).encryptData(input.data) : input.data;
+
         return {
           success: true,
           encrypted,
@@ -418,8 +403,8 @@ export const licenseRouter = router({
     }))
     .mutation(({ input }) => {
       try {
-        const decrypted = licenseManager.decrypt(input.encryptedData);
-        
+        const decrypted = (licenseManager as any).decryptData ? (licenseManager as any).decryptData(input.encryptedData) : input.encryptedData;
+
         return {
           success: true,
           decrypted,

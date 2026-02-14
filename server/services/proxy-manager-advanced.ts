@@ -20,7 +20,7 @@ export type ProxyType = "socks5" | "http";
 
 export interface ProxyConfig {
   id?: number;
-  accountId: number;
+  userId: number;
   host: string;
   port: number;
   type: ProxyType;
@@ -41,49 +41,49 @@ class ProxyManagerAdvanced {
   private static instance: ProxyManagerAdvanced;
   private redis: Redis | null = null;
   private readonly CACHE_TTL = 60; // 1 minute
-  
-  private constructor() {}
-  
+
+  private constructor() { }
+
   static getInstance(): ProxyManagerAdvanced {
     if (!this.instance) {
       this.instance = new ProxyManagerAdvanced();
     }
     return this.instance;
   }
-  
+
   /**
    * Initialize with Redis for distributed state
    */
   setRedis(redis: Redis) {
     this.redis = redis;
   }
-  
+
   /**
    * Get the most suitable proxy for an account
    */
   async getProxyForAccount(accountId: number): Promise<ProxyConfig | null> {
     const proxies = await this.loadProxies(accountId);
     if (proxies.length === 0) return null;
-    
+
     // Filter out known unhealthy proxies
     const healthyProxies = proxies.filter(p => p.health !== "unhealthy");
     const candidates = healthyProxies.length > 0 ? healthyProxies : proxies;
-    
+
     // Selection logic: Combine round-robin with latency (if Redis is available)
     if (this.redis) {
       return await this.selectBestProxy(accountId, candidates);
     }
-    
+
     // Fallback to simple round-robin
     const idx = Math.floor(Math.random() * candidates.length);
     return candidates[idx];
   }
-  
-  private async loadProxies(accountId: number): Promise<ProxyConfig[]> {
-    const rows = await db.getProxyConfigsByAccountId(accountId);
+
+  private async loadProxies(userId: number): Promise<ProxyConfig[]> {
+    const rows = await db.getProxyConfigsByAccountId(userId);
     return rows.map((r: any) => ({
       id: r.id,
-      accountId: r.accountId,
+      userId: r.userId,
       host: r.host,
       port: r.port,
       type: r.type,
@@ -93,30 +93,30 @@ class ProxyManagerAdvanced {
       lastCheckedAt: r.lastCheckedAt ? new Date(r.lastCheckedAt) : null,
     }));
   }
-  
+
   private async selectBestProxy(accountId: number, candidates: ProxyConfig[]): Promise<ProxyConfig> {
     // Get stats from Redis to find the one with lowest latency/fails
     const statsKeys = candidates.map(p => `proxy:stats:${p.host}:${p.port}`);
     const statsData = await this.redis!.mget(...statsKeys);
-    
+
     let bestProxy = candidates[0];
     let minScore = Infinity;
-    
+
     candidates.forEach((proxy, i) => {
       const stats: ProxyStats = statsData[i] ? JSON.parse(statsData[i]!) : { latency: 500, failCount: 0, successCount: 0, lastUsed: 0 };
-      
+
       // Scoring formula: latency + (fails * 1000)
       const score = stats.latency + (stats.failCount * 1000);
-      
+
       if (score < minScore) {
         minScore = score;
         bestProxy = proxy;
       }
     });
-    
+
     return bestProxy;
   }
-  
+
   /**
    * Perform a real health check by attempting to reach Telegram
    */
@@ -133,7 +133,7 @@ class ProxyManagerAdvanced {
         },
         timeout: 5000
       });
-      
+
       const latency = Date.now() - start;
       await this.recordResult(proxy, true, latency);
       return true;
@@ -142,14 +142,14 @@ class ProxyManagerAdvanced {
       return false;
     }
   }
-  
+
   async recordResult(proxy: ProxyConfig, success: boolean, latency: number) {
     if (!this.redis) return;
-    
+
     const key = `proxy:stats:${proxy.host}:${proxy.port}`;
     const data = await this.redis.get(key);
     const stats: ProxyStats = data ? JSON.parse(data) : { latency: 500, failCount: 0, successCount: 0, lastUsed: 0 };
-    
+
     if (success) {
       stats.successCount++;
       stats.failCount = 0;
@@ -158,7 +158,7 @@ class ProxyManagerAdvanced {
       stats.failCount++;
     }
     stats.lastUsed = Date.now();
-    
+
     await this.redis.setex(key, 86400, JSON.stringify(stats)); // Keep stats for 24h
   }
 }

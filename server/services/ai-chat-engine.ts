@@ -27,29 +27,29 @@ export interface ChatContext {
 export class AIChatEngine {
   private static instance: AIChatEngine;
   private client: OpenAI;
-  
+
   private constructor() {
     this.client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
   }
-  
+
   static getInstance(): AIChatEngine {
     if (!this.instance) {
       this.instance = new AIChatEngine();
     }
     return this.instance;
   }
-  
+
   /**
    * Generate a human-like response based on context
    */
   async generateResponse(context: ChatContext): Promise<string> {
     try {
       const systemPrompt = this.buildSystemPrompt(context);
-      
+
       const response = await this.client.chat.completions.create({
-        model: 'gpt-4.1-mini',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           ...context.history
@@ -57,21 +57,21 @@ export class AIChatEngine {
         temperature: 0.7,
         max_tokens: 150
       });
-      
+
       return response.choices[0].message.content || '';
     } catch (error: any) {
       console.error('[AIChatEngine] Error generating response:', error.message);
       return this.getFallbackResponse(context.personality);
     }
   }
-  
+
   private buildSystemPrompt(context: ChatContext): string {
     return `You are a human Telegram user. Your personality is ${context.personality}. 
     You are chatting with ${context.targetUser.name || 'someone'}. 
     Keep your responses concise, natural, and use emojis occasionally like a real person. 
     Do not sound like an AI assistant. Use informal language if the personality is casual.`;
   }
-  
+
   private getFallbackResponse(personality: string): string {
     const fallbacks = {
       friendly: "Hey! How's it going? 😊",

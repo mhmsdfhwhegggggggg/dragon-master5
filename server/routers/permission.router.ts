@@ -142,8 +142,8 @@ export const permissionRouter = router({
       );
       return {
         success,
-        message: success 
-          ? `Permission extended by ${input.additionalDays} days` 
+        message: success
+          ? `Permission extended by ${input.additionalDays} days`
           : 'Failed to extend permission',
       };
     }),

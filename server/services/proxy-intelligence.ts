@@ -90,7 +90,7 @@ export interface RotationStrategy {
   rotationInterval: number;
 }
 
-export type OperationType = 'extract' | 'add_user' | 'send_message' | 'join_group' | 'leave_group';
+
 
 export class ProxyIntelligenceManager {
   private static instance: ProxyIntelligenceManager;
@@ -98,7 +98,7 @@ export class ProxyIntelligenceManager {
   private proxyPools: Map<number, ProxyPool> = new Map();
   private rotationStrategies: Map<number, RotationStrategy> = new Map();
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): ProxyIntelligenceManager {
     if (!ProxyIntelligenceManager.instance) {
@@ -112,7 +112,7 @@ export class ProxyIntelligenceManager {
    */
   async getOptimalProxy(accountId: number, operationType: OperationType, context: ProxyContext): Promise<OptimalProxyResult> {
     const pool = this.getProxyPool(accountId);
-    
+
     if (pool.proxies.length === 0) {
       return {
         proxy: null,
@@ -128,7 +128,7 @@ export class ProxyIntelligenceManager {
 
     // Simple selection - pick first healthy proxy
     const selectedProxy = pool.proxies[0];
-    
+
     return {
       proxy: selectedProxy,
       confidence: 0.8,
@@ -141,7 +141,7 @@ export class ProxyIntelligenceManager {
   /**
    * Record proxy usage result
    */
-  async recordProxyResult(proxyId: string, operationType: OperationType, result: { success: boolean; responseTime?: number }): Promise<void> {
+  async recordProxyResult(proxyId: string, operationType: OperationType, result: { success: boolean; responseTime?: number; error?: string }): Promise<void> {
     const performance = this.proxyPerformance.get(proxyId);
     if (!performance) return;
 
@@ -168,7 +168,7 @@ export class ProxyIntelligenceManager {
    */
   private getProxyPool(accountId: number): ProxyPool {
     let pool = this.proxyPools.get(accountId);
-    
+
     if (!pool) {
       pool = {
         accountId,
@@ -178,7 +178,7 @@ export class ProxyIntelligenceManager {
       };
       this.proxyPools.set(accountId, pool);
     }
-    
+
     return pool;
   }
 
@@ -213,7 +213,7 @@ export class ProxyIntelligenceManager {
       blockedUntil: null,
       operationStats: new Map()
     };
-    
+
     this.proxyPerformance.set(proxyId, performance);
     return performance;
   }
@@ -235,10 +235,10 @@ export class ProxyIntelligenceManager {
    */
   async recordProxyUsage(proxyId: string, accountId: number, operationType: OperationType): Promise<void> {
     const performance = this.proxyPerformance.get(proxyId) || await this.initializeProxyPerformance(proxyId);
-    
+
     performance.totalUsage++;
     performance.lastUsed = new Date();
-    
+
     let operationStats = performance.operationStats.get(operationType);
     if (!operationStats) {
       operationStats = {
@@ -249,10 +249,30 @@ export class ProxyIntelligenceManager {
       };
       performance.operationStats.set(operationType, operationStats);
     }
-    
+
     operationStats.count++;
     this.proxyPerformance.set(proxyId, performance);
   }
+  /**
+   * Get proxy statistics for account
+   */
+  async getProxyStatistics(accountId: number): Promise<{
+    healthPercentage: number;
+    activeProxies: number;
+    averageResponseTime: number;
+  }> {
+    const pool = this.getProxyPool(accountId);
+    const activeProxies = pool.proxies.length;
+
+    // Mock stats for now since we don't track per-account detailed stats yet
+    return {
+      healthPercentage: 100,
+      activeProxies,
+      averageResponseTime: 200 // ms
+    };
+  }
 }
+
+export type OperationType = 'message' | 'join_group' | 'add_user' | 'leave_group' | 'extract_members' | 'boost_engagement' | 'extract' | 'send_message';
 
 export const proxyIntelligenceManager = ProxyIntelligenceManager.getInstance();

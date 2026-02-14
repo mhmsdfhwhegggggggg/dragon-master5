@@ -1,8 +1,8 @@
-# Dragon Telegram Pro Mobile - Interface Design
+# FALCON Telegram Pro Mobile - Interface Design
 
 ## Overview
 
-**Dragon Telegram Pro Mobile** is a production-ready mobile application for managing multiple Telegram accounts, extracting member data, sending bulk messages, and automating engagement with advanced anti-ban protection. The app is designed for iOS and Android with a focus on one-handed usage, responsive performance, and intuitive user experience.
+**FALCON Telegram Pro Mobile** is a production-ready mobile application for managing multiple Telegram accounts, extracting member data, sending bulk messages, and automating engagement with advanced anti-ban protection. The app is designed for iOS and Android with a focus on one-handed usage, responsive performance, and intuitive user experience.
 
 ### Design Philosophy
 - **Mobile-First**: Optimized for portrait orientation (9:16 aspect ratio)

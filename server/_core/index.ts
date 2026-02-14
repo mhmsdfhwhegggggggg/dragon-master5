@@ -14,6 +14,7 @@ const redisClient = redis as any;
 import { db, getDb } from "../db";
 import { healthCheck, readinessCheck, livenessCheck } from "./health";
 import { CacheSystem } from "./cache-system";
+import { StartupService } from "../services/startup.service";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -82,7 +83,7 @@ async function startServer() {
   app.get("/api/health", healthCheck);
   app.get("/ready", readinessCheck);
   app.get("/live", livenessCheck);
-  
+
   // Legacy health check
   app.get("/api/health/legacy", async (_req, res) => {
     const now = Date.now();
@@ -93,11 +94,11 @@ async function startServer() {
         const pong = await redisClient.ping();
         redisOk = pong === "PONG";
       }
-    } catch {}
+    } catch { }
     try {
       const conn = await getDb();
       dbOk = !!conn;
-    } catch {}
+    } catch { }
     res.json({ ok: redisOk && dbOk, redis: redisOk, db: dbOk, timestamp: now });
   });
 
@@ -118,6 +119,9 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
+
+    // Initialize services
+    StartupService.initializeAllServices().catch(err => console.error('[Startup] Failed:', err));
   });
 }
 

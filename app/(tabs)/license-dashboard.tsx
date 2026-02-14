@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { trpc } from '@/lib/trpc';
 
+const trpcAny = trpc as any;
+
 /**
  * License Management Dashboard
  * 
@@ -26,17 +28,17 @@ export default function LicenseDashboardScreen() {
   });
 
   // tRPC queries
-  const { data: analytics, refetch: refetchAnalytics } = trpc.license.getAnalytics.useQuery();
-  const { data: userLicenses, refetch: refetchLicenses } = trpc.license.getUserLicenses.useQuery();
-  const { data: hardwareId } = trpc.license.generateHardwareId.useQuery();
+  const { data: analytics, refetch: refetchAnalytics } = trpcAny.license.getAnalytics.useQuery(undefined);
+  const { data: userLicenses, refetch: refetchLicenses } = trpcAny.license.getUserLicenses.useQuery(undefined);
+  const { data: hardwareId } = trpcAny.license.generateHardwareId.useQuery(undefined);
 
   // tRPC mutations
-  const generateLicense = trpc.license.generateLicense.useMutation();
-  const validateLicense = trpc.license.validateLicense.useMutation();
-  const activateLicense = trpc.license.activateLicense.useMutation();
-  const createSubscription = trpc.license.createSubscription.useMutation();
-  const renewSubscription = trpc.license.renewSubscription.useMutation();
-  const cancelSubscription = trpc.license.cancelSubscription.useMutation();
+  const generateLicense = trpcAny.license.generateLicense.useMutation();
+  const validateLicense = trpcAny.license.validateLicense.useMutation();
+  const activateLicense = trpcAny.license.activateLicense.useMutation();
+  const createSubscription = trpcAny.license.createSubscription.useMutation();
+  const renewSubscription = trpcAny.license.renewSubscription.useMutation();
+  const cancelSubscription = trpcAny.license.cancelSubscription.useMutation();
 
   const refreshData = async () => {
     setRefreshing(true);
@@ -52,62 +54,64 @@ export default function LicenseDashboardScreen() {
     }
   };
 
-  const handleGenerateLicense = async () => {
-    try {
-      const result = await generateLicense.mutateAsync({
-        userId: parseInt(newLicenseForm.userId),
-        type: newLicenseForm.type as any,
-        durationDays: parseInt(newLicenseForm.durationDays),
-        maxAccounts: parseInt(newLicenseForm.maxAccounts),
-        maxMessages: parseInt(newLicenseForm.maxMessages),
-        autoRenew: newLicenseForm.autoRenew,
-      });
-
-      if (result.success) {
-        Alert.alert('نجاح', `تم إنشاء الترخيص بنجاح: ${result.licenseKey}`);
-        setNewLicenseForm({
-          userId: '',
-          type: 'basic',
-          durationDays: '30',
-          maxAccounts: '1',
-          maxMessages: '1000',
-          autoRenew: false,
-        });
-        refreshData();
-      } else {
-        Alert.alert('خطأ', result.error || 'فشل إنشاء الترخيص');
+  const handleGenerateLicense = () => {
+    generateLicense.mutate({
+      userId: parseInt(newLicenseForm.userId),
+      type: newLicenseForm.type as any,
+      durationDays: parseInt(newLicenseForm.durationDays),
+      maxAccounts: parseInt(newLicenseForm.maxAccounts),
+      maxMessages: parseInt(newLicenseForm.maxMessages),
+      autoRenew: newLicenseForm.autoRenew,
+    }, {
+      onSuccess: (result: any) => {
+        if (result.success) {
+          Alert.alert('نجاح', `تم إنشاء الترخيص بنجاح: ${result.licenseKey}`);
+          setNewLicenseForm({
+            userId: '',
+            type: 'basic',
+            durationDays: '30',
+            maxAccounts: '1',
+            maxMessages: '1000',
+            autoRenew: false,
+          });
+          refreshData();
+        } else {
+          Alert.alert('خطأ', result.error || 'فشل إنشاء الترخيص');
+        }
+      },
+      onError: () => {
+        Alert.alert('خطأ', 'حدث خطأ أثناء إنشاء الترخيص');
       }
-    } catch (error) {
-      Alert.alert('خطأ', 'حدث خطأ أثناء إنشاء الترخيص');
-    }
+    });
   };
 
-  const handleValidateLicense = async (licenseKey: string) => {
-    try {
-      const result = await validateLicense.mutateAsync({
-        licenseKey,
-        hardwareId: hardwareId?.hardwareId,
-      });
+  const handleValidateLicense = (licenseKey: string) => {
+    validateLicense.mutate({
+      licenseKey,
+      hardwareId: hardwareId?.hardwareId,
+    }, {
+      onSuccess: (result: any) => {
+        if (result.success) {
+          const { valid, errors, warnings, remainingDays, usageRemaining } = result.validation;
 
-      if (result.success) {
-        const { valid, errors, warnings, remainingDays, usageRemaining } = result.validation;
-        
-        if (valid) {
-          let message = 'الترخيص صالح ✅';
-          if (remainingDays) message += `\nالأيام المتبقية: ${remainingDays}`;
-          if (usageRemaining !== undefined) message += `\nالاستخدام المتبقي: ${usageRemaining}`;
-          if (warnings.length > 0) message += `\nتحذيرات: ${warnings.join(', ')}`;
-          
-          Alert.alert('نجاح', message);
+          if (valid) {
+            let message = 'الترخيص صالح ✅';
+            if (remainingDays) message += `\nالأيام المتبقية: ${remainingDays}`;
+            if (usageRemaining !== undefined) message += `\nالاستخدام المتبقي: ${usageRemaining}`;
+            if (warnings.length > 0) message += `\nتحذيرات: ${warnings.join(', ')}`;
+
+            Alert.alert('نجاح', message);
+          } else {
+            Alert.alert('خطأ', `الترخيص غير صالح: ${errors.join(', ')}`);
+          }
         } else {
-          Alert.alert('خطأ', `الترخيص غير صالح: ${errors.join(', ')}`);
+          Alert.alert('خطأ', result.error || 'فشل التحقق من الترخيص');
         }
-      } else {
-        Alert.alert('خطأ', result.error || 'فشل التحقق من الترخيص');
+      },
+      onError: () => {
+        Alert.alert('خطأ', 'حدث خطأ أثناء التحقق من الترخيص');
       }
-    } catch (error) {
-      Alert.alert('خطأ', 'حدث خطأ أثناء التحقق من الترخيص');
-    }
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -133,23 +137,23 @@ export default function LicenseDashboardScreen() {
   const renderOverview = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>📊 نظرة عامة</Text>
-      
+
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{analytics?.analytics?.totalLicenses || 0}</Text>
           <Text style={styles.statLabel}>إجمالي التراخيص</Text>
         </View>
-        
+
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{analytics?.analytics?.activeLicenses || 0}</Text>
           <Text style={styles.statLabel}>التراخيص النشطة</Text>
         </View>
-        
+
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>${analytics?.analytics?.totalRevenue || 0}</Text>
           <Text style={styles.statLabel}>إجمالي الإيرادات</Text>
         </View>
-        
+
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{analytics?.analytics?.expiringSoon || 0}</Text>
           <Text style={styles.statLabel}>تنتهي قريباً</Text>
@@ -173,16 +177,16 @@ export default function LicenseDashboardScreen() {
   const renderLicenses = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>📜 إدارة التراخيص</Text>
-      
+
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>إنشاء ترخيص جديد</Text>
-        
+
         <View style={styles.formRow}>
           <Text style={styles.formLabel}>معرف المستخدم:</Text>
           <TextInput
             style={styles.textInput}
             value={newLicenseForm.userId}
-            onChangeText={(text) => setNewLicenseForm({...newLicenseForm, userId: text})}
+            onChangeText={(text) => setNewLicenseForm({ ...newLicenseForm, userId: text })}
             placeholder="أدخل معرف المستخدم"
             keyboardType="numeric"
           />
@@ -198,15 +202,15 @@ export default function LicenseDashboardScreen() {
                   styles.typeButton,
                   newLicenseForm.type === type && styles.typeButtonActive
                 ]}
-                onPress={() => setNewLicenseForm({...newLicenseForm, type})}
+                onPress={() => setNewLicenseForm({ ...newLicenseForm, type })}
               >
                 <Text style={[
                   styles.typeButtonText,
                   newLicenseForm.type === type && styles.typeButtonTextActive
                 ]}>
                   {type === 'trial' ? 'تجريبي' :
-                   type === 'basic' ? 'أساسي' :
-                   type === 'premium' ? 'مميز' : 'مؤسسي'}
+                    type === 'basic' ? 'أساسي' :
+                      type === 'premium' ? 'مميز' : 'مؤسسي'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -218,7 +222,7 @@ export default function LicenseDashboardScreen() {
           <TextInput
             style={styles.textInput}
             value={newLicenseForm.durationDays}
-            onChangeText={(text) => setNewLicenseForm({...newLicenseForm, durationDays: text})}
+            onChangeText={(text) => setNewLicenseForm({ ...newLicenseForm, durationDays: text })}
             placeholder="30"
             keyboardType="numeric"
           />
@@ -229,7 +233,7 @@ export default function LicenseDashboardScreen() {
           <TextInput
             style={styles.textInput}
             value={newLicenseForm.maxAccounts}
-            onChangeText={(text) => setNewLicenseForm({...newLicenseForm, maxAccounts: text})}
+            onChangeText={(text) => setNewLicenseForm({ ...newLicenseForm, maxAccounts: text })}
             placeholder="1"
             keyboardType="numeric"
           />
@@ -240,7 +244,7 @@ export default function LicenseDashboardScreen() {
           <TextInput
             style={styles.textInput}
             value={newLicenseForm.maxMessages}
-            onChangeText={(text) => setNewLicenseForm({...newLicenseForm, maxMessages: text})}
+            onChangeText={(text) => setNewLicenseForm({ ...newLicenseForm, maxMessages: text })}
             placeholder="1000"
             keyboardType="numeric"
           />
@@ -261,28 +265,28 @@ export default function LicenseDashboardScreen() {
                 <Text style={styles.statusText}>{getStatusText(license.status)}</Text>
               </View>
             </View>
-            
+
             <View style={styles.licenseDetails}>
-          <Text style={styles.licenseDetail}>النوع: {license.type}</Text>
-          <Text style={styles.licenseDetail}>الحسابات: {license.maxAccounts}</Text>
-          <Text style={styles.licenseDetail}>الرسائل: {license.maxMessages}</Text>
-          <Text style={styles.licenseDetail}>الاستخدام: {license.usageCount}</Text>
-          {license.expiresAt && (
-            <Text style={styles.licenseDetail}>
-              ينتهي: {new Date(license.expiresAt).toLocaleDateString()}
-            </Text>
-          )}
-        </View>
-            
+              <Text style={styles.licenseDetail}>النوع: {license.type}</Text>
+              <Text style={styles.licenseDetail}>الحسابات: {license.maxAccounts}</Text>
+              <Text style={styles.licenseDetail}>الرسائل: {license.maxMessages}</Text>
+              <Text style={styles.licenseDetail}>الاستخدام: {license.usageCount}</Text>
+              {license.expiresAt && (
+                <Text style={styles.licenseDetail}>
+                  ينتهي: {new Date(license.expiresAt).toLocaleDateString()}
+                </Text>
+              )}
+            </View>
+
             <View style={styles.licenseActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleValidateLicense(license.licenseKey)}
               >
                 <Text style={styles.actionButtonText}>تحقق</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => {
                   if (hardwareId?.hardwareId) {
@@ -305,10 +309,10 @@ export default function LicenseDashboardScreen() {
   const renderSubscriptions = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>💳 إدارة الاشتراكات</Text>
-      
+
       <View style={styles.subscriptionPlans}>
         <Text style={styles.plansTitle}>خطط الاشتراك</Text>
-        
+
         {[
           { name: 'شهري', price: 29, duration: '30 يوم' },
           { name: 'ربع سنوي', price: 79, duration: '90 يوم' },
@@ -333,14 +337,14 @@ export default function LicenseDashboardScreen() {
   const renderAnalytics = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>📈 التحليلات والتقارير</Text>
-      
+
       <View style={styles.analyticsGrid}>
         <View style={styles.analyticsCard}>
           <Text style={styles.analyticsTitle}>توزيع الخطط</Text>
           {Object.entries(analytics?.analytics?.planDistribution || {}).map(([plan, count]) => (
             <View key={plan} style={styles.analyticsRow}>
               <Text style={styles.analyticsLabel}>{plan}</Text>
-              <Text style={styles.analyticsValue}>{count}</Text>
+              <Text style={styles.analyticsValue}>{String(count)}</Text>
             </View>
           ))}
         </View>

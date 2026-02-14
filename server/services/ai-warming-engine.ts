@@ -19,9 +19,9 @@ const openai = new OpenAI();
 
 export class AIWarmingEngine {
   private static instance: AIWarmingEngine;
-  
-  private constructor() {}
-  
+
+  private constructor() { }
+
   static getInstance(): AIWarmingEngine {
     if (!this.instance) {
       this.instance = new AIWarmingEngine();
@@ -34,14 +34,14 @@ export class AIWarmingEngine {
    */
   async performWarmingSession(client: TelegramClient, accountId: number) {
     console.log(`[AIWarming] Starting session for account ${accountId}...`);
-    
+
     try {
       const account = await db.getTelegramAccountById(accountId);
       if (!account) return;
 
       // 1. Simulate "Reading" (Scrolling through dialogs)
       await this.simulateReading(client);
-      
+
       // 2. Join a "Safe" group if needed
       if (account.warmingLevel < 10) {
         await this.joinSafeGroup(client, accountId);
@@ -73,17 +73,17 @@ export class AIWarmingEngine {
         }));
         await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   private async joinSafeGroup(client: TelegramClient, accountId: number) {
     const safeGroups = ['@publictestgroup', '@telegram', '@durov']; // Example safe entities
     const target = safeGroups[Math.floor(Math.random() * safeGroups.length)];
-    
+
     try {
       await client.invoke(new Api.channels.JoinChannel({ channel: target }));
       await antiBanDistributed.recordOperationResult(accountId, 'join_group', true);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   private async sendSmartMessage(client: TelegramClient, accountId: number) {
@@ -98,17 +98,17 @@ export class AIWarmingEngine {
       });
 
       const message = response.choices[0].message.content || "السلام عليكم جميعاً، كيف حالكم؟";
-      
+
       // Find a group to post in
       const dialogs = await client.getDialogs({ limit: 20 });
-      const groups = dialogs.filter(d => d.isGroup || d.isChannel);
-      
+      const groups = dialogs.filter((d: any) => d.isGroup || d.isChannel);
+
       if (groups.length > 0) {
         const target = groups[Math.floor(Math.random() * groups.length)];
         await client.sendMessage(target.inputEntity, { message });
         await antiBanDistributed.recordOperationResult(accountId, 'message', true);
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 

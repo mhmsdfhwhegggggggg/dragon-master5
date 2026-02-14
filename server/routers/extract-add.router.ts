@@ -6,7 +6,7 @@
  * 99% accuracy with individual tracking
  * 
  * @version 6.0.0
- * @author Dragon Team
+ * @author FALCON Team
  */
 
 import { z } from "zod";
@@ -56,20 +56,40 @@ export const extractAddRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        logger.info('[Router] Starting Extract & Add Pipeline', { 
+        logger.info('[Router] Starting Extract & Add Pipeline', {
           accountId: input.accountId,
           sourceGroupId: input.sourceGroupId,
-          targetCount: input.targetGroupIds.length 
+          targetCount: input.targetGroupIds.length
         });
 
-        // Execute pipeline
-        const result = await extractAddPipeline.executePipeline(input);
+        // Create bulk operation record first
+        const operation = await db.createBulkOperation({
+          userId: ctx.user.id,
+          name: `Extract & Add - ${new Date().toLocaleString()}`,
+          description: 'Initializing pipeline...',
+          operationType: 'extract_add_pipeline',
+          sourceGroupId: input.sourceGroupId,
+          targetGroupId: input.targetGroupIds.join(','),
+          status: 'pending',
+          totalMembers: 0,
+          processedMembers: 0,
+          successfulMembers: 0,
+          failedMembers: 0
+        });
 
-        // Log activity
+        // Execute pipeline with operation ID
+        const result = await extractAddPipeline.executePipeline({
+          ...input,
+          operationId: operation.id
+        });
+
+        // Log activity (keep existing logging for consistency)
         await db.createActivityLog({
-          accountId: input.accountId,
+          userId: ctx.user.id,
+          telegramAccountId: input.accountId,
           action: 'extract_add_pipeline',
           details: JSON.stringify({
+            operationId: operation.id,
             sourceGroupId: input.sourceGroupId,
             targetGroupIds: input.targetGroupIds,
             filters: input.filters,
@@ -81,18 +101,20 @@ export const extractAddRouter = router({
               stats: result.stats,
               errors: result.errors
             }
-          })
+          }),
+          status: result.success ? 'success' : 'failed'
         });
 
         return {
           success: true,
           data: result,
-          message: result.success ? 'Pipeline completed successfully' : 'Pipeline failed'
+          message: result.success ? 'Pipeline completed successfully' : 'Pipeline failed',
+          operationId: operation.id
         };
 
       } catch (error: any) {
         logger.error('[Router] Pipeline execution failed', { error: error.message });
-        
+
         return {
           success: false,
           error: error.message,
@@ -110,32 +132,55 @@ export const extractAddRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement pipeline status tracking
-        const status = {
-          id: input.pipelineId,
-          status: 'running' as 'running' | 'completed' | 'failed' | 'cancelled',
-          progress: 65,
-          currentStep: 'Adding members to target groups',
-          startTime: new Date(),
-          estimatedCompletion: new Date(Date.now() + 10 * 60 * 1000),
-          stats: {
-            totalExtracted: 1500,
-            filteredCount: 800,
-            addedCount: 450,
-            failedCount: 50,
-            averageDelay: 3500,
-            currentSpeed: 45
-          }
-        };
+        const operationId = parseInt(input.pipelineId);
+        if (isNaN(operationId)) {
+          throw new Error('Invalid pipeline ID');
+        }
+
+        const result = await db.getBulkOperationById(operationId);
+        const operation = result[0];
+
+        if (!operation) {
+          throw new Error('Pipeline not found');
+        }
+
+        // Calculate progress percentage
+        const totalMembers = operation.totalMembers || 0;
+        const progress = totalMembers > 0
+          ? Math.round((operation.processedMembers || 0) / totalMembers * 100)
+          : (operation.status === 'completed' ? 100 : 0);
+
+        // Estimate completion (rough)
+        let estimatedCompletion = null;
+        if (operation.status === 'running' && operation.startedAt && progress > 0) {
+          const elapsed = Date.now() - operation.startedAt.getTime();
+          const totalTime = elapsed / (progress / 100);
+          estimatedCompletion = new Date(operation.startedAt.getTime() + totalTime);
+        }
 
         return {
           success: true,
-          data: status
+          data: {
+            id: String(operation.id),
+            status: operation.status,
+            progress: progress,
+            currentStep: operation.description || 'Processing...',
+            startTime: operation.startedAt,
+            estimatedCompletion: estimatedCompletion,
+            stats: {
+              totalExtracted: operation.totalMembers || 0,
+              filteredCount: 0, // Not stored separately in bulkOperations currently
+              addedCount: operation.successfulMembers || 0,
+              failedCount: operation.failedMembers || 0,
+              averageDelay: 0, // Not stored in bulkOperations
+              currentSpeed: 0 // Would need calculation
+            }
+          }
         };
 
       } catch (error: any) {
         logger.error('[Router] Failed to get pipeline status', { error: error.message });
-        
+
         return {
           success: false,
           error: error.message
@@ -154,57 +199,52 @@ export const extractAddRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement pipeline history from database
-        const history = [
-          {
-            id: 'pipeline-1',
-            sourceGroupId: '-1001234567890',
-            targetGroupIds: ['-1009876543210'],
-            status: 'completed',
-            stats: {
-              totalExtracted: 2000,
-              filteredCount: 1200,
-              addedCount: 1100,
-              failedCount: 100,
-              averageDelay: 3200,
-              currentSpeed: 55
-            },
-            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-            completedAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
-            duration: 3600000 // 1 hour
+        // We query bulkOperations instead of activityLogs for better data structure
+        // Note: bulkOperations are linked to userId, not telegramAccountId directly in schema
+        // But we can filter by userId from ctx which owns the account
+
+        // This is a simplification: getting all bulk ops for the user
+        // Ideally we filter by accountId too if we stored it in bulkOperations
+        const allOps = await db.getBulkOperationsByUserId(ctx.user.id);
+
+        // Filter those relevant to this account (heuristic or need schema update)
+        // For now, return all extract pipelines for the user 
+        const pipelines = allOps
+          .filter(op => op.operationType === 'extract_add_pipeline')
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(input.offset, input.offset + input.limit);
+
+        const history = pipelines.map(op => ({
+          id: String(op.id),
+          sourceGroupId: op.sourceGroupId || 'Unknown',
+          targetGroupIds: op.targetGroupId ? op.targetGroupId.split(',') : [],
+          status: op.status,
+          stats: {
+            totalExtracted: op.totalMembers || 0,
+            filteredCount: 0,
+            addedCount: op.successfulMembers || 0,
+            failedCount: op.failedMembers || 0,
+            averageDelay: 0,
+            currentSpeed: 0
           },
-          {
-            id: 'pipeline-2',
-            sourceGroupId: '-1001234567891',
-            targetGroupIds: ['-1009876543211', '-1001122334455'],
-            status: 'failed',
-            stats: {
-              totalExtracted: 500,
-              filteredCount: 300,
-              addedCount: 150,
-              failedCount: 150,
-              averageDelay: 4000,
-              currentSpeed: 25
-            },
-            createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-            completedAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-            duration: 3600000,
-            error: 'Rate limit exceeded'
-          }
-        ];
+          createdAt: op.createdAt,
+          completedAt: op.completedAt,
+          duration: op.completedAt && op.startedAt ? op.completedAt.getTime() - op.startedAt.getTime() : 0,
+          error: op.status === 'failed' ? op.description : undefined
+        }));
 
         return {
           success: true,
           data: {
-            pipelines: history.slice(input.offset, input.offset + input.limit),
-            total: history.length,
-            hasMore: input.offset + input.limit < history.length
+            pipelines: history,
+            total: allOps.filter(op => op.operationType === 'extract_add_pipeline').length,
+            hasMore: input.offset + input.limit < allOps.length
           }
         };
 
       } catch (error: any) {
         logger.error('[Router] Failed to get pipeline history', { error: error.message });
-        
+
         return {
           success: false,
           error: error.message
@@ -222,57 +262,50 @@ export const extractAddRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement statistics calculation
-        const stats = {
-          totalPipelines: 15,
-          successfulPipelines: 12,
-          failedPipelines: 3,
-          totalMembersExtracted: 25000,
-          totalMembersAdded: 18000,
-          averageSuccessRate: 80,
-          averageSpeed: 45, // members per minute
-          totalRuntime: 7200000, // 2 hours
-          averageRuntime: 480000, // 8 minutes per pipeline
-          mostActiveSourceGroup: '-1001234567890',
-          mostActiveTargetGroup: '-1009876543210',
-          performance: {
-            extraction: {
-              averageSpeed: 150, // members per minute
-              averageAccuracy: 95,
-              totalProcessed: 25000
-            },
-            filtering: {
-              averageFilterRate: 60, // percentage kept
-              mostUsedFilter: 'hasPhoto',
-              totalFiltered: 15000
-            },
-            adding: {
-              averageSpeed: 45, // members per minute
-              averageSuccessRate: 85,
-              totalAdded: 18000
-            }
-          },
-          trends: {
-            dailyStats: [
-              { date: '2026-02-09', pipelines: 2, success: 100, membersAdded: 2400 },
-              { date: '2026-02-08', pipelines: 3, success: 66, membersAdded: 3100 },
-              { date: '2026-02-07', pipelines: 1, success: 100, membersAdded: 1200 }
-            ],
-            weeklyStats: [
-              { week: '2026-W06', pipelines: 8, success: 87, membersAdded: 8900 },
-              { week: '2026-W05', pipelines: 10, success: 80, membersAdded: 9200 }
-            ]
-          }
-        };
+        const allOps = await db.getBulkOperationsByUserId(ctx.user.id);
+        const pipelines = allOps.filter(op => op.operationType === 'extract_add_pipeline');
+
+        const successful = pipelines.filter(p => p.status === 'completed');
+        const failed = pipelines.filter(p => p.status === 'failed');
+
+        const totalMembersExtracted = pipelines.reduce((sum, p) => sum + (p.totalMembers || 0), 0);
+        const totalMembersAdded = pipelines.reduce((sum, p) => sum + (p.successfulMembers || 0), 0);
+
+        const totalRuntime = pipelines.reduce((sum, p) => {
+          if (p.startedAt && p.completedAt) return sum + (p.completedAt.getTime() - p.startedAt.getTime());
+          return sum;
+        }, 0);
 
         return {
           success: true,
-          data: stats
+          data: {
+            totalPipelines: pipelines.length,
+            successfulPipelines: successful.length,
+            failedPipelines: failed.length,
+            totalMembersExtracted,
+            totalMembersAdded,
+            averageSuccessRate: pipelines.length > 0 ? (successful.length / pipelines.length) * 100 : 0,
+            averageSpeed: 0, // Hard to calc without granular logs
+            totalRuntime,
+            averageRuntime: pipelines.length > 0 ? totalRuntime / pipelines.length : 0,
+            mostActiveSourceGroup: 'Check Analytics', // Placeholder
+            mostActiveTargetGroup: 'Check Analytics', // Placeholder
+            // ... omitting detailed nested objects if they break schema, or returning safe defaults
+            performance: {
+              extraction: { averageSpeed: 0, averageAccuracy: 0, totalProcessed: totalMembersExtracted },
+              filtering: { averageFilterRate: 0, mostUsedFilter: 'N/A', totalFiltered: 0 },
+              adding: { averageSpeed: 0, averageSuccessRate: 0, totalAdded: totalMembersAdded }
+            },
+            trends: {
+              dailyStats: [], // Real implementation would Aggregation by date
+              weeklyStats: []
+            }
+          }
         };
 
       } catch (error: any) {
         logger.error('[Router] Failed to get pipeline stats', { error: error.message });
-        
+
         return {
           success: false,
           error: error.message
@@ -291,9 +324,9 @@ export const extractAddRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         // TODO: Implement pipeline cancellation
-        logger.info('[Router] Cancelling pipeline', { 
+        logger.info('[Router] Cancelling pipeline', {
           pipelineId: input.pipelineId,
-          reason: input.reason 
+          reason: input.reason
         });
 
         return {
@@ -303,7 +336,7 @@ export const extractAddRouter = router({
 
       } catch (error: any) {
         logger.error('[Router] Failed to cancel pipeline', { error: error.message });
-        
+
         return {
           success: false,
           error: error.message
@@ -380,7 +413,7 @@ export const extractAddRouter = router({
 
       } catch (error: any) {
         logger.error('[Router] Failed to get recommended filters', { error: error.message });
-        
+
         return {
           success: false,
           error: error.message
@@ -418,39 +451,11 @@ export const extractAddRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement preview without actual execution
-        const preview = {
-          estimatedExtraction: {
-            totalMembers: 5000,
-            estimatedTime: '5-10 minutes',
-            confidence: 0.85
-          },
-          estimatedFiltering: {
-            inputCount: 5000,
-            estimatedOutput: 3000,
-            filterRate: 60,
-            mostEffectiveFilters: ['hasPhoto', 'excludeBots', 'daysActive: 7']
-          },
-          estimatedAdding: {
-            inputCount: 3000,
-            estimatedSuccess: 2550,
-            estimatedFailures: 450,
-            successRate: 85,
-            estimatedTime: '45-60 minutes',
-            averageDelay: 3500
-          },
-          totalEstimate: {
-            totalTime: '60-80 minutes',
-            totalSuccess: 2550,
-            confidence: 0.80,
-            recommendedSpeed: 'medium',
-            riskLevel: 'low'
-          },
-          warnings: [
-            'Source group has high member count - extraction may take longer',
-            'Some target groups are private - ensure admin rights',
-            'Current risk score is elevated - consider using slower speed'
-          ]
+        // Real preview based on sampling
+        const preview = await extractAddPipeline.getPreview({ ...input, sourceGroupId: input.sourceGroupId, speed: input.speed, filters: input.filters as any });
+        return {
+          success: true,
+          data: preview
         };
 
         return {
@@ -460,7 +465,7 @@ export const extractAddRouter = router({
 
       } catch (error: any) {
         logger.error('[Router] Failed to preview pipeline', { error: error.message });
-        
+
         return {
           success: false,
           error: error.message
@@ -551,7 +556,7 @@ export const extractAddRouter = router({
 
       } catch (error: any) {
         logger.error('[Router] Failed to get pipeline templates', { error: error.message });
-        
+
         return {
           success: false,
           error: error.message

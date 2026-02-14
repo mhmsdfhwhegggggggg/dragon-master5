@@ -16,6 +16,8 @@ import { useColors } from "@/hooks/use-colors";
 import { trpc } from '@/lib/trpc';
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
+const trpcAny = trpc as any;
+
 /**
  * Extract & Add Screen - ULTIMATE INDUSTRIAL EDITION
  * 
@@ -24,7 +26,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
  */
 export default function ExtractAndAddScreen() {
   const colors = useColors();
-  
+
   // Form state
   const [accountId, setAccountId] = useState<number | null>(null);
   const [source, setSource] = useState('');
@@ -43,17 +45,8 @@ export default function ExtractAndAddScreen() {
   const [result, setResult] = useState<any>(null);
 
   // tRPC
-  const { data: accounts, isLoading: accountsLoading } = trpc.accounts.getAll.useQuery();
-  const startMutation = trpc.bulkOps.startExtractAndAdd.useMutation({
-    onSuccess: (data) => {
-      setCurrentJobId(data.jobId);
-      setStatus('queued');
-      Alert.alert("تم البدء", "بدأت العملية العملاقة في السيرفر. يمكنك إغلاق التطبيق وسيبقى العمل مستمراً.");
-    },
-    onError: (error) => {
-      Alert.alert("خطأ", error.message || "فشل بدء العملية");
-    }
-  });
+  const { data: accounts, isLoading: loadingAccounts } = (trpcAny.accounts.getAll.useQuery(undefined) as any);
+  const startOperationMutation = trpcAny.bulkOps.startExtractAndAdd.useMutation();
 
   const jobStatusQuery = trpc.bulkOps.getJobStatus.useQuery(
     { jobId: currentJobId || "" },
@@ -73,8 +66,8 @@ export default function ExtractAndAddScreen() {
   const handleStart = () => {
     if (!accountId) return Alert.alert("تنبيه", "يرجى اختيار حساب أولاً");
     if (!source || !target) return Alert.alert("تنبيه", "يرجى إدخال المصدر والهدف");
-    
-    startMutation.mutate({
+
+    startOperationMutation.mutate({
       accountId,
       source,
       target,
@@ -84,6 +77,15 @@ export default function ExtractAndAddScreen() {
       requireUsername,
       limit: limit ? Number(limit) : undefined,
       delayMs: Number(delayMs),
+    }, {
+      onSuccess: (data: any) => {
+        setCurrentJobId(data.jobId);
+        setStatus('queued');
+        Alert.alert("نجاح", `تم بد عملية الاستخراج والإضافة (ID: ${data.jobId})`);
+      },
+      onError: (error: any) => {
+        Alert.alert("خطأ", error.message || "فشل بدء العملية");
+      }
     });
   };
 
@@ -107,7 +109,7 @@ export default function ExtractAndAddScreen() {
           {/* Presets */}
           <View className="flex-row gap-2">
             {['توربو', 'خفي', 'وحش'].map((preset, i) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={i}
                 className="flex-1 bg-surface border border-border py-3 rounded-xl items-center"
                 onPress={() => {
@@ -124,11 +126,11 @@ export default function ExtractAndAddScreen() {
           {/* Account Selection */}
           <View className="gap-3 bg-surface rounded-2xl p-4 border border-border">
             <Text className="text-sm font-semibold text-foreground">حساب التنفيذ</Text>
-            {accountsLoading ? (
+            {loadingAccounts ? (
               <ActivityIndicator color={colors.primary} />
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
-                {accounts?.map((account) => (
+                {accounts?.map((account: any) => (
                   <TouchableOpacity
                     key={account.id}
                     onPress={() => setAccountId(account.id)}
@@ -172,7 +174,7 @@ export default function ExtractAndAddScreen() {
           {/* Advanced Filters */}
           <View className="gap-4 bg-surface rounded-2xl p-4 border border-border">
             <Text className="text-sm font-semibold text-foreground">فلاتر ذكية</Text>
-            
+
             <View className="flex-row gap-2">
               {(['all', 'engaged', 'admins'] as const).map((mode) => (
                 <TouchableOpacity
@@ -191,7 +193,7 @@ export default function ExtractAndAddScreen() {
               <Text className="text-foreground">استبعاد البوتات</Text>
               <Switch value={excludeBots} onValueChange={setExcludeBots} trackColor={{ true: colors.primary }} />
             </View>
-            
+
             <View className="flex-row items-center justify-between">
               <Text className="text-foreground">يوزر نيم مطلوب</Text>
               <Switch value={requireUsername} onValueChange={setRequireUsername} trackColor={{ true: colors.primary }} />
@@ -244,8 +246,8 @@ export default function ExtractAndAddScreen() {
           {/* Action Button */}
           <TouchableOpacity
             onPress={handleStart}
-            disabled={isRunning || startMutation.isPending}
-            className={`py-4 rounded-2xl items-center shadow-sm ${isRunning || startMutation.isPending ? 'bg-muted' : 'bg-primary'}`}
+            disabled={isRunning || startOperationMutation.isPending}
+            className={`py-4 rounded-2xl items-center shadow-sm ${isRunning || startOperationMutation.isPending ? 'bg-muted' : 'bg-primary'}`}
           >
             <View className="flex-row items-center gap-2">
               <IconSymbol name="bolt.fill" size={20} color="white" />

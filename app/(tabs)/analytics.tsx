@@ -3,6 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from '@/lib/trpc';
+
+const trpcAny = trpc as any;
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
 /**
@@ -21,7 +23,7 @@ export default function AnalyticsScreen() {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
 
   // tRPC Queries
-  const statsQuery = trpc.stats.getGlobalStats.useQuery();
+  const statsQuery = trpc.stats.getGlobalStats.useQuery(undefined);
   const performanceQuery = trpc.stats.getPerformanceMetrics.useQuery({ accountId: 1 }); // Example ID
 
   const onRefresh = async () => {
@@ -50,7 +52,7 @@ export default function AnalyticsScreen() {
 
   return (
     <ScreenContainer className="bg-background">
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
@@ -63,7 +65,7 @@ export default function AnalyticsScreen() {
             </View>
             <View className="bg-surface border border-border rounded-2xl flex-row p-1">
               {['24h', '7d', '30d'].map((range) => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   key={range}
                   onPress={() => setTimeRange(range as any)}
                   className={`px-3 py-1.5 rounded-xl ${timeRange === range ? 'bg-primary' : ''}`}
@@ -78,32 +80,32 @@ export default function AnalyticsScreen() {
 
           {/* Main Stats Grid */}
           <View className="flex-row flex-wrap gap-4">
-            <StatBox 
-              title="إجمالي الإضافات" 
-              value={statsQuery.data?.totalAdded || "45,280"} 
-              trend="+12%" 
-              icon="person.2.fill" 
-              color={colors.primary} 
+            <StatBox
+              title="إجمالي الإضافات"
+              value={statsQuery.data?.totalAdded || "45,280"}
+              trend="+12%"
+              icon="person.2.fill"
+              color={colors.primary}
             />
-            <StatBox 
-              title="معدل التحويل" 
-              value={`${(statsQuery.data?.conversionRate || 68.4).toFixed(1)}%`} 
-              trend="+5.2%" 
-              icon="chart.bar.fill" 
-              color={colors.info} 
+            <StatBox
+              title="معدل التحويل"
+              value={`${(statsQuery.data?.conversionRate || 68.4).toFixed(1)}%`}
+              trend="+5.2%"
+              icon="chart.bar.fill"
+              color={colors.info || colors.primary}
             />
-            <StatBox 
-              title="الحسابات النشطة" 
-              value={statsQuery.data?.activeAccounts || "124"} 
-              icon="Checkmark.circle.fill" 
-              color={colors.success} 
+            <StatBox
+              title="الحسابات النشطة"
+              value={statsQuery.data?.activeAccounts || "124"}
+              icon="Checkmark.circle.fill"
+              color={colors.success}
             />
-            <StatBox 
-              title="الرسائل المرسلة" 
-              value={statsQuery.data?.messagesSent || "1.2M"} 
-              trend="+8%" 
-              icon="paperplane.fill" 
-              color={colors.warning} 
+            <StatBox
+              title="الرسائل المرسلة"
+              value={statsQuery.data?.messagesSent || "1.2M"}
+              trend="+8%"
+              icon="paperplane.fill"
+              color={colors.warning}
             />
           </View>
 

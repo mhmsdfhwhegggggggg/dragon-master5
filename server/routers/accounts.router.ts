@@ -90,4 +90,18 @@ export const accountsRouter = router({
       const job = await JobQueue.enqueue("confirm-login-codes", { userId: ctx.user.id, items: input.items } as any);
       return { queued: true, jobId: job.id } as const;
     }),
+  // Get health overview (global)
+  getHealthOverview: protectedProcedure.query(async ({ ctx }) => {
+    const accounts = await dbHelper.getTelegramAccountsByUserId(ctx.user.id);
+    const healthyCount = accounts.filter(a => !a.isRestricted && a.isActive).length;
+    const restrictedCount = accounts.filter(a => a.isRestricted).length;
+    const inactiveCount = accounts.filter(a => !a.isActive).length;
+
+    return {
+      totalCount: accounts.length,
+      healthyCount,
+      restrictedCount,
+      inactiveCount,
+    };
+  }),
 });

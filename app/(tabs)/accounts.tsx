@@ -18,15 +18,10 @@ import { trpc } from "@/lib/trpc";
 export default function AccountsScreen() {
   const colors = useColors();
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Fetch accounts from API
-  const { data: accounts, isLoading, refetch } = trpc.accounts.getAll.useQuery();
-  const deleteAccountMutation = trpc.accounts.delete.useMutation({
-    onSuccess: () => {
-      refetch();
-      Alert.alert("تم", "تم حذف الحساب بنجاح");
-    },
-  });
+  const { data: accounts, isLoading, refetch } = trpc.accounts.getAll.useQuery(undefined);
+  const deleteAccountMutation = trpc.accounts.delete.useMutation();
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -62,7 +57,7 @@ export default function AccountsScreen() {
 
   return (
     <ScreenContainer className="bg-background">
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
@@ -88,14 +83,14 @@ export default function AccountsScreen() {
 
           {/* Smart Tools */}
           <View className="flex-row gap-3">
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleRemoveDuplicates}
               className="flex-1 bg-surface border border-border p-4 rounded-2xl items-center gap-2"
             >
               <IconSymbol name="trash.fill" size={20} color={colors.error} />
               <Text className="text-xs font-bold text-foreground">إزالة التكرار</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               className="flex-1 bg-surface border border-border p-4 rounded-2xl items-center gap-2"
             >
               <IconSymbol name="flame.fill" size={20} color={colors.warning} />
@@ -106,13 +101,13 @@ export default function AccountsScreen() {
           {/* Accounts List */}
           <View className="gap-4">
             <Text className="text-lg font-semibold text-foreground">قائمة الحسابات</Text>
-            
+
             {isLoading ? (
               <View className="py-12 items-center">
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : accounts && accounts.length > 0 ? (
-              accounts.map((account) => (
+              accounts.map((account: any) => (
                 <View
                   key={account.id}
                   className="bg-surface rounded-2xl p-4 border border-border shadow-sm"
@@ -133,7 +128,7 @@ export default function AccountsScreen() {
 
                       {/* Name/Username */}
                       <Text className="text-sm text-muted">
-                        {account.firstName ? `${account.firstName} ${account.lastName || ""}` : "بدون اسم"} 
+                        {account.firstName ? `${account.firstName} ${account.lastName || ""}` : "بدون اسم"}
                         {account.username ? ` (@${account.username})` : ""}
                       </Text>
 
@@ -144,9 +139,9 @@ export default function AccountsScreen() {
                           <Text className="text-[10px] font-bold text-primary">{account.warmingLevel}%</Text>
                         </View>
                         <View className="h-1.5 bg-background rounded-full overflow-hidden">
-                          <View 
-                            className="h-full bg-primary" 
-                            style={{ width: `${account.warmingLevel}%` }} 
+                          <View
+                            className="h-full bg-primary"
+                            style={{ width: `${account.warmingLevel}%` }}
                           />
                         </View>
                       </View>
@@ -168,12 +163,20 @@ export default function AccountsScreen() {
                     {/* Actions */}
                     <View className="gap-2">
                       <TouchableOpacity
-                        onPress={() => deleteAccountMutation.mutate({ id: account.id })}
+                        onPress={() => deleteAccountMutation.mutate({ id: account.id }, {
+                          onSuccess: () => {
+                            refetch();
+                            Alert.alert("تم", "تم حذف الحساب بنجاح");
+                          },
+                          onError: (err: any) => {
+                            Alert.alert("خطأ", err.message || "فشل حذف الحساب");
+                          }
+                        })}
                         className="w-10 h-10 rounded-xl bg-error/10 items-center justify-center"
                       >
                         <IconSymbol name="trash.fill" size={18} color={colors.error} />
                       </TouchableOpacity>
-                      
+
                       {!account.isActive && (
                         <TouchableOpacity
                           onPress={() => handleSmartUnban(account.phoneNumber)}

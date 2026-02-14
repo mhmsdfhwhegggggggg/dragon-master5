@@ -13,7 +13,7 @@
  * @version 2.0.0
  */
 
-import { Pool, PoolClient, PoolConfig, QueryResult } from 'pg';
+import { Pool, PoolClient, PoolConfig, QueryResult, QueryResultRow } from 'pg';
 import { EventEmitter } from 'events';
 
 export interface PoolMetrics {
@@ -40,30 +40,30 @@ export class DatabasePool extends EventEmitter {
   private queryTimes: number[] = [];
   private readonly SLOW_QUERY_THRESHOLD = 1000; // 1 second
   private readonly MAX_QUERY_TIMES = 1000; // Keep last 1000 query times
-  
+
   private constructor(config: PoolConfig) {
     super();
-    
+
     this.pool = new Pool({
       ...config,
-      
+
       // Performance settings
       max: config.max || 100,                    // Maximum connections
       min: config.min || 10,                     // Minimum connections
       idleTimeoutMillis: config.idleTimeoutMillis || 30000,    // Close idle after 30s
       connectionTimeoutMillis: config.connectionTimeoutMillis || 2000, // Connection timeout
-      
+
       // Statement timeout (10s default)
       statement_timeout: config.statement_timeout || 10000,
-      
+
       // Keep-alive
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
-      
+
       // Application name for monitoring
       application_name: 'dragon-telegram-pro',
     });
-    
+
     // Initialize metrics
     this.metrics = {
       totalConnections: 0,
@@ -75,11 +75,11 @@ export class DatabasePool extends EventEmitter {
       averageQueryTime: 0,
       slowQueries: 0,
     };
-    
+
     this.setupEventListeners();
     this.startMetricsCollection();
   }
-  
+
   /**
    * Get singleton instance
    */
@@ -92,14 +92,14 @@ export class DatabasePool extends EventEmitter {
     }
     return this.instance;
   }
-  
+
   /**
    * Initialize pool with config
    */
   static initialize(config: PoolConfig): DatabasePool {
     return this.getInstance(config);
   }
-  
+
   /**
    * Setup event listeners for monitoring
    */
@@ -109,23 +109,23 @@ export class DatabasePool extends EventEmitter {
       console.log('[DB Pool] New client connected');
       this.emit('connect', client);
     });
-    
+
     this.pool.on('acquire', (client: PoolClient) => {
       this.emit('acquire', client);
     });
-    
+
     this.pool.on('remove', (client: PoolClient) => {
       console.log('[DB Pool] Client removed');
       this.emit('remove', client);
     });
-    
+
     // Error events
     this.pool.on('error', (err: Error, client: PoolClient) => {
       console.error('[DB Pool] Unexpected error on idle client:', err);
       this.emit('error', err, client);
     });
   }
-  
+
   /**
    * Start collecting metrics periodically
    */
@@ -134,7 +134,7 @@ export class DatabasePool extends EventEmitter {
       this.updateMetrics();
     }, 10000); // Every 10 seconds
   }
-  
+
   /**
    * Update metrics from pool
    */
@@ -143,21 +143,21 @@ export class DatabasePool extends EventEmitter {
     this.metrics.idleConnections = this.pool.idleCount;
     this.metrics.activeConnections = this.pool.totalCount - this.pool.idleCount;
     this.metrics.waitingRequests = this.pool.waitingCount;
-    
+
     // Calculate average query time
     if (this.queryTimes.length > 0) {
       const sum = this.queryTimes.reduce((a, b) => a + b, 0);
       this.metrics.averageQueryTime = sum / this.queryTimes.length;
     }
-    
+
     // Emit metrics event
     this.emit('metrics', this.metrics);
   }
-  
+
   /**
    * Execute a query with automatic retry and timeout
    */
-  async query<T = any>(
+  async query<T extends QueryResultRow = any>(
     text: string,
     values?: any[],
     options: QueryOptions = {}
@@ -167,43 +167,43 @@ export class DatabasePool extends EventEmitter {
       retries = 2,
       name = 'unnamed',
     } = options;
-    
+
     let lastError: Error | null = null;
-    
+
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const startTime = Date.now();
-        
+
         // Execute query with timeout
         const result = await Promise.race([
           this.pool.query<T>(text, values),
           this.createTimeout(timeout),
         ]);
-        
+
         const queryTime = Date.now() - startTime;
-        
+
         // Record metrics
         this.metrics.totalQueries++;
         this.queryTimes.push(queryTime);
-        
+
         // Keep only recent query times
         if (this.queryTimes.length > this.MAX_QUERY_TIMES) {
           this.queryTimes.shift();
         }
-        
+
         // Check for slow query
         if (queryTime > this.SLOW_QUERY_THRESHOLD) {
           this.metrics.slowQueries++;
           console.warn(`[DB Pool] Slow query detected (${queryTime}ms): ${name}`);
           this.emit('slowQuery', { name, text, queryTime });
         }
-        
+
         return result as QueryResult<T>;
-        
+
       } catch (error: any) {
         lastError = error;
         this.metrics.failedQueries++;
-        
+
         if (attempt < retries) {
           console.warn(`[DB Pool] Query failed (attempt ${attempt + 1}/${retries + 1}):`, error.message);
           // Wait before retry (exponential backoff)
@@ -211,12 +211,12 @@ export class DatabasePool extends EventEmitter {
         }
       }
     }
-    
+
     // All retries failed
     console.error('[DB Pool] Query failed after all retries:', lastError);
     throw lastError;
   }
-  
+
   /**
    * Get a client from the pool for transaction
    */
@@ -228,7 +228,7 @@ export class DatabasePool extends EventEmitter {
       throw error;
     }
   }
-  
+
   /**
    * Execute a transaction
    */
@@ -236,7 +236,7 @@ export class DatabasePool extends EventEmitter {
     callback: (client: PoolClient) => Promise<T>
   ): Promise<T> {
     const client = await this.getClient();
-    
+
     try {
       await client.query('BEGIN');
       const result = await callback(client);
@@ -249,7 +249,7 @@ export class DatabasePool extends EventEmitter {
       client.release();
     }
   }
-  
+
   /**
    * Check pool health
    */
@@ -261,7 +261,7 @@ export class DatabasePool extends EventEmitter {
       return false;
     }
   }
-  
+
   /**
    * Get current metrics
    */
@@ -269,7 +269,7 @@ export class DatabasePool extends EventEmitter {
     this.updateMetrics();
     return { ...this.metrics };
   }
-  
+
   /**
    * Get pool statistics
    */
@@ -286,7 +286,7 @@ export class DatabasePool extends EventEmitter {
       waiting: this.pool.waitingCount,
     };
   }
-  
+
   /**
    * Close all connections
    */
@@ -295,7 +295,7 @@ export class DatabasePool extends EventEmitter {
     await this.pool.end();
     console.log('[DB Pool] All connections closed');
   }
-  
+
   /**
    * Helper: Create timeout promise
    */
@@ -306,7 +306,7 @@ export class DatabasePool extends EventEmitter {
       }, ms);
     });
   }
-  
+
   /**
    * Helper: Sleep
    */
@@ -327,9 +327,9 @@ export function initializeDatabasePool(): DatabasePool {
     connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '2000'),
     statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT || '10000'),
   };
-  
+
   const pool = DatabasePool.initialize(config);
-  
+
   console.log('[DB Pool] Initialized with config:', {
     max: config.max,
     min: config.min,
@@ -337,7 +337,7 @@ export function initializeDatabasePool(): DatabasePool {
     connectionTimeout: config.connectionTimeoutMillis,
     statementTimeout: config.statement_timeout,
   });
-  
+
   return pool;
 }
 

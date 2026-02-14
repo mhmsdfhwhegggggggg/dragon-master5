@@ -12,7 +12,7 @@
  */
 
 import * as crypto from 'crypto';
-import { hardwareId } from './hardware-id';
+import { hardwareId } from './hardware-id.js';
 
 export class SessionSecurity {
   private static ALGORITHM = 'aes-256-gcm';
@@ -26,12 +26,12 @@ export class SessionSecurity {
     const key = this.deriveKey();
     const iv = crypto.randomBytes(this.IV_LENGTH);
     const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
-    
+
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    
-    const authTag = cipher.getAuthTag().toString('hex');
-    
+
+    const authTag = (cipher as any).getAuthTag().toString('hex');
+
     // Return combined IV, AuthTag, and Encrypted Data
     return `${iv.toString('hex')}:${authTag}:${encrypted}`;
   }
@@ -44,13 +44,13 @@ export class SessionSecurity {
     const key = this.deriveKey();
     const iv = Buffer.from(ivHex, 'hex');
     const authTag = Buffer.from(authTagHex, 'hex');
-    
+
     const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
-    
+    (decipher as any).setAuthTag(authTag);
+
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    
+
     return decrypted;
   }
 

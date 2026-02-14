@@ -1,11 +1,9 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import * as db from "../db";
-import { TelegramClientService } from "../services/telegram-client.service";
+import { telegramClientService } from "../services/telegram-client.service";
 import { JobQueue } from "../_core/queue";
 import { listJobs as listBullJobs, cancelJob as cancelBullJob } from "../_core/queue";
-
-const telegramClientService = new TelegramClientService();
 
 /**
  * Bulk Operations Router
@@ -30,7 +28,7 @@ export const bulkOpsRouter = router({
       if (!account || account.userId !== ctx.user.id) {
         throw new Error("Account not found or unauthorized");
       }
-      const job = JobQueue.enqueue("send-bulk-messages", {
+      const job = await JobQueue.enqueue("send-bulk-messages", {
         accountId: input.accountId,
         userIds: input.userIds,
         messageTemplate: input.messageTemplate,
@@ -64,7 +62,7 @@ export const bulkOpsRouter = router({
         throw new Error("Account not found or unauthorized");
       }
 
-      const job = JobQueue.enqueue("extract-and-add", {
+      const job = await JobQueue.enqueue("extract-and-add", {
         accountId: input.accountId,
         source: input.source,
         target: input.target,
@@ -96,7 +94,7 @@ export const bulkOpsRouter = router({
       if (!account || account.userId !== ctx.user.id) {
         throw new Error("Account not found or unauthorized");
       }
-      const job = JobQueue.enqueue("join-groups", {
+      const job = await JobQueue.enqueue("join-groups", {
         accountId: input.accountId,
         groupLinks: input.groupLinks,
         delayMs: input.delayMs,
@@ -121,7 +119,7 @@ export const bulkOpsRouter = router({
       if (!account || account.userId !== ctx.user.id) {
         throw new Error("Account not found or unauthorized");
       }
-      const job = JobQueue.enqueue("add-users", {
+      const job = await JobQueue.enqueue("add-users", {
         accountId: input.accountId,
         groupId: input.groupId,
         userIds: input.userIds,
@@ -136,7 +134,7 @@ export const bulkOpsRouter = router({
   getJobStatus: protectedProcedure
     .input(z.object({ jobId: z.string() }))
     .query(async ({ input }) => {
-      const job = JobQueue.getJob(input.jobId);
+      const job = await JobQueue.getJob(input.jobId);
       if (!job) return { found: false } as const;
       return {
         found: true,
@@ -145,7 +143,7 @@ export const bulkOpsRouter = router({
         progress: job.progress,
         result: job.result ?? null,
         error: job.error ?? null,
-        createdAt: job.createdAt.toISOString(),
+        createdAt: job.createdAt?.toISOString() ?? null,
         startedAt: job.startedAt?.toISOString() ?? null,
         completedAt: job.completedAt?.toISOString() ?? null,
       } as const;
@@ -166,7 +164,7 @@ export const bulkOpsRouter = router({
         .optional(),
     )
     .query(async ({ input }) => {
-      const states = input?.states ?? ["waiting", "active", "delayed"] as const;
+      const states = input?.states ?? (["waiting", "active", "delayed"] as const);
       const jobs = await listBullJobs(states as any, input?.start ?? 0, input?.end ?? 50);
       return { jobs } as const;
     }),
@@ -180,6 +178,7 @@ export const bulkOpsRouter = router({
       const res = await cancelBullJob(input.jobId);
       return res;
     }),
+
   /**
    * Send bulk messages
    */
@@ -203,19 +202,19 @@ export const bulkOpsRouter = router({
 
         // Create operation record
         const operation = await db.createBulkOperation({
-          accountId: input.accountId,
+          userId: ctx.user.id,
+          name: `Bulk Messages - ${new Date().toISOString()}`,
           operationType: "messages",
           status: "running",
-          totalItems: input.userIds.length,
-          messageTemplate: input.messageTemplate,
-          delayMs: input.delayMs,
-          autoRepeat: input.autoRepeat,
-          targetData: { userIds: input.userIds },
-        });
+          totalMembers: input.userIds.length,
+          messageContent: input.messageTemplate,
+          delayBetweenMessages: input.delayMs,
+          description: JSON.stringify({ autoRepeat: input.autoRepeat, targetData: { userIds: input.userIds } }),
+        } as any);
 
         // Initialize client
         const credentials = telegramClientService.getApiCredentials();
-        const client = await telegramClientService.initializeClient(
+        await telegramClientService.initializeClient(
           input.accountId,
           account.phoneNumber,
           account.sessionString,
@@ -234,8 +233,8 @@ export const bulkOpsRouter = router({
         // Update operation
         await db.updateBulkOperation(operation.id, {
           status: "completed",
-          successCount: result.success,
-          failedCount: result.failed,
+          successfulMembers: result.success,
+          failedMembers: result.failed,
           completedAt: new Date(),
         });
 
@@ -247,13 +246,14 @@ export const bulkOpsRouter = router({
 
         // Log activity
         await db.createActivityLog({
-          accountId: input.accountId,
+          userId: ctx.user.id,
+          telegramAccountId: input.accountId,
           action: "bulk_messages_sent",
-          actionDetails: {
+          details: JSON.stringify({
             operationId: operation.id,
             success: result.success,
             failed: result.failed,
-          },
+          }),
           status: "success",
         });
 
@@ -293,16 +293,17 @@ export const bulkOpsRouter = router({
         }
 
         const operation = await db.createBulkOperation({
-          accountId: input.accountId,
+          userId: ctx.user.id,
+          name: `Join Groups - ${new Date().toISOString()}`,
           operationType: "join-groups",
           status: "running",
-          totalItems: input.groupLinks.length,
-          delayMs: input.delayMs,
-          targetData: { groupLinks: input.groupLinks },
-        });
+          totalMembers: input.groupLinks.length,
+          delayBetweenMessages: input.delayMs,
+          description: JSON.stringify({ groupLinks: input.groupLinks }),
+        } as any);
 
         const credentials = telegramClientService.getApiCredentials();
-        const client = await telegramClientService.initializeClient(
+        await telegramClientService.initializeClient(
           input.accountId,
           account.phoneNumber,
           account.sessionString,
@@ -330,19 +331,20 @@ export const bulkOpsRouter = router({
 
         await db.updateBulkOperation(operation.id, {
           status: "completed",
-          successCount: success,
-          failedCount: failed,
+          successfulMembers: success,
+          failedMembers: failed,
           completedAt: new Date(),
         });
 
         await db.createActivityLog({
-          accountId: input.accountId,
+          userId: ctx.user.id,
+          telegramAccountId: input.accountId,
           action: "groups_joined",
-          actionDetails: {
+          details: JSON.stringify({
             operationId: operation.id,
             success,
             failed,
-          },
+          }),
           status: "success",
         });
 
@@ -383,16 +385,18 @@ export const bulkOpsRouter = router({
         }
 
         const operation = await db.createBulkOperation({
-          accountId: input.accountId,
+          userId: ctx.user.id,
+          name: `Add Users - ${new Date().toISOString()}`,
           operationType: "add-users",
           status: "running",
-          totalItems: input.userIds.length,
-          delayMs: input.delayMs,
-          targetData: { groupId: input.groupId, userIds: input.userIds },
-        });
+          totalMembers: input.userIds.length,
+          targetGroupId: input.groupId,
+          delayBetweenMessages: input.delayMs,
+          description: JSON.stringify({ userIds: input.userIds }),
+        } as any);
 
         const credentials = telegramClientService.getApiCredentials();
-        const client = await telegramClientService.initializeClient(
+        await telegramClientService.initializeClient(
           input.accountId,
           account.phoneNumber,
           account.sessionString,
@@ -421,20 +425,21 @@ export const bulkOpsRouter = router({
 
         await db.updateBulkOperation(operation.id, {
           status: "completed",
-          successCount: success,
-          failedCount: failed,
+          successfulMembers: success,
+          failedMembers: failed,
           completedAt: new Date(),
         });
 
         await db.createActivityLog({
-          accountId: input.accountId,
+          userId: ctx.user.id,
+          telegramAccountId: input.accountId,
           action: "users_added_to_group",
-          actionDetails: {
+          details: JSON.stringify({
             operationId: operation.id,
             groupId: input.groupId,
             success,
             failed,
-          },
+          }),
           status: "success",
         });
 
@@ -467,7 +472,7 @@ export const bulkOpsRouter = router({
           throw new Error("Account not found or unauthorized");
         }
 
-        const operations = await db.getBulkOperationsByAccountId(input.accountId);
+        const operations = await db.getBulkOperationsByUserId(ctx.user.id);
 
         return {
           success: true,
@@ -486,8 +491,6 @@ export const bulkOpsRouter = router({
     .input(z.object({ operationId: z.number() }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // Verify ownership through operation's account
-        // This would require fetching the operation first
         await db.updateBulkOperation(input.operationId, {
           status: "cancelled",
           completedAt: new Date(),

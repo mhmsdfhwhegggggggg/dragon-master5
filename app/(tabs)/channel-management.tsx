@@ -25,10 +25,12 @@ import {
   TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { trpc } from "@/lib/trpc";
 import { IconSymbol } from '@/components/ui/icon-symbol';
+
+const trpcAny = trpc as any;
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
-import { trpc } from '@/lib/trpc';
 import { router } from 'expo-router';
 
 interface Channel {
@@ -67,72 +69,107 @@ export default function ChannelManagementScreen() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  
-  // Form states
+
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [postContentState, setPostContentState] = useState<PostContent>({
     type: 'text',
     content: ''
   });
-  
-  // tRPC queries
-  const { data: userChannels, isLoading: channelsLoading } = trpc.channelManagement.getUserChannels.useQuery();
-  const { data: channelStats, isLoading: statsLoading } = trpc.channelManagement.getChannelStats.useQuery({ 
-    accountId: 1, 
-    period: 'today' 
+
+  const [newChannel, setNewChannel] = useState({
+    title: '',
+    about: '',
+    type: 'channel' as 'channel' | 'group' | 'supergroup',
+    isPrivate: false,
+    username: ''
   });
-  
+
+  // tRPC queries
+  const accountsQuery = (trpc.accounts.getAll.useQuery(undefined) as any);
+  const accounts = accountsQuery.data || [];
+  const accountId = accounts?.[0]?.id || 0;
+
+  const userChannelsQuery = (trpc.channelManagement.getUserChannels.useQuery({ accountId: 1 }) as any);
+  const userChannels = userChannelsQuery.data || [];
+
+  const scheduleQuery = (trpc.channelManagement.getScheduledPosts.useQuery({ accountId: 1 }) as any);
+  const scheduledPosts = scheduleQuery.data || [];
+
+  const channelStatsQuery = (trpc.channelManagement.getChannelStats.useQuery({
+    accountId,
+    channelId: selectedChannel?.id || 'me',
+    period: 'today'
+  }, { enabled: !!accountId }) as any);
+
+  const channelsLoading = userChannelsQuery.isLoading;
+  const channelStats = channelStatsQuery.data;
+  const statsLoading = channelStatsQuery.isLoading;
+
   // Mutations
   const createChannel = trpc.channelManagement.createChannel.useMutation();
   const updateChannel = trpc.channelManagement.updateChannel.useMutation();
   const postContentMutation = trpc.channelManagement.postContent.useMutation();
   const transferMessages = trpc.channelManagement.transferMessages.useMutation();
-  
+
   // Refresh data
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
-      userChannels?.refetch(),
-      channelStats?.refetch()
+      userChannelsQuery.refetch(),
+      channelStatsQuery.refetch(),
+      accountsQuery.refetch()
     ]);
     setRefreshing(false);
   };
-  
+
   // Handle channel creation
-  const handleCreateChannel = async (channelData: any) => {
-    try {
-      const result = await createChannel.mutateAsync({
-        accountId: 1,
-        ...channelData
-      });
-      
-      if (result.success) {
-        Alert.alert('نجاح! 🎉', 'تم إنشاء القناة بنجاح');
-        setShowCreateModal(false);
-        userChannels?.refetch();
-      } else {
-        Alert.alert('خطأ', result.error || 'فشل إنشاء القناة');
-      }
-    } catch (error: any) {
-      Alert.alert('خطأ', error.message);
+  const handleCreateChannel = () => {
+    if (!newChannel.title) {
+      Alert.alert('خطأ', 'يرجى إدخال اسم القناة');
+      return;
     }
+
+    createChannel.mutate({
+      accountId: accountId || 1,
+      ...newChannel
+    }, {
+      onSuccess: (result: any) => {
+        if (result.success) {
+          Alert.alert('نجاح! 🎉', 'تم إنشاء القناة بنجاح');
+          setShowCreateModal(false);
+          setNewChannel({
+            title: '',
+            about: '',
+            type: 'channel',
+            isPrivate: false,
+            username: ''
+          });
+          userChannelsQuery.refetch();
+        } else {
+          Alert.alert('خطأ', result.error || 'فشل إنشاء القناة');
+        }
+      },
+      onError: (error: any) => {
+        Alert.alert('خطأ', error.message);
+      }
+    });
   };
-  
+
   // Handle content posting
   const handlePostContent = async () => {
     if (!selectedChannel) {
       Alert.alert('خطأ', 'يرجى اختيار قناة أولاً');
       return;
     }
-    
+
     try {
       const result = await postContentMutation.mutateAsync({
         accountId: 1,
         channelId: selectedChannel.id,
         content: postContentState
       });
-      
+
       if (result.success) {
         Alert.alert('نجاح! 📤', 'تم نشر المحتوى بنجاح');
         setShowPostModal(false);
@@ -144,7 +181,7 @@ export default function ChannelManagementScreen() {
       Alert.alert('خطأ', error.message);
     }
   };
-  
+
   // Handle message transfer
   const handleTransferMessages = async (transferData: any) => {
     try {
@@ -152,7 +189,7 @@ export default function ChannelManagementScreen() {
         accountId: 1,
         ...transferData
       });
-      
+
       if (result.success) {
         Alert.alert('نجاح! 🔄', `تم نقل ${result.data.transferredCount} رسالة بنجاح`);
         setShowTransferModal(false);
@@ -163,7 +200,7 @@ export default function ChannelManagementScreen() {
       Alert.alert('خطأ', error.message);
     }
   };
-  
+
   return (
     <ScreenContainer className="bg-background">
       <SafeAreaView className="flex-1">
@@ -174,7 +211,7 @@ export default function ChannelManagementScreen() {
             <IconSymbol name="plus.circle.fill" size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
-        
+
         {/* Tabs */}
         <View className="flex-row bg-surface border-b border-border">
           {[
@@ -186,41 +223,39 @@ export default function ChannelManagementScreen() {
             <TouchableOpacity
               key={tab.key}
               onPress={() => setActiveTab(tab.key as any)}
-              className={`flex-1 py-3 ${
-                activeTab === tab.key ? 'border-b-2 border-primary' : ''
-              }`}
+              className={`flex-1 py-3 ${activeTab === tab.key ? 'border-b-2 border-primary' : ''
+                }`}
             >
               <View className="items-center">
-                <IconSymbol 
-                  name={tab.icon} 
-                  size={20} 
-                  color={activeTab === tab.key ? colors.primary : colors.muted} 
+                <IconSymbol
+                  name={tab.icon}
+                  size={20}
+                  color={activeTab === tab.key ? colors.primary : colors.muted}
                 />
-                <Text className={`text-sm mt-1 ${
-                  activeTab === tab.key ? 'text-primary' : 'text-muted'
-                }`}>
+                <Text className={`text-sm mt-1 ${activeTab === tab.key ? 'text-primary' : 'text-muted'
+                  }`}>
                   {tab.label}
                 </Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
-        
+
         {/* Content */}
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         >
           {activeTab === 'channels' && (
             <View className="p-6 space-y-4">
               <Text className="text-lg font-semibold text-foreground mb-4">قنواتي</Text>
-              
+
               {channelsLoading ? (
                 <View className="items-center justify-center py-8">
                   <ActivityIndicator size="large" color={colors.primary} />
                 </View>
               ) : (
-                channels.map((channel) => (
+                (userChannels as any)?.data?.channels?.map((channel: any) => (
                   <TouchableOpacity
                     key={channel.id}
                     onPress={() => setSelectedChannel(channel)}
@@ -247,7 +282,7 @@ export default function ChannelManagementScreen() {
                         <IconSymbol name="chevron.left" size={16} color={colors.muted} />
                       </View>
                     </View>
-                    
+
                     {channel.statistics && (
                       <View className="mt-3 pt-3 border-t border-border">
                         <View className="flex-row justify-between">
@@ -265,7 +300,7 @@ export default function ChannelManagementScreen() {
               )}
             </View>
           )}
-          
+
           {activeTab === 'posts' && (
             <View className="p-6 space-y-4">
               <View className="flex-row items-center justify-between mb-4">
@@ -274,7 +309,7 @@ export default function ChannelManagementScreen() {
                   <IconSymbol name="plus.circle.fill" size={24} color={colors.primary} />
                 </TouchableOpacity>
               </View>
-              
+
               {/* Quick Post Templates */}
               <View className="grid grid-cols-2 gap-3">
                 {[
@@ -300,7 +335,7 @@ export default function ChannelManagementScreen() {
               </View>
             </View>
           )}
-          
+
           {activeTab === 'transfer' && (
             <View className="p-6 space-y-4">
               <View className="flex-row items-center justify-between mb-4">
@@ -309,7 +344,7 @@ export default function ChannelManagementScreen() {
                   <IconSymbol name="arrow.left.arrow.right" size={24} color={colors.primary} />
                 </TouchableOpacity>
               </View>
-              
+
               {/* Recent Transfers */}
               <View className="space-y-3">
                 {[
@@ -336,9 +371,8 @@ export default function ChannelManagementScreen() {
                         <Text className="text-sm text-muted">{transfer.messages} رسالة</Text>
                       </View>
                       <View className="items-center">
-                        <Text className={`text-sm font-semibold ${
-                          transfer.success > 140 ? 'text-success' : transfer.success > 100 ? 'text-warning' : 'text-error'
-                        }`}>
+                        <Text className={`text-sm font-semibold ${transfer.success > 140 ? 'text-success' : transfer.success > 100 ? 'text-warning' : 'text-error'
+                          }`}>
                           {transfer.success}
                         </Text>
                         <Text className="text-xs text-muted">{transfer.time}</Text>
@@ -349,7 +383,7 @@ export default function ChannelManagementScreen() {
               </View>
             </View>
           )}
-          
+
           {activeTab === 'schedule' && (
             <View className="p-6 space-y-4">
               <View className="flex-row items-center justify-between mb-4">
@@ -358,7 +392,7 @@ export default function ChannelManagementScreen() {
                   <IconSymbol name="plus.circle.fill" size={24} color={colors.primary} />
                 </TouchableOpacity>
               </View>
-              
+
               {/* Scheduled Posts */}
               <View className="space-y-3">
                 {[
@@ -392,10 +426,10 @@ export default function ChannelManagementScreen() {
                       </View>
                     </View>
                     <Text className="text-xs text-muted">
-                      {post.schedule.toLocaleString('ar-EG', { 
-                        hour: '2-digit', 
-                        minute: '2-digit', 
-                        hour12: true 
+                      {post.schedule.toLocaleString('ar-EG', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
                       })}
                     </Text>
                   </View>
@@ -404,7 +438,7 @@ export default function ChannelManagementScreen() {
             </View>
           )}
         </ScrollView>
-        
+
         {/* Create Channel Modal */}
         <Modal
           visible={showCreateModal}
@@ -418,41 +452,59 @@ export default function ChannelManagementScreen() {
                 <IconSymbol name="xmark" size={24} color={colors.muted} />
               </TouchableOpacity>
             </View>
-            
+
             <View className="p-6 space-y-4">
               <View>
                 <Text className="text-sm text-muted mb-2">اسم القناة</Text>
                 <TextInput
                   className="text-foreground bg-surface border border-border rounded-lg p-3"
                   placeholder="أدخل اسم القناة"
+                  value={newChannel.title}
+                  onChangeText={(text) => setNewChannel({ ...newChannel, title: text })}
                 />
               </View>
-              
+
               <View>
                 <Text className="text-sm text-muted mb-2">الوصف</Text>
                 <TextInput
                   className="text-foreground bg-surface border border-border rounded-lg p-3 h-20"
                   placeholder="أدخل وصف القناة"
                   multiline
+                  value={newChannel.about}
+                  onChangeText={(text) => setNewChannel({ ...newChannel, about: text })}
                 />
               </View>
-              
+
               <View className="flex-row gap-3">
-                <TouchableOpacity className="flex-1 bg-primary rounded-lg p-3">
-                  <Text className="text-white font-medium text-center">قناة</Text>
+                <TouchableOpacity
+                  onPress={() => setNewChannel({ ...newChannel, type: 'channel' })}
+                  className={`flex-1 rounded-lg p-3 ${newChannel.type === 'channel' ? 'bg-primary' : 'bg-surface border border-border'}`}
+                >
+                  <Text className={`${newChannel.type === 'channel' ? 'text-white' : 'text-foreground'} font-medium text-center`}>قناة</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-1 bg-surface border border-border rounded-lg p-3">
-                  <Text className="text-foreground font-medium text-center">مجموعة</Text>
+                <TouchableOpacity
+                  onPress={() => setNewChannel({ ...newChannel, type: 'group' })}
+                  className={`flex-1 rounded-lg p-3 ${newChannel.type === 'group' ? 'bg-primary' : 'bg-surface border border-border'}`}
+                >
+                  <Text className={`${newChannel.type === 'group' ? 'text-white' : 'text-foreground'} font-medium text-center`}>مجموعة</Text>
                 </TouchableOpacity>
               </View>
-              
-              <TouchableOpacity className="bg-primary rounded-xl p-4">
-                <Text className="text-white font-semibold">إنشاء القناة</Text>
+
+              <TouchableOpacity
+                onPress={handleCreateChannel}
+                className="bg-primary rounded-xl p-4"
+                disabled={createChannel.isPending}
+              >
+                {createChannel.isPending ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white font-semibold text-center">إنشاء القناة</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
-        
+
         {/* Post Content Modal */}
         <Modal
           visible={showPostModal}
@@ -466,7 +518,7 @@ export default function ChannelManagementScreen() {
                 <IconSymbol name="xmark" size={24} color={colors.muted} />
               </TouchableOpacity>
             </View>
-            
+
             <View className="p-6 space-y-4">
               <View>
                 <Text className="text-sm text-muted mb-2">اختر القناة</Text>
@@ -474,7 +526,7 @@ export default function ChannelManagementScreen() {
                   <Text className="text-muted">اختر قناة من القائمة</Text>
                 </View>
               </View>
-              
+
               <View>
                 <Text className="text-sm text-muted mb-2">المحتوى</Text>
                 <TextInput
@@ -485,7 +537,7 @@ export default function ChannelManagementScreen() {
                   onChangeText={(text: string) => setPostContentState({ ...postContentState, content: text })}
                 />
               </View>
-              
+
               <View className="flex-row gap-3">
                 <TouchableOpacity className="flex-1 bg-primary rounded-lg p-3">
                   <Text className="text-white font-medium text-center">نشر الآن</Text>

@@ -53,8 +53,8 @@ export const SESSION_TOKEN_KEY = "app_session_token";
 export const USER_INFO_KEY = "manus-runtime-user-info";
 
 const encodeState = (value: string) => {
-  if (typeof globalThis.btoa === "function") {
-    return globalThis.btoa(value);
+  if (typeof (globalThis as any).btoa === "function") {
+    return (globalThis as any).btoa(value);
   }
   const BufferImpl = (globalThis as Record<string, any>).Buffer;
   if (BufferImpl) {

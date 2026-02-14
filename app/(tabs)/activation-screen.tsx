@@ -20,7 +20,7 @@ export default function ActivationScreen() {
   const [isActivating, setIsActivating] = useState(false);
 
   // tRPC queries
-  const { data: hardwareIdData } = trpc.license.generateHardwareId.useQuery();
+  const { data: hardwareIdData } = trpc.license.generateHardwareId.useQuery(undefined);
 
   // tRPC mutations
   const activateLicense = trpc.license.activateLicense.useMutation();
@@ -44,26 +44,26 @@ export default function ActivationScreen() {
     }
 
     setIsActivating(true);
-    try {
-      const result = await activateLicense.mutateAsync({
-        licenseKey: licenseKey.trim(),
-        hardwareId: hardwareId.trim(),
-      });
-
-      if (result.success) {
-        Alert.alert(
-          '✅ نجاح التفعيل',
-          'تم تفعيل الترخيص بنجاح! يمكنك الآن استخدام جميع ميزات التطبيق.',
-          [{ text: 'حسناً', style: 'default' }]
-        );
-      } else {
-        Alert.alert('❌ فشل التفعيل', result.message || 'فشل تفعيل الترخيص');
+    activateLicense.mutate({
+      licenseKey: licenseKey.trim(),
+      hardwareId: hardwareId.trim(),
+    }, {
+      onSuccess: (result: any) => {
+        if (result.success) {
+          Alert.alert(
+            '✅ نجاح التفعيل',
+            'تم تفعيل الترخيص بنجاح! يمكنك الآن استخدام جميع ميزات التطبيق.',
+            [{ text: 'حسناً', style: 'default' }]
+          );
+        } else {
+          Alert.alert('❌ فشل التفعيل', result.message || 'فشل تفعيل الترخيص');
+        }
+      },
+      onError: () => {
+        Alert.alert('❌ خطأ', 'حدث خطأ أثناء تفعيل الترخيص');
       }
-    } catch (error) {
-      Alert.alert('❌ خطأ', 'حدث خطأ أثناء تفعيل الترخيص');
-    } finally {
-      setIsActivating(false);
-    }
+    });
+    setIsActivating(false);
   };
 
   const handleOfflineActivation = async () => {
@@ -94,32 +94,33 @@ export default function ActivationScreen() {
       return;
     }
 
-    try {
-      const result = await validateLicense.mutateAsync({
-        licenseKey: licenseKey.trim(),
-        hardwareId: hardwareId.trim(),
-      });
+    validateLicense.mutate({
+      licenseKey: licenseKey.trim(),
+      hardwareId: hardwareId.trim(),
+    }, {
+      onSuccess: (result: any) => {
+        if (result.success) {
+          const { valid, errors, warnings, remainingDays, usageRemaining } = result.validation;
 
-      if (result.success) {
-        const { valid, errors, warnings, remainingDays, usageRemaining } = result.validation;
-        
-        let message = valid ? '✅ الترخيص صالح' : '❌ الترخيص غير صالح';
-        
-        if (valid) {
-          if (remainingDays) message += `\n📅 الأيام المتبقية: ${remainingDays}`;
-          if (usageRemaining !== undefined) message += `\n📊 الاستخدام المتبقي: ${usageRemaining}`;
-          if (warnings.length > 0) message += `\n⚠️ تحذيرات: ${warnings.join(', ')}`;
+          let message = valid ? '✅ الترخيص صالح' : '❌ الترخيص غير صالح';
+
+          if (valid) {
+            if (remainingDays) message += `\n📅 الأيام المتبقية: ${remainingDays}`;
+            if (usageRemaining !== undefined) message += `\n📊 الاستخدام المتبقي: ${usageRemaining}`;
+            if (warnings.length > 0) message += `\n⚠️ تحذيرات: ${warnings.join(', ')}`;
+          } else {
+            message += `\n❌ الأخطاء: ${errors.join(', ')}`;
+          }
+
+          Alert.alert('نتيجة التحقق', message);
         } else {
-          message += `\n❌ الأخطاء: ${errors.join(', ')}`;
+          Alert.alert('خطأ', result.error || 'فشل التحقق من الترخيص');
         }
-        
-        Alert.alert('نتيجة التحقق', message);
-      } else {
-        Alert.alert('خطأ', result.error || 'فشل التحقق من الترخيص');
+      },
+      onError: () => {
+        Alert.alert('خطأ', 'حدث خطأ أثناء التحقق');
       }
-    } catch (error) {
-      Alert.alert('خطأ', 'حدث خطأ أثناء التحقق');
-    }
+    });
   };
 
   return (
@@ -159,7 +160,7 @@ export default function ActivationScreen() {
               🌐 عبر الإنترنت
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[
               styles.modeButton,
@@ -180,7 +181,7 @@ export default function ActivationScreen() {
       {activationMode === 'online' ? (
         <View style={styles.activationSection}>
           <Text style={styles.sectionTitle}>🌐 التفعيل عبر الإنترنت</Text>
-          
+
           <View style={styles.inputSection}>
             <Text style={styles.inputLabel}>🔑 مفتاح الترخيص</Text>
             <TextInput
@@ -216,7 +217,7 @@ export default function ActivationScreen() {
       ) : (
         <View style={styles.activationSection}>
           <Text style={styles.sectionTitle}>📱 التفعيل بدون إنترنت</Text>
-          
+
           <View style={styles.inputSection}>
             <Text style={styles.inputLabel}>📄 ملف التفعيل</Text>
             <TextInput
@@ -246,7 +247,7 @@ export default function ActivationScreen() {
 
       <View style={styles.infoSection}>
         <Text style={styles.infoTitle}>ℹ️ معلومات هامة</Text>
-        
+
         <View style={styles.infoCard}>
           <Text style={styles.infoItem}>🔒 الترخيص مرتبط بجهازك فقط</Text>
           <Text style={styles.infoItem}>🔄 يمكنك نقل الترخيص لجهاز آخر</Text>

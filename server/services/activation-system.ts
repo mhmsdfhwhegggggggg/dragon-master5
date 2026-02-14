@@ -1,20 +1,25 @@
 import { licenseManager } from './license-manager';
-import { getDb } from '../db';
+import { getDb, sql } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
 import { licenses, subscriptions } from '../db/schema';
 import crypto from 'crypto';
 
+// ... (previous code)
+
 /**
- * Activation System
- * 
- * Advanced activation and deactivation system for Dragon Telegram Pro
- * Features:
- * - Hardware binding
- * - Online activation
- * - Offline activation
- * - Automatic renewal
- * - Security checks
- */
+
+
+/**
+* Activation System
+* 
+* Advanced activation and deactivation system for FALCON Telegram Pro
+* Features:
+* - Hardware binding
+* - Online activation
+* - Offline activation
+* - Automatic renewal
+* - Security checks
+*/
 
 export interface ActivationRequest {
   licenseKey: string;
@@ -66,14 +71,14 @@ export class ActivationSystem {
 
       // Validate license first
       const validation = await licenseManager.validateLicense(request.licenseKey, request.hardwareId);
-      
+
       if (!validation.valid) {
         const response: ActivationResponse = {
           success: false,
           activated: false,
           message: `License validation failed: ${validation.errors.join(', ')}`,
         };
-        
+
         this.activationCache.set(cacheKey, { response, timestamp: Date.now() });
         return response;
       }
@@ -86,48 +91,48 @@ export class ActivationSystem {
           message: 'License already activated on this hardware',
           license: validation.license,
           subscription: validation.subscription,
-          expiresAt: validation.license?.expiresAt,
+          expiresAt: validation.license?.expiresAt || undefined,
           features: validation.license?.features,
           limitations: {
             maxAccounts: validation.license?.maxAccounts || 1,
             maxMessages: validation.license?.maxMessages || 1000,
-            maxUsage: validation.license?.maxUsage,
+            maxUsage: validation.license?.maxUsage || undefined,
           },
         };
-        
+
         this.activationCache.set(cacheKey, { response, timestamp: Date.now() });
         return response;
       }
 
       // Perform activation
       const activationSuccess = await licenseManager.activateLicense(request.licenseKey, request.hardwareId);
-      
+
       if (!activationSuccess) {
         const response: ActivationResponse = {
           success: false,
           activated: false,
           message: 'Failed to activate license',
         };
-        
+
         this.activationCache.set(cacheKey, { response, timestamp: Date.now() });
         return response;
       }
 
       // Get updated license info
       const updatedValidation = await licenseManager.validateLicense(request.licenseKey, request.hardwareId);
-      
+
       const response: ActivationResponse = {
         success: true,
         activated: true,
         message: 'License activated successfully',
         license: updatedValidation.license,
         subscription: updatedValidation.subscription,
-        expiresAt: updatedValidation.license?.expiresAt,
+        expiresAt: updatedValidation.license?.expiresAt || undefined,
         features: updatedValidation.license?.features,
         limitations: {
           maxAccounts: updatedValidation.license?.maxAccounts || 1,
           maxMessages: updatedValidation.license?.maxMessages || 1000,
-          maxUsage: updatedValidation.license?.maxUsage,
+          maxUsage: updatedValidation.license?.maxUsage || undefined,
         },
         activationId: this.generateActivationId(),
       };
@@ -154,7 +159,7 @@ export class ActivationSystem {
     try {
       // Validate license first
       const validation = await licenseManager.validateLicense(licenseKey, hardwareId);
-      
+
       if (!validation.valid) {
         return {
           success: false,
@@ -174,7 +179,7 @@ export class ActivationSystem {
 
       // Deactivate license
       const deactivationSuccess = await licenseManager.deactivateLicense(licenseKey);
-      
+
       if (!deactivationSuccess) {
         return {
           success: false,
@@ -217,20 +222,20 @@ export class ActivationSystem {
 
       // Validate license
       const validation = await licenseManager.validateLicense(licenseKey, hardwareId);
-      
+
       if (!validation.valid) {
         const response: ActivationResponse = {
           success: false,
           activated: false,
           message: `License validation failed: ${validation.errors.join(', ')}`,
         };
-        
+
         this.activationCache.set(cacheKey, { response, timestamp: Date.now() });
         return response;
       }
 
-      const isActive = validation.license?.status === 'active' && 
-                      validation.license?.hardwareId === hardwareId;
+      const isActive = validation.license?.status === 'active' &&
+        validation.license?.hardwareId === hardwareId;
 
       const response: ActivationResponse = {
         success: true,
@@ -238,12 +243,12 @@ export class ActivationSystem {
         message: isActive ? 'License is active' : 'License is not active',
         license: validation.license,
         subscription: validation.subscription,
-        expiresAt: validation.license?.expiresAt,
+        expiresAt: validation.license?.expiresAt || undefined,
         features: validation.license?.features,
         limitations: {
           maxAccounts: validation.license?.maxAccounts || 1,
           maxMessages: validation.license?.maxMessages || 1000,
-          maxUsage: validation.license?.maxUsage,
+          maxUsage: validation.license?.maxUsage || undefined,
         },
       };
 
@@ -266,7 +271,7 @@ export class ActivationSystem {
   async generateOfflineActivationFile(licenseKey: string, hardwareId: string): Promise<string | null> {
     try {
       const activation = await this.activateLicense({ licenseKey, hardwareId });
-      
+
       if (!activation.success) {
         return null;
       }
@@ -284,7 +289,7 @@ export class ActivationSystem {
 
       // Encrypt activation data
       const encryptedData = licenseManager.encrypt(JSON.stringify(activationData));
-      
+
       return encryptedData;
 
     } catch (error) {
@@ -300,7 +305,7 @@ export class ActivationSystem {
     try {
       // Decrypt activation data
       const activationData = JSON.parse(licenseManager.decrypt(encryptedData));
-      
+
       // Verify hardware ID
       if (activationData.hardwareId !== hardwareId) {
         return {
@@ -373,7 +378,8 @@ export class ActivationSystem {
   }
 
   /**
-   * Get activation statistics
+  /**
+   * Get activation statistics (REAL IMPLEMENTATION)
    */
   async getActivationStats(): Promise<{
     totalActivations: number;
@@ -394,14 +400,32 @@ export class ActivationSystem {
         };
       }
 
-      // This would query activation logs from database
-      // For now, return mock data
+      // Count total licenses
+      const totalResult = await db.execute(sql`SELECT count(*) as count FROM licenses`);
+      const totalActivations = Number(totalResult[0]?.count) || 0;
+
+      // Count active licenses
+      const activeResult = await db.execute(sql`SELECT count(*) as count FROM licenses WHERE status = 'active'`);
+      const activeActivations = Number(activeResult[0]?.count) || 0;
+
+      // Count expired licenses
+      const expiredResult = await db.execute(sql`SELECT count(*) as count FROM licenses WHERE status = 'expired'`);
+      const expiredActivations = Number(expiredResult[0]?.count) || 0;
+
+      // Count recent activations (last 24h)
+      // Note: We use raw sql for date comparison for simplicity with postgres driver
+      const recentResult = await db.execute(sql`SELECT count(*) as count FROM licenses WHERE "activatedAt" > NOW() - INTERVAL '24 hours'`);
+      const recentActivations = Number(recentResult[0]?.count) || 0;
+
+      // Hardware changes - Placeholder as we don't track this yet
+      const hardwareChanges = 0;
+
       return {
-        totalActivations: 450,
-        activeActivations: 320,
-        expiredActivations: 130,
-        hardwareChanges: 25,
-        recentActivations: 45,
+        totalActivations,
+        activeActivations,
+        expiredActivations,
+        hardwareChanges,
+        recentActivations,
       };
 
     } catch (error) {
@@ -422,13 +446,13 @@ export class ActivationSystem {
   async checkAutomaticRenewal(licenseKey: string): Promise<boolean> {
     try {
       const validation = await licenseManager.validateLicense(licenseKey);
-      
+
       if (!validation.valid || !validation.subscription) {
         return false;
       }
 
       const subscription = validation.subscription;
-      
+
       // Check if auto-renew is enabled and subscription is expiring soon
       if (!subscription.autoRenew || !subscription.nextBillingDate) {
         return false;
@@ -453,14 +477,14 @@ export class ActivationSystem {
   async processAutomaticRenewal(licenseKey: string): Promise<boolean> {
     try {
       const validation = await licenseManager.validateLicense(licenseKey);
-      
+
       if (!validation.valid || !validation.subscription) {
         return false;
       }
 
       // Renew subscription
       const renewalSuccess = await licenseManager.renewSubscription(validation.subscription.id);
-      
+
       if (renewalSuccess) {
         // Clear cache to force revalidation
         this.clearCache();

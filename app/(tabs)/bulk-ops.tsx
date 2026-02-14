@@ -5,6 +5,8 @@ import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
+const trpcAny = trpc as any;
+
 /**
  * Bulk Operations Screen - Power Edition
  * 
@@ -22,23 +24,15 @@ export default function BulkOpsScreen() {
   const [jobId, setJobId] = useState<string | null>(null);
 
   // Fetch accounts for selection
-  const { data: accounts, isLoading: loadingAccounts } = trpc.accounts.getAll.useQuery();
-  
+  const { data: accounts, isLoading: loadingAccounts } = trpc.accounts.getAll.useQuery(undefined) as any;
+
   // API Mutations
-  const startBulkMutation = trpc.bulkOps.startSendBulkMessages.useMutation({
-    onSuccess: (data) => {
-      setJobId(data.jobId);
-      Alert.alert("تم البدء", "تمت إضافة العملية إلى طابور التنفيذ في السيرفر");
-    },
-    onError: (error) => {
-      Alert.alert("خطأ", error.message || "فشل بدء العملية");
-    },
-  });
+  const startBulkMutation = trpc.bulkOps.startSendBulkMessages.useMutation();
 
   const jobStatusQuery = trpc.bulkOps.getJobStatus.useQuery(
     { jobId: jobId || "" },
     { enabled: !!jobId, refetchInterval: jobId ? 2000 : false }
-  );
+  ) as any;
 
   const operationTypes = [
     { id: "messages", label: "رسائل جماعية", icon: "paperplane.fill" as const, color: colors.primary },
@@ -49,9 +43,9 @@ export default function BulkOpsScreen() {
   const handleStart = () => {
     if (!selectedAccountId) return Alert.alert("تنبيه", "يرجى اختيار حساب أولاً");
     if (!targetList.trim()) return Alert.alert("تنبيه", "يرجى إدخال قائمة الأهداف");
-    
+
     const targets = targetList.split('\n').map(t => t.trim()).filter(t => t.length > 0);
-    
+
     if (operationType === "messages") {
       if (!messageTemplate) return Alert.alert("تنبيه", "يرجى إدخال نص الرسالة");
       startBulkMutation.mutate({
@@ -60,6 +54,14 @@ export default function BulkOpsScreen() {
         messageTemplate,
         delayMs: parseInt(delayMs) || 2000,
         autoRepeat,
+      }, {
+        onSuccess: (data: any) => {
+          setJobId(data.jobId);
+          Alert.alert("تم البدء", "تمت إضافة العملية إلى طابور التنفيذ في السيرفر");
+        },
+        onError: (error: any) => {
+          Alert.alert("خطأ", error.message || "فشل بدء العملية");
+        },
       });
     } else {
       Alert.alert("قيد التطوير", "سيتم تفعيل هذا النوع من العمليات في التحديث القادم");
@@ -85,7 +87,7 @@ export default function BulkOpsScreen() {
               <ActivityIndicator color={colors.primary} />
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
-                {accounts?.map((account) => (
+                {(accounts as any)?.map((account: any) => (
                   <Pressable
                     key={account.id}
                     onPress={() => setSelectedAccountId(account.id)}
@@ -186,14 +188,14 @@ export default function BulkOpsScreen() {
                   </Text>
                 </View>
               </View>
-              
+
               <View className="h-2 bg-background rounded-full overflow-hidden">
-                <View 
-                  className="h-full bg-primary" 
-                  style={{ width: `${jobStatusQuery.data.progress}%` }} 
+                <View
+                  className="h-full bg-primary"
+                  style={{ width: `${jobStatusQuery.data.progress}%` }}
                 />
               </View>
-              
+
               <View className="flex-row justify-between">
                 <Text className="text-xs text-muted">التقدم: {jobStatusQuery.data.progress}%</Text>
                 {jobStatusQuery.data.result && (

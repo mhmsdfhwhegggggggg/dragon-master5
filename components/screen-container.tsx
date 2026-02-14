@@ -1,5 +1,5 @@
 import { View, type ViewProps } from "react-native";
-import { SafeAreaView, type Edge } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { cn } from "@/lib/utils";
 
@@ -8,7 +8,7 @@ export interface ScreenContainerProps extends ViewProps {
    * SafeArea edges to apply. Defaults to ["top", "left", "right"].
    * Bottom is typically handled by Tab Bar.
    */
-  edges?: Edge[];
+  edges?: any[];
   /**
    * Tailwind className for the content area.
    */

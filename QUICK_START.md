@@ -1,4 +1,4 @@
-# Dragon Telegram Pro - Quick Start Guide
+# FALCON Telegram Pro - Quick Start Guide
 
 ## Prerequisites Completed ✅
 
@@ -158,9 +158,9 @@ The following environment variables are configured in `/home/ubuntu/.env`:
 
 ```env
 DATABASE_URL=postgresql://postgres:password@localhost:5432/dragon_telegram_pro
-JWT_SECRET=dragon_telegram_pro_secret_key_2024
+JWT_SECRET=falcon_telegram_pro_secret_key_2024
 OAUTH_SERVER_URL=https://oauth.manus.im
-VITE_APP_ID=dragon-telegram-pro
+VITE_APP_ID=falcon-telegram-pro
 NODE_ENV=development
 EXPO_PORT=8081
 ```

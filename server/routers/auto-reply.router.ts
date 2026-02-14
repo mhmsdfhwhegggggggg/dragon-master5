@@ -58,14 +58,15 @@ export const autoReplyRouter = router({
         const rule = await autoReplyService.createRule({
           name: input.name,
           accountId: input.accountId,
+          userId: ctx.user.id,
           keywords: input.keywords,
-          matchType: input.matchType,
-          replyType: input.replyType,
+          matchType: input.matchType as any,
+          replyType: input.replyType as any,
           replyContent: input.replyContent,
           aiPrompt: input.aiPrompt,
-          delay: input.delay,
-          reactions: input.reactions,
-          options: input.options,
+          delay: input.delay as any,
+          reactions: input.reactions || [],
+          options: input.options as any,
           priority: 1, // Default priority
           isActive: input.isActive
         });
@@ -86,8 +87,6 @@ export const autoReplyRouter = router({
     }),
 
   /**
-   * Get reply rules for account
-   */
   getRules: protectedProcedure
     .input(z.object({
       accountId: z.number(),
@@ -97,66 +96,16 @@ export const autoReplyRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement rules retrieval from database
-        const rules = [
-          {
-            id: 'rule-1',
-            name: 'Price Inquiries',
-            accountId: input.accountId,
-            keywords: ['السعر', 'كم', 'التكلفة', 'price', 'cost'],
-            matchType: 'contains',
-            replyType: 'fixed',
-            replyContent: 'السعر 100 ريال فقط! 🎉',
-            delay: { min: 2000, max: 5000 },
-            reactions: ['👍', '💰'],
-            options: {
-              targetTypes: ['private', 'group'],
-              markAsRead: true,
-              dailyLimit: 50,
-              priority: 8
-            },
-            isActive: true,
-            createdAt: new Date('2026-02-01'),
-            usageCount: 15,
-            lastUsed: new Date('2026-02-09T10:30:00Z')
-          },
-          {
-            id: 'rule-2',
-            name: 'Welcome Messages',
-            accountId: input.accountId,
-            keywords: ['اهلا', 'مرحبا', 'hello', 'hi'],
-            matchType: 'exact',
-            replyType: 'template',
-            replyContent: [
-              'أهلا بك! كيف يمكنني مساعدتك؟ 😊',
-              'مرحبا! أهلا بيك في مجموعتنا 🎉',
-              'Hello! Welcome to our group! 👋'
-            ],
-            delay: { min: 1500, max: 3000 },
-            reactions: ['👋', '😊'],
-            options: {
-              targetTypes: ['group', 'supergroup'],
-              markAsRead: true,
-              dailyLimit: 100,
-              priority: 6
-            },
-            isActive: true,
-            createdAt: new Date('2026-02-05'),
-            usageCount: 45,
-            lastUsed: new Date('2026-02-09T14:20:00Z')
-          }
-        ];
-
-        const filtered = input.isActive !== undefined 
-          ? rules.filter(r => r.isActive === input.isActive)
-          : rules;
+        const rules = await autoReplyService.getRules(input.accountId, {
+          isActive: input.isActive
+        });
 
         return {
           success: true,
           data: {
-            rules: filtered.slice(input.offset, input.offset + input.limit),
-            total: filtered.length,
-            hasMore: input.offset + input.limit < filtered.length
+            rules: rules.slice(input.offset, input.offset + input.limit),
+            total: rules.length,
+            hasMore: input.offset + input.limit < rules.length
           }
         };
 
@@ -198,7 +147,7 @@ export const autoReplyRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement rule update
+        await autoReplyService.updateRule(input.ruleId, input.updates as any);
         return {
           success: true,
           message: 'Reply rule updated successfully'
@@ -223,7 +172,7 @@ export const autoReplyRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement rule deletion
+        await autoReplyService.deleteRule(input.ruleId, input.accountId);
         return {
           success: true,
           message: 'Reply rule deleted successfully'
@@ -249,37 +198,10 @@ export const autoReplyRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const stats = await autoReplyService.getReplyStats(input.accountId);
-
         return {
           success: true,
-          data: {
-            ...stats,
-            period: input.period,
-            detailedStats: {
-              topKeywords: [
-                { keyword: 'السعر', count: 25, successRate: 95 },
-                { keyword: 'مرحبا', count: 18, successRate: 100 },
-                { keyword: 'كم', count: 12, successRate: 92 }
-              ],
-              responseTimes: [
-                { hour: '09:00', responses: 8 },
-                { hour: '14:00', responses: 15 },
-                { hour: '19:00', responses: 22 }
-              ],
-              successByType: {
-                'fixed': 85,
-                'template': 92,
-                'ai': 78
-              },
-              dailyTrends: [
-                { date: '2026-02-09', replies: 45, successRate: 88 },
-                { date: '2026-02-08', replies: 38, successRate: 91 },
-                { date: '2026-02-07', replies: 52, successRate: 85 }
-              ]
-            }
-          }
+          data: stats
         };
-
       } catch (error: any) {
         return {
           success: false,
@@ -341,7 +263,7 @@ export const autoReplyRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement rule toggle
+        await autoReplyService.updateRule(input.ruleId, { isActive: input.isActive } as any);
         return {
           success: true,
           message: `Rule ${input.isActive ? 'activated' : 'deactivated'} successfully`
@@ -414,7 +336,7 @@ export const autoReplyRouter = router({
           ]
         };
 
-        const categoryTemplates = input.category 
+        const categoryTemplates = input.category
           ? templates[input.category]
           : Object.values(templates).flat();
 
@@ -464,8 +386,8 @@ export const autoReplyRouter = router({
         return {
           success: true,
           data: {
-            suggestions: suggestions.filter(s => 
-              input.keywords.length === 0 || 
+            suggestions: suggestions.filter(s =>
+              input.keywords.length === 0 ||
               input.keywords.some(k => s.keyword.includes(k))
             ),
             totalGenerated: suggestions.length

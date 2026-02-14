@@ -7,7 +7,7 @@ export class RiskDetectionSystem {
   private riskModels: Map<string, RiskModel> = new Map();
   private alertHistory: Map<number, AlertRecord[]> = new Map();
   private thresholds: RiskThresholds;
-  
+
   private constructor() {
     this.thresholds = this.initializeThresholds();
     this.initializeRiskModels();
@@ -148,7 +148,7 @@ export class RiskDetectionSystem {
     // تحليل نوع العملية
     const highRiskOperations: OperationType[] = ['add_user', 'join_group'];
     const mediumRiskOperations: OperationType[] = ['message', 'boost_engagement'];
-    
+
     if (highRiskOperations.includes(operation.type)) {
       score += 30;
       details.push(`High risk operation: ${operation.type}`);
@@ -212,7 +212,7 @@ export class RiskDetectionSystem {
     // تحليل الفجوات الزمنية
     const timeGaps = this.calculateTimeGaps(recentOperations);
     const avgGap = timeGaps.reduce((sum, gap) => sum + gap, 0) / timeGaps.length;
-    
+
     if (avgGap < 60000) { // أقل من دقيقة
       score += 30;
       details.push('Very short time gaps between operations');
@@ -286,7 +286,7 @@ export class RiskDetectionSystem {
 
     // تحليل أنماط التشغيل
     const patterns = this.detectPatterns(history);
-    
+
     if (patterns.repetitive) {
       score += 20;
       details.push('Repetitive operation pattern detected');
@@ -507,7 +507,7 @@ export class RiskDetectionSystem {
    */
   private calculateNextCheckTime(riskLevel: RiskLevel): Date {
     const now = new Date();
-    
+
     switch (riskLevel) {
       case 'critical':
         return new Date(now.getTime() + 5 * 60 * 1000); // 5 دقائق
@@ -545,7 +545,7 @@ export class RiskDetectionSystem {
   private calculateRecentSuccessRate(history: OperationHistory): number {
     const recentOps = history.operations.slice(-20);
     if (recentOps.length === 0) return 1.0;
-    
+
     const successfulOps = recentOps.filter(op => op.success).length;
     return successfulOps / recentOps.length;
   }
@@ -553,7 +553,7 @@ export class RiskDetectionSystem {
   private getConsecutiveFailures(history: OperationHistory): number {
     const recentOps = history.operations.slice(-10).reverse();
     let count = 0;
-    
+
     for (const op of recentOps) {
       if (!op.success) {
         count++;
@@ -561,7 +561,7 @@ export class RiskDetectionSystem {
         break;
       }
     }
-    
+
     return count;
   }
 
@@ -584,7 +584,7 @@ export class RiskDetectionSystem {
   private calculateTimeGaps(operations: Operation[]): number[] {
     const gaps: number[] = [];
     for (let i = 1; i < operations.length; i++) {
-      gaps.push(operations[i].timestamp.getTime() - operations[i-1].timestamp.getTime());
+      gaps.push(operations[i].timestamp.getTime() - operations[i - 1].timestamp.getTime());
     }
     return gaps;
   }
@@ -599,7 +599,10 @@ export class RiskDetectionSystem {
     return {
       repetitive: false,
       robotic: false,
-      unusual: false
+      unusual: false,
+      severity: 0,
+      isRepetitive: false,
+      isBurst: false
     };
   }
 
@@ -616,6 +619,22 @@ export class RiskDetectionSystem {
   private getNetworkQuality(): 'excellent' | 'good' | 'fair' | 'poor' {
     // سيتم تنفيذها لاحقاً
     return 'good';
+  }
+
+  /**
+   * اكتشاف الأنماط (Public API)
+   */
+  async detectPattern(accountId: number): Promise<PatternAnalysis> {
+    // In a real implementation, this would fetch history from DB
+    // For now, return a safe default
+    return {
+      repetitive: false,
+      robotic: false,
+      unusual: false,
+      severity: 0,
+      isRepetitive: false,
+      isBurst: false
+    };
   }
 
   private getTelegramApiStatus(): 'excellent' | 'good' | 'degraded' | 'unstable' {
@@ -641,7 +660,7 @@ interface RiskThresholds {
   low: number;
 }
 
-interface RiskAssessment {
+export interface RiskAssessment {
   overallRisk: number;
   riskLevel: RiskLevel;
   factors: RiskFactor[];
@@ -651,7 +670,7 @@ interface RiskAssessment {
   nextCheckTime: Date;
 }
 
-interface RiskFactor {
+export interface RiskFactor {
   type: string;
   score: number;
   weight: number;
@@ -659,19 +678,19 @@ interface RiskFactor {
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
-interface Alert {
+export interface Alert {
   type: string;
   message: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   action: string;
 }
 
-interface AlertRecord extends Alert {
+export interface AlertRecord extends Alert {
   timestamp: Date;
   accountId: number;
 }
 
-interface PendingOperation {
+export interface PendingOperation {
   type: OperationType;
   targetCount: number;
   speed: 'slow' | 'medium' | 'fast';
@@ -683,7 +702,7 @@ interface PendingOperation {
   };
 }
 
-interface OperationHistory {
+export interface OperationHistory {
   operations: Operation[];
 }
 
@@ -708,6 +727,9 @@ interface PatternAnalysis {
   repetitive: boolean;
   robotic: boolean;
   unusual: boolean;
+  severity: number;
+  isRepetitive: boolean;
+  isBurst: boolean;
 }
 
 type RiskLevel = 'minimal' | 'low' | 'medium' | 'high' | 'critical';

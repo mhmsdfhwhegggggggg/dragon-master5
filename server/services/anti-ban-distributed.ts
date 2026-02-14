@@ -15,7 +15,7 @@
 import { DistributedRateLimiter } from '../_core/distributed-rate-limiter';
 import Redis from 'ioredis';
 
-export type OperationType = 'message' | 'join_group' | 'add_user' | 'extract' | 'boost';
+export type OperationType = 'message' | 'join_group' | 'add_user' | 'extract' | 'boost' | 'login';
 
 export interface OperationLimits {
   perSecond: number;
@@ -48,7 +48,7 @@ export interface AccountHealth {
 
 export class AntiBanDistributed {
   private static redis: Redis;
-  
+
   /**
    * Default operation limits (conservative for production safety)
    */
@@ -58,18 +58,19 @@ export class AntiBanDistributed {
     add_user: { perSecond: 0.5, perMinute: 5, perHour: 30, perDay: 100 },
     extract: { perSecond: 1, perMinute: 10, perHour: 50, perDay: 200 },
     boost: { perSecond: 0.2, perMinute: 3, perHour: 10, perDay: 30 },
+    login: { perSecond: 0.1, perMinute: 2, perHour: 10, perDay: 50 },
   };
-  
+
   private static readonly RISK_MULTIPLIERS = {
     low: 1.0, medium: 0.7, high: 0.4, critical: 0.1
   };
-  
+
   static initialize(redis: Redis): void {
     this.redis = redis;
     DistributedRateLimiter.initialize(redis);
     console.log('[AntiBanDistributed] Industrial Protection Initialized');
   }
-  
+
   static async canPerformOperation(
     accountId: number,
     operationType: OperationType,
@@ -77,7 +78,7 @@ export class AntiBanDistributed {
   ): Promise<AntiBanCheckResult> {
     try {
       const health = await this.getAccountHealth(accountId);
-      
+
       // 1. Cooldown Check
       if (health.cooldownUntil && Date.now() < health.cooldownUntil) {
         return {
@@ -87,13 +88,13 @@ export class AntiBanDistributed {
           riskLevel: health.riskScore > 80 ? 'critical' : 'high',
         };
       }
-      
+
       // 2. Risk Calculation
       const riskLevel = this.calculateRiskLevel(health);
-      const baseLimits = customLimits 
+      const baseLimits = customLimits
         ? { ...this.DEFAULT_LIMITS[operationType], ...customLimits }
         : this.DEFAULT_LIMITS[operationType];
-      
+
       const multiplier = this.RISK_MULTIPLIERS[riskLevel];
       const adjustedLimits = {
         perSecond: Math.max(1, Math.floor(baseLimits.perSecond * multiplier)),
@@ -101,7 +102,7 @@ export class AntiBanDistributed {
         perHour: Math.max(1, Math.floor(baseLimits.perHour * multiplier)),
         perDay: Math.max(1, Math.floor(baseLimits.perDay * multiplier)),
       };
-      
+
       // 3. Distributed Rate Limiting
       const key = `antiban:limit:${accountId}:${operationType}`;
       const multiTierResult = await DistributedRateLimiter.checkMultiTier(key, [
@@ -109,7 +110,7 @@ export class AntiBanDistributed {
         { limit: adjustedLimits.perHour, window: 3600 },
         { limit: adjustedLimits.perDay, window: 86400 },
       ]);
-      
+
       if (!multiTierResult.allowed) {
         return {
           allowed: false,
@@ -118,15 +119,15 @@ export class AntiBanDistributed {
           riskLevel,
         };
       }
-      
+
       return { allowed: true, waitMs: 0, riskLevel };
-      
+
     } catch (error: any) {
       console.error('[AntiBanDistributed] Error:', error.message);
       return { allowed: true, waitMs: 0, riskLevel: 'medium' };
     }
   }
-  
+
   static async recordOperationResult(
     accountId: number,
     operationType: OperationType,
@@ -137,27 +138,27 @@ export class AntiBanDistributed {
       const health = await this.getAccountHealth(accountId);
       health.totalOperations++;
       health.lastOperation = Date.now();
-      
+
       if (success) {
         health.riskScore = Math.max(0, health.riskScore - 0.5);
       } else {
         health.failedOperations++;
         const riskIncrease = { flood: 15, spam: 25, ban: 60, restriction: 35, network: 2, other: 5 }[errorType || 'other'];
         health.riskScore = Math.min(100, health.riskScore + riskIncrease);
-        
+
         if (errorType === 'flood' || errorType === 'spam' || errorType === 'ban') {
           const cooldownHours = errorType === 'ban' ? 48 : errorType === 'spam' ? 12 : 2;
           health.cooldownUntil = Date.now() + cooldownHours * 60 * 60 * 1000;
         }
       }
-      
+
       health.successRate = (health.totalOperations - health.failedOperations) / health.totalOperations;
       await this.saveAccountHealth(health);
     } catch (error: any) {
       console.error('[AntiBanDistributed] Record Error:', error.message);
     }
   }
-  
+
   static async getAccountHealth(accountId: number): Promise<AccountHealth> {
     const key = `antiban:health:${accountId}`;
     const data = await this.redis.get(key);
@@ -166,12 +167,12 @@ export class AntiBanDistributed {
       successRate: 1.0, totalOperations: 0, failedOperations: 0, lastOperation: Date.now(), cooldownUntil: null
     };
   }
-  
+
   private static async saveAccountHealth(health: AccountHealth): Promise<void> {
     const key = `antiban:health:${health.accountId}`;
     await this.redis.setex(key, 86400 * 30, JSON.stringify(health));
   }
-  
+
   private static calculateRiskLevel(health: AccountHealth): 'low' | 'medium' | 'high' | 'critical' {
     if (health.riskScore >= 85) return 'critical';
     if (health.riskScore >= 60) return 'high';

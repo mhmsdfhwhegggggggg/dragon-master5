@@ -7,6 +7,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }).notNull(),
   isActive: boolean('isActive').default(true).notNull(),
+  role: varchar('role', { length: 50 }).notNull().default('user'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
@@ -146,6 +147,7 @@ export const statistics = pgTable('statistics', {
 export const antiBanRules = pgTable('anti_ban_rules', {
   id: serial('id').primaryKey(),
   userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  telegramAccountId: integer('telegramAccountId').references(() => telegramAccounts.id, { onDelete: 'cascade' }),
   ruleName: varchar('ruleName', { length: 255 }).notNull(),
   ruleType: varchar('ruleType', { length: 50 }).notNull(), // rate_limit, delay_pattern, content_filter, etc.
   ruleConfig: text('ruleConfig').notNull(), // JSON string
@@ -171,6 +173,49 @@ export const proxyConfigs = pgTable('proxy_configs', {
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
+// Auto-reply rules table
+export const autoReplyRules = pgTable('auto_reply_rules', {
+  id: serial('id').primaryKey(),
+  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  telegramAccountId: integer('telegramAccountId').notNull().references(() => telegramAccounts.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  keywords: text('keywords').array().notNull(),
+  matchType: varchar('matchType', { length: 20 }).notNull(), // exact, contains, regex
+  replyType: varchar('replyType', { length: 20 }).notNull(), // fixed, template, ai
+  replyContent: text('replyContent').notNull(), // JSON for arrays
+  aiPrompt: text('aiPrompt'),
+  delayMin: integer('delayMin').default(2000),
+  delayMax: integer('delayMax').default(5000),
+  reactions: text('reactions').array(),
+  targetTypes: text('targetTypes').array().notNull(), // private, group, channel
+  dailyLimit: integer('dailyLimit').default(50),
+  priority: integer('priority').default(0),
+  options: text('options'), // JSON for extra settings
+  isActive: boolean('isActive').default(true),
+  usageCount: integer('usageCount').default(0),
+  lastUsedAt: timestamp('lastUsedAt'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+// Content Cloner rules table
+export const contentClonerRules = pgTable('content_cloner_rules', {
+  id: serial('id').primaryKey(),
+  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  telegramAccountId: integer('telegramAccountId').notNull().references(() => telegramAccounts.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  sourceChannelIds: text('sourceChannelIds').array().notNull(),
+  targetChannelIds: text('targetChannelIds').array().notNull(),
+  filters: text('filters').notNull(), // JSON: mediaType, keywords, etc.
+  modifications: text('modifications').notNull(), // JSON: replace, remove, etc.
+  schedule: text('schedule'), // JSON: delays, active hours
+  isActive: boolean('isActive').default(true),
+  lastRunAt: timestamp('lastRunAt'),
+  totalCloned: integer('totalCloned').default(0),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
 // Export all tables
 export const schema = {
   users,
@@ -184,4 +229,28 @@ export const schema = {
   statistics,
   antiBanRules,
   proxyConfigs,
+  autoReplyRules,
+  contentClonerRules,
 };
+
+// Type Inferences
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+export type TelegramAccount = typeof telegramAccounts.$inferSelect;
+export type InsertTelegramAccount = typeof telegramAccounts.$inferInsert;
+export type ExtractedMember = typeof extractedMembers.$inferSelect;
+export type InsertExtractedMember = typeof extractedMembers.$inferInsert;
+export type BulkOperation = typeof bulkOperations.$inferSelect;
+export type InsertBulkOperation = typeof bulkOperations.$inferInsert;
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertActivityLog = typeof activityLogs.$inferInsert;
+export type Statistic = typeof statistics.$inferSelect;
+export type InsertStatistic = typeof statistics.$inferInsert;
+export type AntiBanRule = typeof antiBanRules.$inferSelect;
+export type InsertAntiBanRule = typeof antiBanRules.$inferInsert;
+export type ProxyConfig = typeof proxyConfigs.$inferSelect;
+export type InsertProxyConfig = typeof proxyConfigs.$inferInsert;
+export type AutoReplyRule = typeof autoReplyRules.$inferSelect;
+export type InsertAutoReplyRule = typeof autoReplyRules.$inferInsert;
+export type ContentClonerRule = typeof contentClonerRules.$inferSelect;
+export type InsertContentClonerRule = typeof contentClonerRules.$inferInsert;

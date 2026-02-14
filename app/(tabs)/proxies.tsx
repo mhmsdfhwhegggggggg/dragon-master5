@@ -7,24 +7,17 @@ import { trpc } from "@/lib/trpc";
 export default function ProxiesScreen() {
   const colors = useColors();
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
-  const [csvText, setCsvText] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
   const [jsonText, setJsonText] = useState("");
+  const [csvText, setCsvText] = useState("");
 
-  const { data: accounts, isLoading: loadingAccounts } = trpc.accounts.getAll.useQuery();
+  const { data: accounts, isLoading: loadingAccounts } = trpc.accounts.getAll.useQuery(undefined);
   const listQuery = trpc.proxies.listProxies.useQuery(
     { accountId: selectedAccountId || 0 },
     { enabled: !!selectedAccountId, refetchInterval: 5000 }
   );
 
-  const importMutation = trpc.proxies.importProxies.useMutation({
-    onSuccess: (res) => {
-      Alert.alert("تم", `تم استيراد ${res.inserted} بروكسي بنجاح`);
-      listQuery.refetch();
-    },
-    onError: (err) => {
-      Alert.alert("خطأ", err.message || "فشل استيراد البروكسيات");
-    },
-  });
+  const importMutation = trpc.proxies.importProxies.useMutation();
 
   const disableImport = useMemo(() => {
     const hasCsv = csvText.trim().length > 0;
@@ -44,7 +37,18 @@ export default function ProxiesScreen() {
         return Alert.alert("خطأ JSON", e?.message || "صيغة JSON غير صحيحة");
       }
     }
-    importMutation.mutate({ accountId: selectedAccountId, items: parsedItems, csvText: csvText.trim() || undefined });
+    importMutation.mutate(
+      { accountId: selectedAccountId, items: parsedItems, csvText: csvText.trim() || undefined },
+      {
+        onSuccess: (res: any) => {
+          Alert.alert("تم", `تم استيراد ${res.inserted} بروكسي بنجاح`);
+          listQuery.refetch();
+        },
+        onError: (err: any) => {
+          Alert.alert("خطأ", err.message || "فشل استيراد البروكسيات");
+        },
+      }
+    );
   };
 
   return (
@@ -64,7 +68,7 @@ export default function ProxiesScreen() {
               <ActivityIndicator color={colors.primary} />
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
-                {accounts?.map((account) => (
+                {accounts?.map((account: any) => (
                   <Pressable
                     key={account.id}
                     onPress={() => setSelectedAccountId(account.id)}
@@ -161,7 +165,7 @@ export default function ProxiesScreen() {
               <View className="gap-2">
                 {listQuery.data?.proxies?.length ? (
                   listQuery.data.proxies.map((p: any) => (
-                    <View key={`${p.host}:${p.port}:${p.username || ""}`} className="border border-border rounded-lg p-3">
+                    <View key={`${p.host}:${p.port}:${p.username || ""} `} className="border border-border rounded-lg p-3">
                       <Text className="text-foreground text-sm">{p.type?.toUpperCase()} • {p.host}:{p.port}</Text>
                       {p.username && <Text className="text-muted text-xs">{p.username}</Text>}
                       <Text className="text-muted text-xs">الحالة: {p.health || "unknown"}</Text>

@@ -60,13 +60,13 @@ async function handleExtractAndAdd(job: Job) {
 
   // 1. Initialize Industrial Operation
   const bulkOp = await db.createBulkOperation({
-    accountId: p.accountId,
+    userId: p.accountId,
     operationType: "extract-and-add",
     status: "running",
-    totalItems: 0,
-    delayMs: p.delayMs,
+    totalMembers: 0,
+    delayBetweenMessages: p.delayMs,
     config: JSON.stringify(p),
-  });
+  } as any);
 
   const credentials = tg.getApiCredentials();
   const client = await tg.initializeClient(
@@ -103,19 +103,19 @@ async function handleExtractAndAdd(job: Job) {
   const operation = operations[0];
 
   if (operation) {
-    await db.updateBulkOperation(operation.id, { 
-      totalTargets: toAdd.length,
-      processedItems: toAdd.length 
-    });
+    await db.updateBulkOperation(operation.id, {
+      totalMembers: toAdd.length,
+      processedMembers: toAdd.length
+    } as any);
   }
 
   // 3. High-Speed Addition
   for (let i = 0; i < toAdd.length; i++) {
     const user = toAdd[i];
     const res = await highSpeedAdder.addUser(client, p.accountId, p.target, user.id);
-    
+
     if (res.success) success++; else failed++;
-    
+
     // Progress: 20% to 100%
     const progress = 20 + Math.floor(((i + 1) / toAdd.length) * 80);
     await job.updateProgress(progress);
@@ -129,10 +129,10 @@ async function handleExtractAndAdd(job: Job) {
   if (operation) {
     await db.updateBulkOperation(operation.id, {
       status: "completed",
-      successCount: success,
-      failedCount: failed,
+      successfulMembers: success,
+      failedMembers: failed,
       completedAt: new Date(),
-    });
+    } as any);
   }
 
   return { extracted: extractedCount, success, failed };

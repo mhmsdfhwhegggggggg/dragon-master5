@@ -25,7 +25,7 @@ async function syncUser(userInfo: {
   await upsertUser({
     email: email || "user@example.com",
     username,
-    passwordHash: "",
+    password: "",
   });
   const saved = await getUserByEmail(email || "user@example.com");
   return (
@@ -45,14 +45,14 @@ function buildUserResponse(
   user:
     | Awaited<ReturnType<typeof getUserByEmail>>
     | {
-        id?: number;
-        email: string;
-        username: string;
-        passwordHash: string;
-        createdAt?: Date;
-        updatedAt?: Date;
-        isActive?: boolean;
-      },
+      id?: number;
+      email: string;
+      username: string;
+      passwordHash: string;
+      createdAt?: Date;
+      updatedAt?: Date;
+      isActive?: boolean;
+    },
 ) {
   return {
     id: (user as any)?.id ?? null,

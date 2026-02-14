@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactElement } from "react";
-import { View } from "react-native";
+import { View, ScrollView } from "react-native";
 import Animated, {
   interpolate,
   useAnimatedRef,
@@ -28,7 +28,7 @@ export default function ParallaxScrollView({
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollRef = useAnimatedRef();
   const scrollOffset = useScrollOffset(scrollRef);
 
   const headerHeight = HEADER_HEIGHT + insets.top;

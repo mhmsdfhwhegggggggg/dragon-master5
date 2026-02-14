@@ -32,7 +32,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "الرئيسية",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
 
@@ -40,7 +40,7 @@ export default function TabLayout() {
         name="accounts"
         options={{
           title: "الحسابات",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
         }}
       />
 
@@ -48,7 +48,7 @@ export default function TabLayout() {
         name="extraction"
         options={{
           title: "الاستخراج",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="arrow.down.doc.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="arrow.down.doc.fill" color={color} />,
         }}
       />
 
@@ -56,21 +56,28 @@ export default function TabLayout() {
         name="extract-and-add"
         options={{
           title: "استخراج+إضافة",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="arrow.up.arrow.down" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="arrow.up.arrow.down" color={color} />,
         }}
       />
       <Tabs.Screen
         name="channel-management"
         options={{
           title: "إدارة القنوات",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="list.bullet" color={color} />,
         }}
       />
       <Tabs.Screen
         name="auto-reply"
         options={{
           title: "الردود التلقائية",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bubble.left.bubble" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="bubble.left.bubble" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="content-cloner"
+        options={{
+          title: "نسخ المحتوى",
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="doc.on.doc.fill" color={color} />,
         }}
       />
 
@@ -78,7 +85,7 @@ export default function TabLayout() {
         name="bulk-ops"
         options={{
           title: "عمليات",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="square.stack.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="square.stack.fill" color={color} />,
         }}
       />
 
@@ -86,7 +93,7 @@ export default function TabLayout() {
         name="proxies"
         options={{
           title: "البروكسي",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="network" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="network" color={color} />,
         }}
       />
 
@@ -94,7 +101,7 @@ export default function TabLayout() {
         name="onboarding"
         options={{
           title: "Onboarding",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.badge.plus" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="person.badge.plus" color={color} />,
         }}
       />
 
@@ -102,7 +109,7 @@ export default function TabLayout() {
         name="stats"
         options={{
           title: "الإحصائيات",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
         }}
       />
 
@@ -110,7 +117,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: "الإعدادات",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
 
@@ -118,19 +125,19 @@ export default function TabLayout() {
         name="developer-dashboard"
         options={{
           title: "لوحة المطور",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="lock.shield.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="lock.shield.fill" color={color} />,
         }}
       />
 
       {/* Hidden screens */}
-      <Tabs.Screen name="license-dashboard" options={{ href: null }} />
-      <Tabs.Screen name="anti-ban-dashboard" options={{ href: null }} />
-      <Tabs.Screen name="anti-ban-ml-dashboard" options={{ href: null }} />
-      <Tabs.Screen name="anti-ban-monitoring" options={{ href: null }} />
-      <Tabs.Screen name="activation-screen" options={{ href: null }} />
-      <Tabs.Screen name="analytics" options={{ href: null }} />
-      <Tabs.Screen name="scheduler" options={{ href: null }} />
-      <Tabs.Screen name="setup" options={{ href: null }} />
+      <Tabs.Screen name="license-dashboard" options={{ href: undefined }} />
+      <Tabs.Screen name="anti-ban-dashboard" options={{ href: undefined }} />
+      <Tabs.Screen name="anti-ban-ml-dashboard" options={{ href: undefined }} />
+      <Tabs.Screen name="anti-ban-monitoring" options={{ href: undefined }} />
+      <Tabs.Screen name="activation-screen" options={{ href: undefined }} />
+      <Tabs.Screen name="analytics" options={{ href: undefined }} />
+      <Tabs.Screen name="scheduler" options={{ href: undefined }} />
+      <Tabs.Screen name="setup" options={{ href: undefined }} />
     </Tabs>
   );
 }

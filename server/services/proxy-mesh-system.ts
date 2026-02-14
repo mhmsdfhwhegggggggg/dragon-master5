@@ -17,11 +17,11 @@ import { eq } from 'drizzle-orm';
 export class ProxyMeshSystem {
   private static instance: ProxyMeshSystem;
   private redis: Redis;
-  
+
   private constructor(redis: Redis) {
     this.redis = redis;
   }
-  
+
   static getInstance(redis?: Redis): ProxyMeshSystem {
     if (!this.instance) {
       if (!redis) throw new Error("ProxyMeshSystem requires Redis");
@@ -35,10 +35,10 @@ export class ProxyMeshSystem {
    */
   async getOptimalProxy(accountId: number) {
     console.log(`[ProxyMesh] Finding optimal proxy for account ${accountId}...`);
-    
+
     // 1. Try to get assigned proxy
     let proxy = await proxyManagerAdvanced.getProxyForAccount(accountId);
-    
+
     // 2. If no assigned proxy or unhealthy, get from global pool
     if (!proxy || proxy.health === 'unhealthy') {
       console.log(`[ProxyMesh] Assigned proxy unhealthy, falling back to global pool...`);
@@ -51,11 +51,17 @@ export class ProxyMeshSystem {
   private async getGlobalPoolProxy() {
     // Fetch all healthy proxies from DB
     const dbInstance = await db.getDb();
-    const allProxies = await dbInstance.select().from(db.proxyConfigs).where(eq(db.proxyConfigs.isActive, true));
+    if (!dbInstance) return null;
+    const allProxies = await dbInstance.select().from(db.proxyConfigs).where(eq(db.proxyConfigs.health, 'healthy'));
     if (allProxies.length === 0) return null;
 
     // Simple load balancing: pick the one with least usage (simulated here)
-    return allProxies[Math.floor(Math.random() * allProxies.length)];
+    const proxy = allProxies[Math.floor(Math.random() * allProxies.length)];
+    return {
+      ...proxy,
+      type: proxy.type as any,
+      health: proxy.health as any
+    };
   }
 
   /**
@@ -63,9 +69,10 @@ export class ProxyMeshSystem {
    */
   async refreshMeshHealth() {
     const dbInstance = await db.getDb();
+    if (!dbInstance) return;
     const proxies = await dbInstance.select().from(db.proxyConfigs);
     console.log(`[ProxyMesh] Refreshing health for ${proxies.length} proxies...`);
-    
+
     for (const proxy of proxies) {
       const isHealthy = await proxyManagerAdvanced.checkProxyHealth(proxy as any);
       // Update proxy health in cache or local storage

@@ -11,8 +11,8 @@ import { antiBanMonitoring } from './anti-ban-monitoring';
  */
 export class AntiBanIntegration {
   private static instance: AntiBanIntegration;
-  
-  private constructor() {}
+
+  private constructor() { }
 
   static getInstance(): AntiBanIntegration {
     if (!AntiBanIntegration.instance) {
@@ -37,7 +37,7 @@ export class AntiBanIntegration {
         return {
           approved: false,
           reason: coreDecision.reason,
-          retryAfter: coreDecision.retryAfter,
+          retryAfter: coreDecision.retryAfter ? new Date(Date.now() + coreDecision.retryAfter) : undefined,
           recommendations: ['WAIT_AND_RETRY'],
           riskLevel: 'critical'
         };
@@ -51,7 +51,7 @@ export class AntiBanIntegration {
       );
 
       // 3. الحصول على البروكسي الأمثل
-      const proxyResult = await proxyIntelligence.getOptimalProxy(
+      const proxyResult = await proxyIntelligenceManager.getOptimalProxy(
         accountId,
         operation.type,
         this.convertToProxyContext(operation, riskAssessment)
@@ -121,12 +121,8 @@ export class AntiBanIntegration {
       await antiBanCore.recordOperationResult(
         accountId,
         operation.type,
-        {
-          success: result.success,
-          errorType: result.errorType,
-          duration: result.duration,
-          proxyUsed: result.proxyUsed?.toString()
-        }
+        result.success,
+        result.errorType
       );
 
       // 2. تحديث نظام التأخير الذكي
@@ -140,7 +136,7 @@ export class AntiBanIntegration {
 
       // 3. تسجيل نتيجة البروكسي
       if (result.proxyUsed) {
-        await proxyIntelligence.recordProxyResult(
+        await proxyIntelligenceManager.recordProxyResult(
           result.proxyUsed.toString(),
           operation.type,
           {
@@ -168,7 +164,7 @@ export class AntiBanIntegration {
       const delayStats = smartDelaySystem.getPerformanceStats(accountId);
 
       // 3. إحصائيات البروكسي
-      const proxyStats = proxyIntelligence.getProxyStatistics(accountId);
+      const proxyStats = await proxyIntelligenceManager.getProxyStatistics(accountId);
 
       // 4. تقييم الصحة العامة
       const healthScore = this.calculateOverallHealthScore(coreStatus, delayStats, proxyStats);
@@ -240,7 +236,10 @@ export class AntiBanIntegration {
     smartDelay: SmartDelay
   ): MergedDecision {
     let approved = coreDecision.allowed;
-    let finalDelay = Math.max(coreDecision.suggestedDelay, smartDelay.delay);
+    let finalDelay = Math.max(
+      antiBanCore.getRecommendedDelay(0, 'message'), // coreDecision.suggestedDelay doesn't exist, use method
+      smartDelay.delay
+    );
     let reason = coreDecision.reason || '';
     const recommendations: string[] = [];
 
@@ -261,7 +260,7 @@ export class AntiBanIntegration {
     }
 
     // تعديل التأخير بناءً على البروكسي
-    if (proxyResult.expectedPerformance === 'poor') {
+    if (proxyResult.expectedPerformance === 'low') {
       finalDelay *= 1.5;
       recommendations.push('PROXY_PERFORMANCE_POOR');
     }
@@ -392,7 +391,7 @@ export class AntiBanIntegration {
 export const antiBanIntegration = AntiBanIntegration.getInstance();
 
 // أنواع البيانات
-interface OperationRequest {
+export interface OperationRequest {
   type: OperationType;
   targetCount?: number;
   speed?: 'slow' | 'medium' | 'fast';
@@ -407,7 +406,7 @@ interface OperationRequest {
   lastOperationTime?: Date;
 }
 
-interface OperationApproval {
+export interface OperationApproval {
   approved: boolean;
   delay?: number;
   proxy?: any;
@@ -425,7 +424,7 @@ interface OperationApproval {
   error?: string;
 }
 
-interface OperationExecutionResult {
+export interface OperationExecutionResult {
   success: boolean;
   errorType?: string;
   errorMessage?: string;
@@ -435,7 +434,7 @@ interface OperationExecutionResult {
   proxyUsed?: any;
 }
 
-interface ComprehensiveAccountStatus {
+export interface ComprehensiveAccountStatus {
   accountId: number;
   healthScore: number;
   status: any;
@@ -446,7 +445,7 @@ interface ComprehensiveAccountStatus {
   error?: string;
 }
 
-interface SystemStatistics {
+export interface SystemStatistics {
   totalAccounts: number;
   healthyAccounts: number;
   averageRiskScore: number;

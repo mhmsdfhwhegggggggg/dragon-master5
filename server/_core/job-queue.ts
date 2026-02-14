@@ -42,7 +42,7 @@ export class JobQueueSystem {
   private workers: Map<string, Worker> = new Map();
   private queueEvents: Map<string, QueueEvents> = new Map();
   private handlers: Map<string, JobHandler> = new Map();
-  
+
   /**
    * Industrial Queue configurations
    */
@@ -70,7 +70,7 @@ export class JobQueueSystem {
         },
       },
     },
-    
+
     // Normal priority - standard processing (e.g., Bulk Messaging)
     normal: {
       name: 'normal-priority',
@@ -94,7 +94,7 @@ export class JobQueueSystem {
         },
       },
     },
-    
+
     // Low priority - background processing (e.g., Massive Extract & Add)
     low: {
       name: 'low-priority',
@@ -118,7 +118,7 @@ export class JobQueueSystem {
         },
       },
     },
-    
+
     // Scheduled jobs
     scheduled: {
       name: 'scheduled',
@@ -143,11 +143,11 @@ export class JobQueueSystem {
       },
     },
   };
-  
+
   private constructor(redis: Redis) {
     this.redis = redis;
   }
-  
+
   static getInstance(redis?: Redis): JobQueueSystem {
     if (!this.instance) {
       if (!redis) {
@@ -157,7 +157,7 @@ export class JobQueueSystem {
     }
     return this.instance;
   }
-  
+
   async initialize(): Promise<void> {
     console.log('[JobQueue] Initializing industrial queues...');
     for (const [priority, config] of Object.entries(this.QUEUE_CONFIGS)) {
@@ -165,22 +165,22 @@ export class JobQueueSystem {
     }
     console.log('[JobQueue] All industrial queues initialized');
   }
-  
+
   private async createQueue(name: string, config: any): Promise<Queue> {
     const queue = new Queue(config.name, {
       connection: this.redis,
       defaultJobOptions: config.defaultJobOptions,
     });
-    
+
     const queueEvents = new QueueEvents(config.name, {
       connection: this.redis,
     });
-    
+
     this.queues.set(name, queue);
     this.queueEvents.set(name, queueEvents);
     return queue;
   }
-  
+
   registerHandler<T = any, R = any>(
     jobType: string,
     handler: JobHandler<T, R>,
@@ -191,7 +191,7 @@ export class JobQueueSystem {
       this.createWorker(priority);
     }
   }
-  
+
   private createWorker(priority: string): Worker {
     const config = this.QUEUE_CONFIGS[priority as keyof typeof this.QUEUE_CONFIGS];
     const worker = new Worker(
@@ -210,7 +210,7 @@ export class JobQueueSystem {
     this.workers.set(priority, worker);
     return worker;
   }
-  
+
   private getConcurrency(priority: string): number {
     // Massive concurrency for industrial scale
     const concurrencyMap = {
@@ -221,7 +221,7 @@ export class JobQueueSystem {
     };
     return concurrencyMap[priority as keyof typeof concurrencyMap] || 50;
   }
-  
+
   async addJob<T = any>(
     jobType: string,
     data: T,
@@ -265,4 +265,5 @@ export class JobQueueSystem {
 }
 
 // Export singleton instance
-export const getJobQueue = () => new JobQueue();
+export const JobQueue = JobQueueSystem;
+export const getJobQueue = () => JobQueue.getInstance();

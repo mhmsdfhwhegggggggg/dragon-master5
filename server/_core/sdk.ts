@@ -260,7 +260,7 @@ class SDKServer {
         await db.upsertUser({
           email: email || "user@example.com",
           username,
-          passwordHash: "", // OAuth users don't have passwords
+          password: "", // OAuth users don't have passwords
         });
         user = await db.getUserByEmail(email);
       } catch (error) {
@@ -277,12 +277,12 @@ class SDKServer {
       await db.upsertUser({
         email: user.email,
         username: user.username,
-        passwordHash: user.passwordHash,
+        password: user.password,
         updatedAt: signedInAt,
       });
     }
 
-    return user;
+    return user as any;
   }
 }
 

@@ -1,6 +1,5 @@
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { accountsRouter } from "./routers/accounts.router";
 import { extractionRouter } from "./routers/extraction.router";
@@ -16,29 +15,25 @@ import { extractAddRouter } from "./routers/extract-add.router";
 import { channelManagementRouter } from "./routers/channel-management.router";
 import { autoReplyRouter } from "./routers/auto-reply.router";
 import { contentClonerRouter } from "./routers/content-cloner.router";
+import { systemRouter } from "./routers/system.router";
+import { authRouter } from "./routers/auth.router";
+import { backupRouter } from "./routers/backup.router";
+import { aiAntiBanRouter } from "./routers/ai-anti-ban.router";
+import { securityRouter } from "./routers/security.router";
 
 // Export types for anti-ban integration
-export type { 
-  ComprehensiveAccountStatus, 
-  OperationApproval, 
-  SystemStatistics 
+export type {
+  ComprehensiveAccountStatus,
+  OperationApproval,
+  SystemStatistics
 } from "./services/anti-ban-integration";
 
 export const appRouter = router({
-  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
+  // System & Auth
   system: systemRouter,
-  auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
-    }),
-  }),
+  auth: authRouter,
 
-  // Dragon Telegram Pro routers
+  // Core Features
   accounts: accountsRouter,
   extraction: extractionRouter,
   bulkOps: bulkOpsRouter,
@@ -46,6 +41,8 @@ export const appRouter = router({
   proxies: proxiesRouter,
   dashboard: dashboardRouter,
   setup: setupRouter,
+
+  // Advanced Features
   antiBan: antiBanRouter,
   license: licenseRouter,
   permission: permissionRouter,
@@ -53,6 +50,11 @@ export const appRouter = router({
   channelManagement: channelManagementRouter,
   autoReply: autoReplyRouter,
   contentCloner: contentClonerRouter,
+
+  // New Security & Maintenance Features
+  backup: backupRouter,
+  aiAntiBan: aiAntiBanRouter,
+  security: securityRouter,
 });
 
 export type AppRouter = typeof appRouter;

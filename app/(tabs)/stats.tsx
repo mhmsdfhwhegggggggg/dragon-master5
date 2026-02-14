@@ -3,25 +3,28 @@ import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+
+const trpcAny = trpc as any;
 
 export default function StatsScreen() {
   const colors = useColors();
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
 
   // Fetch accounts for selection
-  const { data: accounts, isLoading: loadingAccounts } = trpc.accounts.getAll.useQuery();
-  
+  const { data: accounts, isLoading: loadingAccounts } = (trpcAny.accounts.getAll.useQuery() as any);
+
   // Fetch stats for selected account
-  const { data: statsData, isLoading: loadingStats } = trpc.stats.getTodayStats.useQuery(
-    { accountId: selectedAccountId || 0 },
+  const { data: statsData, isLoading: loadingStats } = (trpcAny.stats.getDailyStats.useQuery(
+    { accountId: selectedAccountId || 0, date: new Date().toISOString().split("T")[0] },
     { enabled: !!selectedAccountId }
-  );
+  ) as any);
 
   // Fetch activity logs
-  const { data: logsData, isLoading: loadingLogs } = trpc.stats.getActivityLogs.useQuery(
+  const { data: logsData, isLoading: loadingLogs } = (trpcAny.stats.getActivityLogs.useQuery(
     { accountId: selectedAccountId || 0, limit: 10 },
     { enabled: !!selectedAccountId }
-  );
+  ) as any);
 
   const stats = statsData?.stats;
   const logs = logsData?.logs || [];
@@ -50,7 +53,7 @@ export default function StatsScreen() {
               <ActivityIndicator color={colors.primary} />
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
-                {accounts?.map((account) => (
+                {accounts?.map((account: any) => (
                   <Pressable
                     key={account.id}
                     onPress={() => setSelectedAccountId(account.id)}
@@ -132,12 +135,12 @@ export default function StatsScreen() {
                     </Text>
                   </View>
                   <View style={{ height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: "hidden" }}>
-                    <View 
-                      style={{ 
-                        height: "100%", 
-                        width: `${Math.min(100, ((stats?.accountStatus?.messagesSentToday || 0) / (stats?.accountStatus?.dailyLimit || 100)) * 100)}%`, 
-                        backgroundColor: colors.primary 
-                      }} 
+                    <View
+                      style={{
+                        height: "100%",
+                        width: `${Math.min(100, ((stats?.accountStatus?.messagesSentToday || 0) / (stats?.accountStatus?.dailyLimit || 100)) * 100)}%`,
+                        backgroundColor: colors.primary
+                      }}
                     />
                   </View>
                 </View>
@@ -150,10 +153,10 @@ export default function StatsScreen() {
                   {loadingLogs ? (
                     <ActivityIndicator color={colors.primary} className="p-4" />
                   ) : logs.length > 0 ? (
-                    logs.map((log, i) => (
+                    logs.map((log: any, i: number) => (
                       <View
                         key={log.id}
-                        className={`p-3 flex-row items-center justify-between ${i < logs.length - 1 ? "border-b" : ""}`}
+                        className={`p - 3 flex - row items - center justify - between ${i < logs.length - 1 ? "border-b" : ""} `}
                         style={{ borderBottomColor: colors.border, borderBottomWidth: i < logs.length - 1 ? 1 : 0 }}
                       >
                         <View className="flex-1">

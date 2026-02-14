@@ -3,24 +3,24 @@
  * Tests: Crypto, Logger, Rate Limiter, Error Handler
  */
 
-import { 
-  encryptString, 
-  decryptString, 
-  hashPassword, 
+import {
+  encryptString,
+  decryptString,
+  hashPassword,
   verifyPassword,
   generateToken,
   sha256,
-  testEncryption 
+  testEncryption
 } from './server/_core/crypto';
 
 import { createLogger, log } from './server/_core/logger';
 
-import { 
-  AppError, 
-  ValidationError, 
+import {
+  AppError,
+  ValidationError,
   NotFoundError,
   handleTelegramError,
-  handleDatabaseError 
+  handleDatabaseError
 } from './server/_core/error-handler';
 
 console.log('\n=== Testing Improvements ===\n');
@@ -119,10 +119,10 @@ try {
   // Validate environment
   const validation = validateEnv();
   console.log(`   ✓ Environment validation: ${validation.valid ? 'PASSED' : 'FAILED'}`);
-  
+
   if (!validation.valid) {
     console.log('   ⚠ Validation errors:');
-    validation.errors.forEach(err => console.log(`     - ${err}`));
+    validation.errors.forEach((err: any) => console.log(`     - ${err}`));
   }
 
   // Print configuration

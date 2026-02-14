@@ -6,6 +6,8 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "expo-router";
 
+const trpcAny = trpc as any;
+
 /**
  * Home Screen - Dragaan Pro Dashboard
  * 
@@ -16,11 +18,11 @@ export default function HomeScreen() {
   const colors = useColors();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Fetch dashboard stats from API
-  const { data: statsData, isLoading, refetch: refetchStats } = trpc.dashboard.getStats.useQuery();
-  const { data: activitiesData, refetch: refetchActivities } = trpc.dashboard.getRecentActivities.useQuery();
-  
+  const { data: statsData, isLoading, refetch: refetchStats } = trpcAny.dashboard.getStats.useQuery(undefined);
+  const { data: activitiesData, refetch: refetchActivities } = trpcAny.dashboard.getRecentActivities.useQuery(undefined);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetchStats(), refetchActivities()]);
@@ -71,7 +73,7 @@ export default function HomeScreen() {
 
   return (
     <ScreenContainer className="bg-background">
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
@@ -86,8 +88,8 @@ export default function HomeScreen() {
                 نظام إدارة Telegram المتكامل
               </Text>
             </View>
-            <Image 
-              source={require("@/assets/images/icon.png")} 
+            <Image
+              source={require("@/assets/images/icon.png")}
               style={{ width: 60, height: 60, borderRadius: 15 }}
             />
           </View>
@@ -214,12 +216,11 @@ export default function HomeScreen() {
 
             <View className="bg-surface rounded-2xl border border-border overflow-hidden">
               {activitiesData && activitiesData.length > 0 ? (
-                activitiesData.map((activity: any, index: number) => (
+                (activitiesData as any[]).map((activity: any, index: number) => (
                   <View
                     key={index}
-                    className={`p-4 flex-row items-center justify-between ${
-                      index < activitiesData.length - 1 ? "border-b border-border" : ""
-                    }`}
+                    className={`p-4 flex-row items-center justify-between ${index < activitiesData.length - 1 ? "border-b border-border" : ""
+                      }`}
                   >
                     <View className="flex-1">
                       <Text className="text-base font-medium text-foreground">
@@ -229,7 +230,6 @@ export default function HomeScreen() {
                         {activity.time}
                       </Text>
                     </View>
-
                     <View
                       className="w-3 h-3 rounded-full"
                       style={{
