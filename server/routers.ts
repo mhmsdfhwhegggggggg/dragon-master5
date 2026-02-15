@@ -20,6 +20,7 @@ import { authRouter } from "./routers/auth.router";
 import { backupRouter } from "./routers/backup.router";
 import { aiAntiBanRouter } from "./routers/ai-anti-ban.router";
 import { securityRouter } from "./routers/security.router";
+import { exportRouter } from "./routers/export.router"; // Added this line
 
 // Export types for anti-ban integration
 export type {
@@ -36,6 +37,7 @@ export const appRouter = router({
   // Core Features
   accounts: accountsRouter,
   extraction: extractionRouter,
+  export: exportRouter, // Added this line
   bulkOps: bulkOpsRouter,
   stats: statsRouter,
   proxies: proxiesRouter,

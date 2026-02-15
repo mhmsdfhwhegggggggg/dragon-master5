@@ -417,8 +417,9 @@ export class ActivationSystem {
       const recentResult = await db.execute(sql`SELECT count(*) as count FROM licenses WHERE "activatedAt" > NOW() - INTERVAL '24 hours'`);
       const recentActivations = Number(recentResult[0]?.count) || 0;
 
-      // Hardware changes - Placeholder as we don't track this yet
-      const hardwareChanges = 0;
+      // Count hardware change events from usage logs
+      const hwResult = await (db as any).execute(sql`SELECT count(*) as count FROM license_usage_logs WHERE action = 'hardware_change'`);
+      const hardwareChanges = Number(hwResult[0]?.count) || 0;
 
       return {
         totalActivations,

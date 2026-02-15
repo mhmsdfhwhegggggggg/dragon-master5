@@ -104,4 +104,45 @@ export const accountsRouter = router({
       inactiveCount,
     };
   }),
+
+  // Unban account (appeal)
+  unban: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const job = await JobQueue.enqueue("unban-account", { accountId: input.id });
+      return { success: true, jobId: job.id };
+    }),
+
+  // Remove duplicate accounts
+  removeDuplicates: protectedProcedure.mutation(async ({ ctx }) => {
+    const accounts = await dbHelper.getTelegramAccountsByUserId(ctx.user.id);
+    const seen = new Set();
+    let removedCount = 0;
+
+    for (const account of accounts) {
+      if (seen.has(account.phoneNumber)) {
+        await dbHelper.deleteTelegramAccount(account.id);
+        removedCount++;
+      } else {
+        seen.add(account.phoneNumber);
+      }
+    }
+
+    return { success: true, removedCount };
+  }),
+
+  // Warm all accounts
+  warmAll: protectedProcedure.mutation(async ({ ctx }) => {
+    const accounts = await dbHelper.getTelegramAccountsByUserId(ctx.user.id);
+    const activeAccountIds = accounts
+      .filter((a) => a.isActive && !a.isRestricted)
+      .map((a) => a.id);
+
+    if (activeAccountIds.length === 0) {
+      throw new Error("No active accounts available for warming prince.");
+    }
+
+    const job = await JobQueue.enqueue("warm-accounts", { accountIds: activeAccountIds });
+    return { success: true, jobId: job.id };
+  }),
 });

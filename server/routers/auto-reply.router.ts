@@ -12,9 +12,10 @@
  * @author Dragon Team
  */
 
-import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { autoReplyService } from "../services/auto-reply.service";
+import { aiChatEngine } from "../services/ai-chat-engine";
+import { z } from "zod";
 
 /**
  * Auto Reply Router
@@ -227,20 +228,53 @@ export const autoReplyRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement rule testing
-        const testResult = {
-          matched: true,
-          matchedKeywords: ['السعر'],
-          replyContent: 'السعر 100 ريال فقط! 🎉',
-          delay: 3500,
-          reactions: ['👍', '💰'],
-          confidence: 0.95
+        // Real rule testing using service
+        const rules = await autoReplyService.getRules(input.accountId, { isActive: true });
+        const rule = rules.find(r => r.id === input.ruleId);
+
+        if (!rule) {
+          throw new Error("Rule not found or inactive");
+        }
+
+        const testMessage = {
+          id: "test_" + Date.now(),
+          text: input.testMessage,
+          fromId: input.testContext.fromId,
+          chatId: input.testContext.chatId,
+          chatType: input.testContext.chatType,
+          timestamp: input.testContext.timestamp
         };
+
+        // We use processMessage logic but without actual sending
+        // Note: processMessage handles delay and sending, so we simulate the match here
+        const matches = rule.keywords.some(keyword => {
+          const text = testMessage.text.toLowerCase();
+          const kw = keyword.toLowerCase();
+          if (rule.matchType === 'exact') return text === kw;
+          if (rule.matchType === 'contains') return text.includes(kw);
+          if (rule.matchType === 'regex') return new RegExp(kw, 'i').test(text);
+          return false;
+        });
+
+        if (!matches) {
+          return {
+            success: true,
+            data: { matched: false },
+            message: 'Message did not match the rule'
+          };
+        }
 
         return {
           success: true,
-          data: testResult,
-          message: 'Rule test completed successfully'
+          data: {
+            matched: true,
+            matchedKeywords: rule.keywords.filter(k => testMessage.text.toLowerCase().includes(k.toLowerCase())),
+            replyContent: typeof rule.replyContent === 'string' ? rule.replyContent : rule.replyContent[0],
+            delay: rule.delay.min,
+            reactions: rule.reactions,
+            confidence: 1.0
+          },
+          message: 'Rule test matched successfully'
         };
 
       } catch (error: any) {
@@ -288,56 +322,44 @@ export const autoReplyRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement templates retrieval
-        const templates = {
+        // Real predefined templates for FALCON Pro
+        const templates: Record<string, any[]> = {
           greeting: [
             {
-              id: 'template-1',
-              name: 'Arabic Welcome',
-              content: 'أهلا بك! كيف يمكنني مساعدتك؟ 😊',
-              variables: ['{user_name}', '{group_name}']
-            },
-            {
-              id: 'template-2',
-              name: 'English Welcome',
-              content: 'Hello {user_name}! Welcome to {group_name}! 👋',
-              variables: ['{user_name}', '{group_name}']
+              id: 't-greet-1',
+              name: 'ترحيب عام',
+              content: 'أهلاً بك {user_name}! كيف يمكننا مساعدتك اليوم؟ 🦅',
+              variables: ['{user_name}']
             }
           ],
           support: [
             {
-              id: 'template-3',
-              name: 'Price Response',
-              content: 'سعر المنتج هو {price} ريال. للطلب راسلنا! 📞',
-              variables: ['{price}', '{product_name}']
-            },
-            {
-              id: 'template-4',
-              name: 'Support Info',
-              content: 'فريق الدعم متاح من 9 ص إلى 9 م 🕘\n📞 {phone}',
-              variables: ['{phone}']
+              id: 't-supp-1',
+              name: 'دعم فني',
+              content: 'فريق الدعم الفني لـ FALCON Pro متاح حالياً. سيتم الرد عليك خلال دقائق. 🛠️',
+              variables: []
             }
           ],
           marketing: [
             {
-              id: 'template-5',
-              name: 'Product Launch',
-              content: '🎉 منتج جديد متوفر الآن!\n\n{product_description}\n\nالسعر: {price} ريال\nللطلب: {order_link}',
-              variables: ['{product_description}', '{price}', '{order_link}']
+              id: 't-mark-1',
+              name: 'عرض خاص',
+              content: 'خصم 50% على اشتراك البريميوم! لا تفوت الفرصة. 🔥',
+              variables: []
             }
           ],
           faq: [
             {
-              id: 'template-6',
-              name: 'Shipping Info',
-              content: 'معلومات الشحن:\n⏱️ {delivery_time}\n📍 {delivery_location}\n💰 {delivery_cost}',
-              variables: ['{delivery_time}', '{delivery_location}', '{delivery_cost}']
+              id: 't-faq-1',
+              name: 'سعر الخدمة',
+              content: 'سعر الخدمة هو {price} ريال سعودي. 💰',
+              variables: ['{price}']
             }
           ]
         };
 
         const categoryTemplates = input.category
-          ? templates[input.category]
+          ? templates[input.category] || []
           : Object.values(templates).flat();
 
         return {
@@ -367,29 +389,26 @@ export const autoReplyRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement AI suggestions
+        // Real AI suggestions using the engine
+        const reply = await aiChatEngine.generateResponse({
+          history: [{ role: 'user', content: input.context }],
+          targetUser: { name: 'User' },
+          personality: 'helpful'
+        });
+
         const suggestions = [
           {
-            keyword: 'السعر',
-            suggestedReply: 'أسعارنا تبدأ من 50 ريال وتصل إلى 500 ريال حسب المنتج. للتفاصيل الكاملة يرجى التواصل مع المبيعات! 💰',
-            confidence: 0.92,
-            category: 'pricing'
-          },
-          {
-            keyword: 'توصيل',
-            suggestedReply: 'نوفر توصيل لجميع المدن الرئيسية. التكلفة 30 ريال للطلبات الداخلية و 50 ريال للخارجي. 🚚',
-            confidence: 0.88,
-            category: 'shipping'
+            keyword: input.keywords[0] || 'AI',
+            suggestedReply: reply,
+            confidence: 0.95,
+            category: 'ai_generated'
           }
         ];
 
         return {
           success: true,
           data: {
-            suggestions: suggestions.filter(s =>
-              input.keywords.length === 0 ||
-              input.keywords.some(k => s.keyword.includes(k))
-            ),
+            suggestions,
             totalGenerated: suggestions.length
           },
           message: 'AI suggestions generated successfully'

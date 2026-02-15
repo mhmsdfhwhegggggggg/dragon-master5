@@ -30,8 +30,8 @@ export default function SetupScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View className="p-4 gap-4">
           <View className="gap-2">
-            <Text className="text-3xl font-bold text-foreground">الإعداد السريع</Text>
-            <Text className="text-sm text-muted">أكمل البيانات للعمل بدون مدير</Text>
+            <Text className="text-3xl font-bold text-foreground">الإعداد السريع FALCON Pro prince.</Text>
+            <Text className="text-sm text-muted">أكمل البيانات لتفعيل الأداء الصناعي والنظام prince.</Text>
           </View>
 
           {/* Status */}

@@ -5,7 +5,7 @@ import { trpc } from '@/lib/trpc';
 const trpcAny = trpc as any;
 
 /**
- * License Management Dashboard
+ * License Management Dashboard - FALCON Pro
  * 
  * Complete license and subscription management interface
  * Features:

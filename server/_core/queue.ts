@@ -9,7 +9,10 @@ export type JobType =
   | "add-users"
   | "extract-and-add"
   | "send-login-codes"
-  | "confirm-login-codes";
+  | "confirm-login-codes"
+  | "post-content"
+  | "unban-account"
+  | "warm-accounts";
 
 export type SendBulkMessagesPayload = {
   accountId: number;
@@ -45,13 +48,32 @@ export type ExtractAndAddPayload = {
   delayMs: number;
 };
 
+export type PostContentPayload = {
+  accountId: number;
+  channelId: string;
+  type: 'text' | 'image' | 'video' | 'file';
+  content: string;
+  mediaPath?: string;
+  caption?: string;
+  silent?: boolean;
+  pinned?: boolean;
+};
+
+export type UnbanAccountPayload = {
+  accountId: number;
+};
+
+export type WarmAccountsPayload = {
+  accountIds: number[];
+};
+
 export type JobPayload =
-  | SendBulkMessagesPayload
-  | JoinGroupsPayload
-  | AddUsersPayload
   | ExtractAndAddPayload
   | SendLoginCodesPayload
-  | ConfirmLoginCodesPayload;
+  | ConfirmLoginCodesPayload
+  | PostContentPayload
+  | UnbanAccountPayload
+  | WarmAccountsPayload;
 export type SendLoginCodesPayload = {
   phoneNumbers: string[];
 };
@@ -63,88 +85,35 @@ export type ConfirmLoginCodesPayload = {
 
 export type OnboardingPayload = SendLoginCodesPayload | ConfirmLoginCodesPayload;
 
-// Create a mock queue system that doesn't require Redis
-class MockQueue {
-  private jobs = new Map<string, any>();
-  private jobIdCounter = 1;
-
-  async add(type: string, payload: any, options?: any) {
-    const id = String(this.jobIdCounter++);
-    const job = {
-      id,
-      name: type,
-      data: payload,
-      opts: options,
-      timestamp: Date.now(),
-      progress: 0,
-      returnvalue: null,
-      failedReason: null,
-      processedOn: null,
-      finishedOn: null,
-      getState: () => 'completed',
-      moveToFailed: async () => { },
-      updateProgress: async (progress: number) => {
-        this.jobs.set(id, { ...this.jobs.get(id), progress });
-      }
-    };
-    this.jobs.set(id, job);
-    return job;
-  }
-
-  async getJob(id: string) {
-    return this.jobs.get(id);
-  }
-
-  async getJobs(states: string[], start: number, end: number) {
-    return Array.from(this.jobs.values()).slice(start, end);
-  }
-}
-
-// Try to connect to Redis, fallback to mock if it fails
+// BullMQ strictly requires Redis. We do not use Mocks in FALCON Pro.
 let connection: IORedis | null = null;
-let bulkOpsQueue: Queue | MockQueue;
+let bulkOpsQueue: Queue;
 let bulkOpsEvents: QueueEvents | null = null;
 
 async function initializeQueue() {
   const redisUrl = Secrets.getRedisUrl() || ENV.redisUrl;
 
   if (!redisUrl) {
-    console.info('[Queue] No Redis URL provided, using mock queue by default.');
-    connection = null;
-    bulkOpsQueue = new MockQueue();
-    return;
+    throw new Error('[Queue] FATAL: REDIS_URL is required for production operations. prince.');
   }
 
   try {
     connection = new IORedis(redisUrl, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: null, // Critical for BullMQ
       enableReadyCheck: false,
-      lazyConnect: true,
     });
 
-    // Test connection
     connection.on('error', (err) => {
-      // Only warn if we haven't already fallen back
-      if (connection) {
-        console.warn('[Queue] Redis connection error, falling back to mock queue:', err.message);
-        connection = null;
-        bulkOpsQueue = new MockQueue();
-      }
+      console.error('[Queue] Redis connection error:', err.message);
     });
 
-    // Try to connect
-    await connection.connect();
-    redis = connection;
     bulkOpsQueue = new Queue("bulkOps", { connection });
     bulkOpsEvents = new QueueEvents("bulkOps", { connection });
-    if (bulkOpsEvents.waitUntilReady) {
-      await bulkOpsEvents.waitUntilReady();
-    }
-    console.log('[Queue] Connected to Redis successfully');
+
+    console.log('[Queue] BullMQ System Connected to Redis 🚀 prince.');
   } catch (error: any) {
-    console.warn('[Queue] Redis not available, using mock queue:', error.message);
-    connection = null;
-    bulkOpsQueue = new MockQueue();
+    console.error('[Queue] FATAL: Failed to initialize Redis queue:', error.message);
+    throw error;
   }
 }
 

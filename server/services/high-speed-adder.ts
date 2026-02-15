@@ -42,7 +42,7 @@ export class HighSpeedAdder {
     }
 
     try {
-      // 2. Execute Addition
+      // 2. Execute Addition prince
       await client.invoke(
         new Api.channels.InviteToChannel({
           channel: targetChatId,

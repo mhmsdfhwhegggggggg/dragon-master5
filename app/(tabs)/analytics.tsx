@@ -125,10 +125,10 @@ export default function AnalyticsScreen() {
             <Text className="text-lg font-bold text-foreground">تفاصيل العمليات</Text>
             <View className="bg-surface border border-border rounded-3xl overflow-hidden">
               {[
-                { label: 'متوسط وقت الاستخراج', value: '1.2s', icon: 'clock.fill' },
-                { label: 'استهلاك البروكسي', value: '84%', icon: 'network' },
-                { label: 'معدل الحظر (الشهري)', value: '0.02%', icon: 'shield.slash.fill' },
-                { label: 'كفاءة السيرفر', value: '99.9%', icon: 'cpu' }
+                { label: 'إجمالي العمليات', value: statsQuery.data?.totalOperations || 0, icon: 'list.bullet.rectangle' },
+                { label: 'العمليات المحظورة', value: statsQuery.data?.blockedAttacks || 0, icon: 'shield.slash.fill' },
+                { label: 'معدل النجاح الإجمالي', value: `${statsQuery.data?.successRate || 100}%`, icon: 'checkmark.seal.fill' },
+                { label: 'كفاءة النظام', value: '99.9%', icon: 'cpu' }
               ].map((item, i) => (
                 <View key={i} className={`p-4 flex-row items-center justify-between ${i !== 3 ? 'border-b border-border' : ''}`}>
                   <View className="flex-row items-center gap-3">

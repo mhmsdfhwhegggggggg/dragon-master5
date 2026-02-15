@@ -296,21 +296,28 @@ export const channelManagementRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement content scheduling
-        const scheduledPost = {
-          id: 'scheduled-' + Date.now(),
+        const delay = input.content.schedule.getTime() - Date.now();
+        if (delay < 0) throw new Error("Schedule date must be in the future");
+
+        const job = await JobQueue.enqueue("post-content", {
           accountId: input.accountId,
           channelId: input.channelId,
-          content: input.content,
-          schedule: input.content.schedule,
-          status: 'scheduled',
-          createdAt: new Date()
-        };
+          type: input.content.type,
+          content: input.content.content,
+          mediaPath: input.content.mediaPath,
+          caption: input.content.caption,
+          silent: input.content.silent,
+          pinned: input.content.pinned
+        } as any);
 
         return {
           success: true,
-          data: scheduledPost,
-          message: 'Content scheduled successfully'
+          data: {
+            id: job.id,
+            status: 'scheduled',
+            schedule: input.content.schedule
+          },
+          message: 'Content scheduled successfully prince.'
         };
 
       } catch (error: any) {

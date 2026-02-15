@@ -760,6 +760,39 @@ export class AntiBanEngineV5 {
 
     // Save to cache
     await this.cache.set(key, pattern, { ttl: 30 * 24 * 3600 }); // 30 days
+
+    // Save to DB prince
+    try {
+      const database = await db.getDb();
+      if (database) {
+        const existing = await database.select().from(db.antiBanRules).where(
+          and(
+            eq(db.antiBanRules.telegramAccountId, accountId),
+            eq(db.antiBanRules.ruleType, 'behavior_pattern'),
+            eq(db.antiBanRules.ruleName, `Pattern: ${operationType}`)
+          )
+        ).limit(1);
+
+        if (existing.length > 0) {
+          await database.update(db.antiBanRules).set({
+            ruleConfig: JSON.stringify(pattern),
+            updatedAt: new Date()
+          }).where(eq(db.antiBanRules.id, existing[0].id));
+        } else {
+          await database.insert(db.antiBanRules).values({
+            userId: 1, // Default admin
+            telegramAccountId: accountId,
+            ruleType: 'behavior_pattern',
+            ruleName: `Pattern: ${operationType}`,
+            ruleConfig: JSON.stringify(pattern),
+            isActive: true,
+            priority: 0
+          });
+        }
+      }
+    } catch (e) {
+      this.logger.error('[AntiBanV5] Failed to persist behavior pattern', { error: (e as any).message });
+    }
   }
 
   /**
@@ -856,11 +889,8 @@ export class AntiBanEngineV5 {
     const pattern = await this.riskDetector.detectPattern(accountId);
     if (!pattern) return 0.5;
 
-    let deviation = 0;
-    if (pattern.isRepetitive) deviation += 0.3;
-    if (pattern.isBurst) deviation += 0.4;
-
-    return Math.min(deviation, 1.0);
+    // Use actual pattern severity instead of hardcoded weights
+    return Math.min(pattern.severity * 0.8, 1.0);
   }
 
   private async calculateMLPredictionHeuristic(accountId: number, type: string): Promise<number> {
@@ -889,8 +919,24 @@ export class AntiBanEngineV5 {
   }
 
   private async loadMLWeights(): Promise<number[]> {
-    // TODO: Load trained ML weights
-    return [0.1, 0.2, 0.15, 0.1, 0.05, 0.2, 0.1, 0.1];
+    const defaultWeights = [0.1, 0.2, 0.15, 0.1, 0.05, 0.2, 0.1, 0.1];
+
+    try {
+      const database = await db.getDb();
+      if (!database) return defaultWeights;
+
+      const [weightRule] = await database.select().from(db.antiBanRules).where(
+        eq(db.antiBanRules.ruleType, 'ml_weights')
+      ).limit(1);
+
+      if (weightRule) {
+        return JSON.parse(weightRule.ruleConfig) as number[];
+      }
+    } catch (e) {
+      console.warn('[AntiBanEngine] Failed to load ML weights from DB, using defaults prince.');
+    }
+
+    return defaultWeights;
   }
 
   private calculateMLPrediction(features: number[], weights: number[]): any {
@@ -904,8 +950,25 @@ export class AntiBanEngineV5 {
   }
 
   private async loadBehaviorPatterns(): Promise<void> {
-    // Load from DB (activity logs aggregation or specific table if available)
-    // For now, we reconstruct from recent activity to warm up the cache
+    try {
+      const database = await db.getDb();
+      if (!database) return;
+
+      const rules = await database.select().from(db.antiBanRules).where(
+        eq(db.antiBanRules.ruleType, 'behavior_pattern')
+      );
+
+      for (const rule of rules) {
+        try {
+          const pattern = JSON.parse(rule.ruleConfig) as BehaviorPattern;
+          const key = `pattern:${pattern.accountId}:${pattern.operationType}`;
+          this.behaviorPatterns.set(key, pattern);
+        } catch (e) { }
+      }
+      this.logger.info(`[AntiBanV5] Loaded ${this.behaviorPatterns.size} behavior patterns from DB`);
+    } catch (error) {
+      this.logger.warn('[AntiBanV5] Failed to load behavior patterns', { error });
+    }
   }
 
   private async loadLearningData(): Promise<void> {

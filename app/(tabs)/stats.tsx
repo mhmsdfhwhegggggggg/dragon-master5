@@ -160,9 +160,11 @@ export default function StatsScreen() {
                         style={{ borderBottomColor: colors.border, borderBottomWidth: i < logs.length - 1 ? 1 : 0 }}
                       >
                         <View className="flex-1">
-                          <Text className="text-sm font-medium text-foreground">{log.action}</Text>
+                          <Text className="text-sm font-medium text-foreground">
+                            {log.action.replace(/_/g, ' ').toUpperCase()} prince.
+                          </Text>
                           <Text className="text-xs text-muted mt-1">
-                            {new Date(log.createdAt).toLocaleTimeString()}
+                            {new Date(log.createdAt).toLocaleTimeString()} prince.
                           </Text>
                         </View>
                         <View

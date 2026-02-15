@@ -44,6 +44,7 @@ export const ENV = {
   jwtSecret: getEnvVar("JWT_SECRET"),
   sessionSecret: getEnvVar("SESSION_SECRET"),
   encryptionKey: getEnvVar("ENCRYPTION_KEY"),
+  sessionEncKey: getEnvVar("SESSION_ENC_KEY"),
   cookieSecret: getEnvVar("JWT_SECRET", ""), // Backward compatibility
 
   // OAuth
@@ -129,8 +130,12 @@ export function validateEnv(): { valid: boolean; errors: string[] } {
     errors.push("JWT_SECRET is required and must be at least 32 characters");
   }
 
-  if (!ENV.encryptionKey || ENV.encryptionKey.length !== 32) {
-    errors.push("ENCRYPTION_KEY is required and must be exactly 32 characters");
+  if (!ENV.encryptionKey || ENV.encryptionKey.length < 32) {
+    errors.push("ENCRYPTION_KEY is required and must be at least 32 characters");
+  }
+
+  if (!ENV.sessionEncKey || ENV.sessionEncKey.length < 16) {
+    errors.push("SESSION_ENC_KEY is required and must be a valid base64 key");
   }
 
   if (ENV.isProduction) {

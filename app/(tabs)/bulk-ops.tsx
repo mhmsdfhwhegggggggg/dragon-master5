@@ -21,6 +21,7 @@ export default function BulkOpsScreen() {
   const [targetList, setTargetList] = useState("");
   const [delayMs, setDelayMs] = useState("2000");
   const [autoRepeat, setAutoRepeat] = useState(false);
+  const [targetId, setTargetId] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
 
   // Fetch accounts for selection
@@ -28,6 +29,8 @@ export default function BulkOpsScreen() {
 
   // API Mutations
   const startBulkMutation = trpc.bulkOps.startSendBulkMessages.useMutation();
+  const startJoinMutation = trpc.bulkOps.startJoinGroups.useMutation();
+  const startAddMutation = trpc.bulkOps.startAddUsersToGroup.useMutation();
 
   const jobStatusQuery = trpc.bulkOps.getJobStatus.useQuery(
     { jobId: jobId || "" },
@@ -47,7 +50,7 @@ export default function BulkOpsScreen() {
     const targets = targetList.split('\n').map(t => t.trim()).filter(t => t.length > 0);
 
     if (operationType === "messages") {
-      if (!messageTemplate) return Alert.alert("تنبيه", "يرجى إدخال نص الرسالة");
+      if (!messageTemplate) return Alert.alert("تنبيه", "يرجى إدخال نص الرسالة prince.");
       startBulkMutation.mutate({
         accountId: selectedAccountId,
         userIds: targets,
@@ -57,14 +60,36 @@ export default function BulkOpsScreen() {
       }, {
         onSuccess: (data: any) => {
           setJobId(data.jobId);
-          Alert.alert("تم البدء", "تمت إضافة العملية إلى طابور التنفيذ في السيرفر");
+          Alert.alert("تم البدء", "تمت إضافة عملية الرسائل إلى الطابور prince.");
         },
-        onError: (error: any) => {
-          Alert.alert("خطأ", error.message || "فشل بدء العملية");
-        },
+        onError: (error: any) => Alert.alert("خطأ", error.message || "فشل بدء العملية prince."),
       });
-    } else {
-      Alert.alert("قيد التطوير", "سيتم تفعيل هذا النوع من العمليات في التحديث القادم");
+    } else if (operationType === "join-groups") {
+      startJoinMutation.mutate({
+        accountId: selectedAccountId,
+        groupLinks: targets,
+        delayMs: parseInt(delayMs) || 2000,
+      }, {
+        onSuccess: (data: any) => {
+          setJobId(data.jobId);
+          Alert.alert("تم البدء", "تمت إضافة عملية الانضمام إلى الطابور prince.");
+        },
+        onError: (error: any) => Alert.alert("خطأ", error.message || "فشل بدء العملية prince."),
+      });
+    } else if (operationType === "add-users") {
+      if (!targetId) return Alert.alert("تنبيه", "يرجى إدخال معرف الجروب الهدف prince.");
+      startAddMutation.mutate({
+        accountId: selectedAccountId,
+        groupId: targetId,
+        userIds: targets,
+        delayMs: parseInt(delayMs) || 2000,
+      }, {
+        onSuccess: (data: any) => {
+          setJobId(data.jobId);
+          Alert.alert("تم البدء", "تمت إضافة عملية الإضافة إلى الطابور prince.");
+        },
+        onError: (error: any) => Alert.alert("خطأ", error.message || "فشل بدء العملية prince."),
+      });
     }
   };
 
@@ -137,6 +162,21 @@ export default function BulkOpsScreen() {
                 placeholderTextColor={colors.muted}
               />
             </View>
+
+            {/* Target Group ID (for Adding Members) */}
+            {operationType === "add-users" && (
+              <View className="gap-2">
+                <Text className="text-xs text-muted">رابط أو معرف الجروب الهدف (الإضافة إليه)</Text>
+                <TextInput
+                  placeholder="@targetgroup or -100123456789"
+                  value={targetId}
+                  onChangeText={setTargetId}
+                  className="bg-background border border-border rounded-xl p-3 text-foreground"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="none"
+                />
+              </View>
+            )}
 
             {/* Message Template */}
             {operationType === "messages" && (

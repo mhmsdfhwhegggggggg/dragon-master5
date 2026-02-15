@@ -26,7 +26,8 @@ export interface ChatContext {
 
 export class AIChatEngine {
   private static instance: AIChatEngine;
-  private client: OpenAI;
+  private client: OpenAI | null = null;
+  private logger = console;
 
   private constructor() {
     // Client will be initialized on first use if key is available
@@ -42,23 +43,21 @@ export class AIChatEngine {
   private getClient(): OpenAI | null {
     if (this.client) return this.client;
 
-    // Support for multiple providers (OpenAI, DeepSeek, Groq)
-    // Using OpenAI SDK as it's compatible with most free/low-cost providers
     const apiKey = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
     const baseURL = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
 
-    if (!apiKey && !process.env.USE_FREE_AI_MOCK) {
+    if (!apiKey) {
       return null;
     }
 
     try {
       this.client = new OpenAI({
-        apiKey: apiKey || 'free-tier-dummy-key',
+        apiKey,
         baseURL
       });
       return this.client;
     } catch (error) {
-      console.error('[AIChatEngine] Failed to initialize AI client:', error);
+      this.logger.error('[AIChatEngine] Failed to initialize AI client:', error);
       return null;
     }
   }
@@ -89,6 +88,33 @@ export class AIChatEngine {
     } catch (error: any) {
       console.error('[AIChatEngine] Error generating response:', error.message);
       return this.getFallbackResponse(context.personality);
+    }
+  }
+
+  /**
+   * Rewrite content to be unique while preserving meaning
+   */
+  async rewriteContent(text: string, prompt?: string): Promise<string> {
+    const client = this.getClient();
+    if (!client) return `[Refined] ${text}`;
+
+    try {
+      const response = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: prompt || 'Rewrite the following message to be unique and human-like while keeping the same meaning and all links/usernames exactly as they are. Use natural language and emojis naturally. Do not mention you are an AI.'
+          },
+          { role: 'user', content: text }
+        ],
+        temperature: 0.8
+      });
+
+      return response.choices[0].message.content || text;
+    } catch (error: any) {
+      console.error('[AIChatEngine] Error rewriting content:', error.message);
+      return text;
     }
   }
 

@@ -405,11 +405,11 @@ export class ExtractAddPipeline {
       await this.sleep(delay);
     }
 
-    // Add member to group
-    await client.invoke(new Api.messages.AddChatUser({
-      chatId: groupId,
-      userId: member.id
-    } as any));
+    // Add member to group prince
+    await client.invoke(new Api.channels.InviteToChannel({
+      channel: groupId,
+      users: [member.id]
+    }));
   }
 
   /**
@@ -470,14 +470,18 @@ export class ExtractAddPipeline {
     const failed = results.filter(r => !r.success);
     const totalDelay = successful.reduce((sum, r) => sum + r.delay, 0);
 
+    const totalExtracted = extracted.length;
+    const addedCount = successful.length;
+    const currentSpeed = successful.length / ((Date.now() - (results[0]?.timestamp?.getTime() || Date.now())) / 1000 / 60) || 0;
+
     return {
-      totalExtracted: extracted.length,
+      totalExtracted: totalExtracted,
       filteredCount: filtered.length,
-      addedCount: successful.length,
+      addedCount: addedCount,
       failedCount: failed.length,
       averageDelay: successful.length > 0 ? totalDelay / successful.length : 0,
-      estimatedTime: 0, // TODO: Calculate based on current speed
-      currentSpeed: successful.length / ((Date.now() - results[0]?.timestamp.getTime() || 0) / 1000 / 60) || 0
+      estimatedTime: currentSpeed > 0 ? (totalExtracted - addedCount) / currentSpeed : 0,
+      currentSpeed: currentSpeed
     };
   }
 

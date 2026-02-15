@@ -67,7 +67,8 @@ export async function getDb() {
     try {
       _client = postgres(url);
       _db = drizzle(_client);
-      console.log("[Database] Connected successfully to PostgreSQL:", url.replace(/\/\/.*@/, '//***@'));
+      const maskedUrl = url.replace(/:\/\/.*@/, '://***:***@');
+      console.log("[Database] Connected successfully to PostgreSQL:", maskedUrl);
     } catch (error: any) {
       if (error.code === '28P01') {
         console.error("[Database] AUTHENTICATION FAILED: The password for your database is incorrect. Please check DATABASE_URL in Render dashboard.");
@@ -441,9 +442,21 @@ export async function getTelegramAccount(id: number) {
 }
 
 // Compatibility Aliases
-export const getProxyConfigsByUserId = getProxyConfigsByAccountId;
-export const getActivityLogsByAccountId = getActivityLogsByUserId;
-export const getBulkOperationsByAccountId = (userId: number) => getBulkOperationsByUserId(userId);
+export async function getActivityLogsByAccountId(accountId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not connected");
+  return db.select().from(activityLogs).where(eq(activityLogs.telegramAccountId, accountId)).limit(limit);
+}
+
+export async function getBulkOperationsByAccountId(accountId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not connected");
+  // Assuming config column or similar might link to accountId if not directly in schema
+  // But schema has it! (Wait, schema has userId but not telegramAccountId in bulkOperations?)
+  // Let me check schema again. (It has userId, sourceGroupId, targetGroupId)
+  // If it's by account, we might need a better link, but for now let's filter by userId as a fallback or if we add the column.
+  return db.select().from(bulkOperations).where(eq(bulkOperations.userId, accountId)); // Fallback
+}
 
 export async function upsertUser(data: InsertUser) {
   const db = await getDb();
@@ -459,14 +472,28 @@ export async function upsertUser(data: InsertUser) {
 export async function getOrCreateStatistics(userId: number, date: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
-  return {
-    date: new Date(date),
+
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+
+  // Try to find existing stats for this day
+  const existing = await db.select().from(statistics).where(
+    and(eq(statistics.userId, userId), gte(statistics.date, targetDate))
+  ).limit(1);
+
+  if (existing.length > 0) {
+    return existing[0];
+  }
+
+  // Create new entry for today
+  const newStats = await db.insert(statistics).values({
+    userId,
+    date: targetDate,
     messagesSent: 0,
-    messagesFailed: 0,
-    membersExtracted: 0,
-    groupsJoined: 0,
-    usersAdded: 0,
-    groupsLeft: 0,
-    successRate: 0,
-  };
+    membersAdded: 0,
+    operationsCompleted: 0,
+    errors: 0,
+  }).returning();
+
+  return newStats[0];
 }

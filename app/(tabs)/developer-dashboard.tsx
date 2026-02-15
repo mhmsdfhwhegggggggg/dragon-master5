@@ -485,10 +485,10 @@ export default function DeveloperDashboardScreen() {
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-2xl font-bold text-foreground">
-                🔐 لوحة تحكم المطور
+                🔐 لوحة تحكم مطور FALCON Pro prince.
               </Text>
               <Text className="text-sm text-muted mt-1">
-                إدارة تصاريح التطبيق
+                إدارة تصاريح وأمان النظام prince.
               </Text>
             </View>
           </View>

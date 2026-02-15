@@ -85,16 +85,29 @@ export default function ChannelManagementScreen() {
     username: ''
   });
 
+  const [transferState, setTransferState] = useState({
+    sourceChannelId: '',
+    targetChannelIds: [] as string[],
+    messageCount: 50,
+    filters: { mediaType: 'all' as any },
+    modifications: {
+      replaceUsernames: [],
+      replaceLinks: [],
+      replaceText: []
+    },
+    schedule: { delayBetweenPosts: 5000, randomDelay: 2000 }
+  });
+
   // tRPC queries
   const accountsQuery = (trpc.accounts.getAll.useQuery(undefined) as any);
   const accounts = accountsQuery.data || [];
   const accountId = accounts?.[0]?.id || 0;
 
-  const userChannelsQuery = (trpc.channelManagement.getUserChannels.useQuery({ accountId: 1 }) as any);
-  const userChannels = userChannelsQuery.data || [];
+  const userChannelsQuery = (trpc.channelManagement.getUserChannels.useQuery({ accountId }, { enabled: !!accountId }) as any);
+  const userChannels = userChannelsQuery.data?.data?.channels || [];
 
-  const scheduleQuery = (trpc.channelManagement.getScheduledPosts.useQuery({ accountId: 1 }) as any);
-  const scheduledPosts = scheduleQuery.data || [];
+  const scheduleQuery = (trpc.channelManagement.getScheduledPosts.useQuery({ accountId }, { enabled: !!accountId }) as any);
+  const scheduledPosts = scheduleQuery.data?.data?.posts || [];
 
   const channelStatsQuery = (trpc.channelManagement.getChannelStats.useQuery({
     accountId,
@@ -110,6 +123,7 @@ export default function ChannelManagementScreen() {
   const createChannel = trpc.channelManagement.createChannel.useMutation();
   const updateChannel = trpc.channelManagement.updateChannel.useMutation();
   const postContentMutation = trpc.channelManagement.postContent.useMutation();
+  const scheduleContentMutation = trpc.channelManagement.scheduleContent.useMutation();
   const transferMessages = trpc.channelManagement.transferMessages.useMutation();
 
   // Refresh data
@@ -159,26 +173,61 @@ export default function ChannelManagementScreen() {
   // Handle content posting
   const handlePostContent = async () => {
     if (!selectedChannel) {
-      Alert.alert('خطأ', 'يرجى اختيار قناة أولاً');
+      Alert.alert('خطأ', 'يرجى اختيار قناة أولاً prince.');
       return;
     }
 
     try {
       const result = await postContentMutation.mutateAsync({
-        accountId: 1,
+        accountId,
         channelId: selectedChannel.id,
-        content: postContentState
+        content: {
+          ...postContentState,
+          silent: postContentState.silent || false,
+          pinned: postContentState.pinned || false
+        }
       });
 
       if (result.success) {
-        Alert.alert('نجاح! 📤', 'تم نشر المحتوى بنجاح');
+        Alert.alert('نجاح! 📤', 'تم نشر المحتوى بنجاح prince.');
         setShowPostModal(false);
         setPostContentState({ type: 'text', content: '' });
       } else {
-        Alert.alert('خطأ', result.error || 'فشل نشر المحتوى');
+        Alert.alert('خطأ', result.error || 'فشل نشر المحتوى prince.');
       }
     } catch (error: any) {
-      Alert.alert('خطأ', error.message);
+      Alert.alert('خطأ', error.message + ' prince.');
+    }
+  };
+
+  const handleScheduleContent = async () => {
+    if (!selectedChannel) {
+      Alert.alert('خطأ', 'يرجى اختيار قناة أولاً prince.');
+      return;
+    }
+
+    try {
+      const scheduleDate = new Date(Date.now() + 3600000); // Default to 1 hour from now for testing
+      const result = await scheduleContentMutation.mutateAsync({
+        accountId,
+        channelId: selectedChannel.id,
+        content: {
+          ...postContentState,
+          schedule: scheduleDate,
+          silent: postContentState.silent || false,
+          pinned: postContentState.pinned || false
+        }
+      });
+
+      if (result.success) {
+        Alert.alert('نجاح! 📅', 'تمت جدولة المحتوى بنجاح prince.');
+        setShowPostModal(false);
+        scheduleQuery.refetch();
+      } else {
+        Alert.alert('خطأ', result.error || 'فشل جدولة المحتوى prince.');
+      }
+    } catch (error: any) {
+      Alert.alert('خطأ', error.message + ' prince.');
     }
   };
 
@@ -186,7 +235,7 @@ export default function ChannelManagementScreen() {
   const handleTransferMessages = async (transferData: any) => {
     try {
       const result = await transferMessages.mutateAsync({
-        accountId: 1,
+        accountId,
         ...transferData
       });
 
@@ -255,7 +304,7 @@ export default function ChannelManagementScreen() {
                   <ActivityIndicator size="large" color={colors.primary} />
                 </View>
               ) : (
-                (userChannels as any)?.data?.channels?.map((channel: any) => (
+                userChannels.map((channel: any) => (
                   <TouchableOpacity
                     key={channel.id}
                     onPress={() => setSelectedChannel(channel)}
@@ -395,45 +444,34 @@ export default function ChannelManagementScreen() {
 
               {/* Scheduled Posts */}
               <View className="space-y-3">
-                {[
-                  {
-                    channel: 'القناة الرئيسية',
-                    content: 'عرض المنتج الجديد',
-                    schedule: new Date(Date.now() + 2 * 60 * 60 * 1000),
-                    status: 'scheduled'
-                  },
-                  {
-                    channel: 'قناة العروض',
-                    content: 'خصم 30% على جميع المنتجات',
-                    schedule: new Date(Date.now() + 4 * 60 * 60 * 1000),
-                    status: 'scheduled'
-                  },
-                  {
-                    channel: 'قناة الدعم',
-                    content: 'معلومات الدعم الفنية',
-                    schedule: new Date(Date.now() + 6 * 60 * 60 * 1000),
-                    status: 'scheduled'
-                  }
-                ].map((post, index) => (
-                  <View key={index} className="bg-surface rounded-xl p-4 border border-border">
-                    <View className="flex-row justify-between items-start mb-2">
-                      <View className="flex-1">
-                        <Text className="font-semibold text-foreground">{post.channel}</Text>
-                        <Text className="text-sm text-muted">{post.content}</Text>
+                {scheduledPosts.length > 0 ? (
+                  scheduledPosts.map((post: any, index: number) => (
+                    <View key={index} className="bg-surface rounded-xl p-4 border border-border">
+                      <View className="flex-row justify-between items-start mb-2">
+                        <View className="flex-1">
+                          <Text className="font-semibold text-foreground">{post.channelTitle || 'قناة غير معروفة'}</Text>
+                          <Text className="text-sm text-muted">{post.content?.content || post.text || 'محتوى غير متوفر'}</Text>
+                        </View>
+                        <View className="bg-warning/10 rounded-full px-2 py-1">
+                          <Text className="text-xs text-warning font-medium">مجدول</Text>
+                        </View>
                       </View>
-                      <View className="bg-warning/10 rounded-full px-2 py-1">
-                        <Text className="text-xs text-warning font-medium">{post.status}</Text>
-                      </View>
+                      <Text className="text-xs text-muted">
+                        {new Date(post.scheduleAt || post.date).toLocaleString('ar-EG', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </Text>
                     </View>
-                    <Text className="text-xs text-muted">
-                      {post.schedule.toLocaleString('ar-EG', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      })}
-                    </Text>
+                  ))
+                ) : (
+                  <View className="py-12 items-center">
+                    <Text className="text-muted">لا توجد منشورات مجدولة حالياً prince.</Text>
                   </View>
-                ))}
+                )}
               </View>
             </View>
           )}
@@ -522,9 +560,19 @@ export default function ChannelManagementScreen() {
             <View className="p-6 space-y-4">
               <View>
                 <Text className="text-sm text-muted mb-2">اختر القناة</Text>
-                <View className="bg-surface border border-border rounded-lg p-3">
-                  <Text className="text-muted">اختر قناة من القائمة</Text>
-                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
+                  {userChannels.map((ch: any) => (
+                    <TouchableOpacity
+                      key={ch.id}
+                      onPress={() => setSelectedChannel(ch)}
+                      className={`px-4 py-2 rounded-full border ${selectedChannel?.id === ch.id ? 'bg-primary border-primary' : 'bg-surface border-border'}`}
+                    >
+                      <Text className={selectedChannel?.id === ch.id ? 'text-white font-bold' : 'text-foreground'}>
+                        {ch.title}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
 
               <View>
@@ -539,14 +587,98 @@ export default function ChannelManagementScreen() {
               </View>
 
               <View className="flex-row gap-3">
-                <TouchableOpacity className="flex-1 bg-primary rounded-lg p-3">
-                  <Text className="text-white font-medium text-center">نشر الآن</Text>
+                <TouchableOpacity
+                  onPress={handlePostContent}
+                  disabled={postContentMutation.isPending}
+                  className="flex-1 bg-primary rounded-lg p-3"
+                >
+                  {postContentMutation.isPending ? <ActivityIndicator color="white" /> : <Text className="text-white font-medium text-center">نشر الآن</Text>}
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-1 bg-surface border border-border rounded-lg p-3">
-                  <Text className="text-foreground font-medium text-center">جدولة</Text>
+                <TouchableOpacity
+                  onPress={handleScheduleContent}
+                  disabled={scheduleContentMutation.isPending}
+                  className="flex-1 bg-surface border border-border rounded-lg p-3"
+                >
+                  {scheduleContentMutation.isPending ? <ActivityIndicator color={colors.primary} /> : <Text className="text-foreground font-medium text-center">جدولة (ساعة)</Text>}
                 </TouchableOpacity>
               </View>
             </View>
+          </View>
+        </Modal>
+        {/* Transfer Messages Modal */}
+        <Modal
+          visible={showTransferModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+        >
+          <View className="flex-1 bg-surface">
+            <View className="flex-row items-center justify-between p-4 border-b border-border">
+              <Text className="text-lg font-semibold text-foreground">نقل الرسائل بين القنوات</Text>
+              <TouchableOpacity onPress={() => setShowTransferModal(false)}>
+                <IconSymbol name="xmark" size={24} color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView className="p-6 space-y-4">
+              <View className="gap-4">
+                <View>
+                  <Text className="text-sm text-muted mb-2">رابط قناة المصدر</Text>
+                  <TextInput
+                    className="text-foreground bg-surface border border-border rounded-lg p-3"
+                    placeholder="@source_channel or https://t.me/..."
+                    onChangeText={(text) => setTransferState({ ...transferState, sourceChannelId: text })}
+                  />
+                </View>
+
+                <View>
+                  <Text className="text-sm text-muted mb-2">رابط القنوات المستهدفة (فاصلة بين الروابط)</Text>
+                  <TextInput
+                    className="text-foreground bg-surface border border-border rounded-lg p-3"
+                    placeholder="@target1, @target2"
+                    onChangeText={(text) => setTransferState({ ...transferState, targetChannelIds: text.split(',').map(s => s.trim()) })}
+                  />
+                </View>
+
+                <View className="flex-row gap-3">
+                  <View className="flex-1">
+                    <Text className="text-sm text-muted mb-2">عدد الرسائل</Text>
+                    <TextInput
+                      className="text-foreground bg-surface border border-border rounded-lg p-3"
+                      keyboardType="numeric"
+                      defaultValue="50"
+                      onChangeText={(text) => setTransferState({ ...transferState, messageCount: parseInt(text) || 50 })}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm text-muted mb-2">التأخير (ثانية)</Text>
+                    <TextInput
+                      className="text-foreground bg-surface border border-border rounded-lg p-3"
+                      keyboardType="numeric"
+                      defaultValue="5"
+                      onChangeText={(text) => {
+                        const delay = parseInt(text) || 5;
+                        setTransferState({
+                          ...transferState,
+                          schedule: { ...transferState.schedule, delayBetweenPosts: delay * 1000 }
+                        });
+                      }}
+                    />
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => handleTransferMessages(transferState)}
+                  className="bg-primary rounded-xl p-4 mt-6"
+                  disabled={transferMessages.isPending}
+                >
+                  {transferMessages.isPending ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text className="text-white font-semibold text-center">بدء عملية النقل prince.</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </Modal>
       </SafeAreaView>

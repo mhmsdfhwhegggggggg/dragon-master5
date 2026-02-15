@@ -209,7 +209,7 @@ export const contentClonerRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloning statistics
+        // Real cloning statistics from service
         return await contentClonerService.getCloningStats(input.accountId);
       } catch (error: any) {
         return {
@@ -229,76 +229,14 @@ export const contentClonerRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement recent activity retrieval
-        const activities = [
-          {
-            id: 'activity-1',
-            ruleId: 'cloner-1',
-            ruleName: 'Competitor Monitor - Tech News',
-            sourceChannel: '@competitor1',
-            targetChannels: ['@mychannel1', '@mychannel2'],
-            clonedPost: {
-              id: 'post-123',
-              content: 'Breaking: New AI technology released! 🚀',
-              mediaType: 'text',
-              views: 5000,
-              reactions: 120
-            },
-            modifications: [
-              'Replaced @competitor with @mychannel',
-              'Replaced competitor.com with mywebsite.com'
-            ],
-            status: 'success',
-            processingTime: 35000,
-            timestamp: new Date('2026-02-09T15:30:00Z')
-          },
-          {
-            id: 'activity-2',
-            ruleId: 'cloner-2',
-            ruleName: 'Content Aggregator - Multiple Sources',
-            sourceChannel: '@source2',
-            targetChannels: ['@aggregator'],
-            clonedPost: {
-              id: 'post-124',
-              content: 'Amazing sunset view 🌅',
-              mediaType: 'image',
-              views: 1200,
-              reactions: 85
-            },
-            modifications: [
-              'Added prefix: 📰 ',
-              'Added suffix: #aggregated'
-            ],
-            status: 'success',
-            processingTime: 28000,
-            timestamp: new Date('2026-02-09T14:45:00Z')
-          },
-          {
-            id: 'activity-3',
-            ruleId: 'cloner-1',
-            ruleName: 'Competitor Monitor - Tech News',
-            sourceChannel: '@competitor1',
-            targetChannels: ['@mychannel1', '@mychannel2'],
-            clonedPost: {
-              id: 'post-125',
-              content: 'Spam content detected',
-              mediaType: 'text',
-              views: 50,
-              reactions: 2
-            },
-            modifications: [],
-            status: 'filtered',
-            processingTime: 5000,
-            timestamp: new Date('2026-02-09T14:20:00Z'),
-            reason: 'Content excluded by keyword filter: spam'
-          }
-        ];
+        // Use history service to get recent activity
+        const result = await contentClonerService.getCloningHistory(input.accountId, input.limit);
 
         return {
           success: true,
           data: {
-            activities: activities.slice(0, input.limit),
-            total: activities.length
+            activities: result.history,
+            total: result.total
           }
         };
 
@@ -322,22 +260,7 @@ export const contentClonerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloner rule testing
-        const testResult = {
-          mode: input.testMode,
-          sourceChannelId: input.sourceChannelId || '@competitor1',
-          estimatedPosts: input.testMode === 'monitor_1h' ? 15 : 1,
-          estimatedTime: input.testMode === 'monitor_1h' ? '1 hour' : '2 minutes',
-          testPosts: input.testMode === 'single_post' ? [
-            {
-              originalContent: 'Check out our new product! 🛍️',
-              modifiedContent: 'Check out @mychannel new product! 🛍️',
-              modifications: ['Replaced @competitor with @mychannel'],
-              estimatedSuccess: 95
-            }
-          ] : [],
-          status: 'ready'
-        };
+        const testResult = await contentClonerService.testRule(input.ruleId, input.testMode, input.sourceChannelId);
 
         return {
           success: true,
@@ -390,36 +313,23 @@ export const contentClonerRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloning queue retrieval
-        const queue = [
-          {
-            id: 'queue-1',
-            ruleId: 'cloner-1',
-            ruleName: 'Competitor Monitor - Tech News',
-            sourceChannel: '@competitor1',
-            targetChannels: ['@mychannel1', '@mychannel2'],
-            status: 'processing',
-            priority: 5,
-            postsFound: 3,
-            postsProcessed: 1,
-            postsRemaining: 2,
-            estimatedCompletion: new Date(Date.now() + 5 * 60 * 1000),
-            startedAt: new Date(Date.now() - 2 * 60 * 1000)
-          },
-          {
-            id: 'queue-2',
-            ruleId: 'cloner-2',
-            ruleName: 'Content Aggregator - Multiple Sources',
-            sourceChannel: '@source1',
-            targetChannels: ['@aggregator'],
-            status: 'pending',
-            priority: 3,
-            postsFound: 0,
-            postsProcessed: 0,
-            postsRemaining: 0,
-            estimatedCompletion: null
-          }
-        ];
+        // Queue state is represented by active rules currently monitoring
+        const rules = await contentClonerService.getRules(input.accountId, { isActive: true });
+
+        const queue = rules.map(rule => ({
+          id: `rule-${rule.id}`,
+          ruleId: rule.id,
+          ruleName: rule.name,
+          sourceChannel: rule.sourceChannelIds[0] || 'unknown',
+          targetChannels: rule.targetChannelIds,
+          status: 'processing',
+          priority: rule.priority || 0,
+          postsFound: rule.totalCloned,
+          postsProcessed: rule.totalCloned,
+          postsRemaining: 0,
+          estimatedCompletion: null,
+          startedAt: rule.lastRunAt || rule.createdAt
+        }));
 
         const filtered = input.status
           ? queue.filter(q => q.status === input.status)
@@ -431,10 +341,10 @@ export const contentClonerRouter = router({
             queue: filtered,
             total: filtered.length,
             summary: {
-              pending: queue.filter(q => q.status === 'pending').length,
-              processing: queue.filter(q => q.status === 'processing').length,
-              completed: queue.filter(q => q.status === 'completed').length,
-              failed: queue.filter(q => q.status === 'failed').length
+              pending: 0,
+              processing: queue.length,
+              completed: queue.length,
+              failed: 0
             }
           }
         };
@@ -459,7 +369,6 @@ export const contentClonerRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloning history retrieval
         const history = await contentClonerService.getCloningHistory(input.accountId, input.limit, input.offset);
 
         return {

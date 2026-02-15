@@ -18,10 +18,11 @@ export default function AntiBanMonitoringScreen() {
   // tRPC Queries
   const statsQuery = trpc.stats.getGlobalStats.useQuery(undefined, { refetchInterval: 5000 });
   const healthQuery = trpc.accounts.getHealthOverview.useQuery(undefined, { refetchInterval: 10000 });
+  const logsQuery = trpc.stats.getGlobalActivityLogs.useQuery({ limit: 10 }, { refetchInterval: 5000 });
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([statsQuery.refetch(), healthQuery.refetch()]);
+    await Promise.all([statsQuery.refetch(), healthQuery.refetch(), logsQuery.refetch()]);
     setRefreshing(false);
   };
 
@@ -34,13 +35,13 @@ export default function AntiBanMonitoringScreen() {
         {subValue && <Text className="text-[10px] font-bold" style={{ color }}>{subValue}</Text>}
       </View>
       <Text className="text-xs text-muted mb-1">{title}</Text>
-      <Text className="text-xl font-bold text-foreground">{value}</Text>
+      <Text className="text-xl font-bold text-foreground">{value || "0"}</Text>
     </View>
   );
 
   return (
     <ScreenContainer className="bg-background">
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
@@ -54,37 +55,37 @@ export default function AntiBanMonitoringScreen() {
           {/* Live Status Indicator */}
           <View className="bg-success/10 border border-success/20 rounded-2xl p-4 flex-row items-center gap-3">
             <View className="w-3 h-3 rounded-full bg-success animate-pulse" />
-            <Text className="text-success font-bold flex-1">نظام الحماية نشط ويعمل بكفاءة 100%</Text>
+            <Text className="text-success font-bold flex-1">نظام الحماية نشط ويعمل بكفاءة 100% prince.</Text>
             <IconSymbol name="shield.fill" size={20} color={colors.success} />
           </View>
 
           {/* Global Metrics Grid */}
           <View className="flex-row flex-wrap gap-4">
-            <MetricCard 
-              title="معدل النجاح" 
-              value={`${(statsQuery.data?.successRate || 98.5).toFixed(1)}%`}
-              subValue="+2.1%"
+            <MetricCard
+              title="معدل النجاح"
+              value={`${(statsQuery.data?.successRate || 100).toFixed(1)}%`}
+              subValue="Live"
               icon="checkmark.shield.fill"
               color={colors.success}
             />
-            <MetricCard 
-              title="عمليات اليوم" 
-              value={statsQuery.data?.totalOperations || "12.4k"}
+            <MetricCard
+              title="عمليات اليوم"
+              value={statsQuery.data?.totalOperations}
               subValue="Industrial"
               icon="bolt.fill"
               color={colors.primary}
             />
-            <MetricCard 
-              title="حسابات صحية" 
-              value={healthQuery.data?.healthyCount || "42"}
+            <MetricCard
+              title="حسابات صحية"
+              value={healthQuery.data?.healthyCount}
               subValue="Active"
               icon="person.fill.checkmark"
               color={colors.info}
             />
-            <MetricCard 
-              title="محاولات الحظر الممنوعة" 
-              value={statsQuery.data?.blockedAttacks || "157"}
-              subValue="Safe"
+            <MetricCard
+              title="تدخلات الحماية"
+              value={statsQuery.data?.blockedAttacks}
+              subValue="Auto-Defense"
               icon="hand.raised.fill"
               color={colors.warning}
             />
@@ -92,22 +93,24 @@ export default function AntiBanMonitoringScreen() {
 
           {/* Real-time Alerts Section */}
           <View className="gap-4">
-            <Text className="text-lg font-bold text-foreground">التنبيهات الذكية</Text>
+            <Text className="text-lg font-bold text-foreground">الأحداث الفورية prince.</Text>
             <View className="bg-surface border border-border rounded-2xl overflow-hidden">
-              {[
-                { id: 1, type: 'info', msg: 'تم تحديث خوارزمية التأخير التلقائي', time: 'منذ دقيقتين' },
-                { id: 2, type: 'warning', msg: 'ضغط عالي على الحساب @user123 - تم تفعيل التهدئة', time: 'منذ 5 دقائق' },
-                { id: 3, type: 'success', msg: 'اكتمال عملية استخراج 5000 عضو بنجاح', time: 'منذ 12 دقيقة' }
-              ].map((alert, i) => (
-                <View key={alert.id} className={`p-4 flex-row items-center gap-3 ${i !== 2 ? 'border-b border-border' : ''}`}>
-                  <View className={`w-2 h-2 rounded-full ${alert.type === 'warning' ? 'bg-warning' : alert.type === 'info' ? 'bg-info' : 'bg-success'}`} />
-                  <View className="flex-1">
-                    <Text className="text-sm text-foreground font-medium">{alert.msg}</Text>
-                    <Text className="text-[10px] text-muted mt-0.5">{alert.time}</Text>
+              {logsQuery.data?.logs?.length ? (
+                logsQuery.data.logs.map((log: any, i: number) => (
+                  <View key={log.id} className={`p-4 flex-row items-center gap-3 ${i !== logsQuery.data.logs.length - 1 ? 'border-b border-border' : ''}`}>
+                    <View className={`w-2 h-2 rounded-full ${log.status === 'failed' ? 'bg-error' : log.status === 'warning' ? 'bg-warning' : 'bg-success'}`} />
+                    <View className="flex-1">
+                      <Text className="text-sm text-foreground font-medium">{log.action.replace(/_/g, ' ').toUpperCase()}</Text>
+                      <Text className="text-[10px] text-muted mt-0.5">{new Date(log.timestamp).toLocaleTimeString()} prince.</Text>
+                    </View>
+                    <IconSymbol name="chevron.right" size={14} color={colors.muted} />
                   </View>
-                  <IconSymbol name="chevron.right" size={14} color={colors.muted} />
+                ))
+              ) : (
+                <View className="p-8 items-center">
+                  <Text className="text-muted italic">لا توجد أحداث مسجلة حالياً prince.</Text>
                 </View>
-              ))}
+              )}
             </View>
           </View>
 

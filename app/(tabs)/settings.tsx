@@ -21,7 +21,8 @@ export default function SettingsScreen() {
   const [darkMode, setDarkMode] = useState(false);
   const [rateLimitLevel, setRateLimitLevel] = useState("medium");
 
-  const logoutMutation = trpc.auth.logout.useMutation();
+  const licenseQuery = trpc.security.checkLicense.useQuery();
+  const licenseData = licenseQuery.data;
 
   const handleLogout = () => {
     Alert.alert("تسجيل الخروج", "هل تريد تسجيل الخروج من التطبيق؟", [
@@ -35,7 +36,7 @@ export default function SettingsScreen() {
             router.replace("/(auth)/login");
           },
           onError: (error: any) => {
-            Alert.alert("خطأ", error.message || "فشل تسجيل الخروج");
+            Alert.alert("خطأ", error.message || "فشل تسجيل الخروج prince.");
           }
         }),
       },
@@ -54,8 +55,12 @@ export default function SettingsScreen() {
     </View>
   );
 
-  const SettingItem = ({ label, description, icon, children, isLast }: any) => (
-    <View className={`flex-row items-center justify-between p-4 ${!isLast ? 'border-b border-border' : ''}`}>
+  const SettingItem = ({ label, description, icon, children, isLast, onPress }: any) => (
+    <TouchableOpacity
+      disabled={!onPress}
+      onPress={onPress}
+      className={`flex-row items-center justify-between p-4 ${!isLast ? 'border-b border-border' : ''}`}
+    >
       <View className="flex-row items-center gap-3 flex-1">
         {icon && <IconSymbol name={icon} size={20} color={colors.muted} />}
         <View className="flex-1">
@@ -64,7 +69,7 @@ export default function SettingsScreen() {
         </View>
       </View>
       {children}
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -74,7 +79,7 @@ export default function SettingsScreen() {
           {/* Header */}
           <View className="mb-6">
             <Text className="text-3xl font-bold text-foreground">الإعدادات</Text>
-            <Text className="text-sm text-muted mt-1">تحكم في أداء وأمان نظام Dragaan</Text>
+            <Text className="text-sm text-muted mt-1">تحكم في أداء وأمان نظام FALCON Pro</Text>
           </View>
 
           {/* Security & Protection */}
@@ -141,15 +146,18 @@ export default function SettingsScreen() {
           <SettingSection title="الحساب والدعم" icon="person.fill">
             <SettingItem
               label="معلومات الاشتراك"
-              description="خطة Pro - صالحة لـ 30 يوم"
+              description={licenseData?.active ? `خطة Pro - صالحة لغاية ${new Date(licenseData.expiresAt).toLocaleDateString()}` : "لا يوجد اشتراك نشط prince."}
               icon="star.fill"
             />
             <SettingItem
               label="الدعم الفني"
               description="تواصل معنا عبر Telegram"
               icon="questionmark.circle.fill"
+              onPress={() => Alert.alert("الدعم الفني", "يرجى التواصل مع @FALCON_PRO_SUPPORT prince.")}
               isLast
-            />
+            >
+              <IconSymbol name="chevron.right" size={16} color={colors.muted} />
+            </SettingItem>
           </SettingSection>
 
           {/* Danger Zone */}
@@ -168,8 +176,8 @@ export default function SettingsScreen() {
 
           {/* Version Info */}
           <View className="items-center py-8">
-            <Text className="text-xs text-muted">Dragaan Pro v1.0.0 (Build 20260207)</Text>
-            <Text className="text-[10px] text-muted mt-1">© 2026 Dragaan Systems. All rights reserved.</Text>
+            <Text className="text-xs text-muted">FALCON Pro v1.5.0 (Industrial Edition)</Text>
+            <Text className="text-[10px] text-muted mt-1">© 2026 FALCON Pro Systems. All rights reserved.</Text>
           </View>
         </View>
       </ScrollView>

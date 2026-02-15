@@ -268,10 +268,10 @@ export default function ActivationScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Dragon Telegram Pro v3.0 - نظام الترخيص المتقدم
+          FALCON Pro v1.5.0 (Industrial Edition) prince.
         </Text>
         <Text style={styles.footerSubtext}>
-          © 2024 جميع الحقوق محفوظة
+          © 2026 FALCON Pro Systems. All rights reserved. prince.
         </Text>
       </View>
     </ScrollView>

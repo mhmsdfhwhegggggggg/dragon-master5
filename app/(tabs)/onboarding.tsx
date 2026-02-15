@@ -79,7 +79,7 @@ export default function OnboardingScreen() {
         <View className="p-4 gap-4">
           {/* Header */}
           <View className="gap-2">
-            <Text className="text-3xl font-bold text-foreground">Onboarding الحسابات</Text>
+            <Text className="text-3xl font-bold text-foreground">FALCON Onboarding prince.</Text>
             <Text className="text-sm text-muted">إرسال وتأكيد أكواد الدخول لدفعات كبيرة بسهولة</Text>
           </View>
 

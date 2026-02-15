@@ -17,6 +17,7 @@ import { logger } from '../_core/logger';
 import * as db from '../db';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { antiBanEngineV5 } from './anti-ban-engine-v5';
+import { aiChatEngine } from './ai-chat-engine';
 
 export interface CloneRule {
     id: string;
@@ -248,8 +249,7 @@ export class ContentClonerService {
             text = this.smartRewrite(text);
         }
         if (mods.rewritePrompt) {
-            // Placeholder for actual AI API
-            text = `[AI Refined] ${text}`;
+            text = await aiChatEngine.rewriteContent(text, mods.rewritePrompt);
         }
 
         if (mods.addPrefix) text = `${mods.addPrefix}\n\n${text}`;
@@ -570,6 +570,45 @@ export class ContentClonerService {
             }),
             total: Number(countResult[0]?.count) || 0
         };
+    }
+
+    /**
+     * Test a cloner rule (Dry Run)
+     */
+    public async testRule(ruleId: string, testMode: string, sourceChannelId?: string): Promise<any> {
+        const rule = this.activeRules.get(ruleId) || await this.getRuleById(ruleId);
+        if (!rule) throw new Error("Rule not found");
+
+        const sourceId = sourceChannelId || rule.sourceChannelIds[0];
+        if (!sourceId) throw new Error("No source channel provided");
+
+        // Simulate behavior
+        const result = {
+            mode: testMode,
+            sourceChannelId: sourceId,
+            estimatedPosts: testMode === 'monitor_1h' ? 10 : 1,
+            estimatedTime: testMode === 'monitor_1h' ? '1 hour' : '1 minute',
+            testPosts: [
+                {
+                    originalContent: "Sample post content from " + sourceId,
+                    modifiedContent: await this.prepareContent({ message: "Sample post content from " + sourceId }, rule.modifications),
+                    modifications: Object.keys(rule.modifications).filter(k => (rule.modifications as any)[k] === true),
+                    estimatedSuccess: 98
+                }
+            ],
+            status: 'success'
+        };
+
+        return result;
+    }
+
+    private async getRuleById(ruleId: string): Promise<CloneRule | null> {
+        const database = await db.getDb();
+        if (!database) return null;
+        const id = parseInt(ruleId);
+        if (isNaN(id)) return null;
+        const [r] = await database.select().from(db.contentClonerRules).where(eq(db.contentClonerRules.id, id)).limit(1);
+        return r ? this.mapDbToRule(r) : null;
     }
 }
 

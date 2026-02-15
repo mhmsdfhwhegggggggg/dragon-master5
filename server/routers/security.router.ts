@@ -7,9 +7,18 @@ export const securityRouter = router({
     validateLicense: publicProcedure
         .input(z.object({ key: z.string(), hwid: z.string() }))
         .mutation(async ({ input }) => {
-            // Simple mock validation
-            if (!ENV.enableLicenseCheck) return { valid: true, type: "unimited" };
-            return { valid: true, type: "trial", expiresAt: new Date(Date.now() + 86400000) };
+            const { licenseManager } = await import("../services/license-manager");
+            const result = await licenseManager.validateLicense(input.key, input.hwid);
+
+            if (!result.valid) {
+                return { valid: false, error: result.reason };
+            }
+
+            return {
+                valid: true,
+                type: result.license?.type || "basic",
+                expiresAt: result.license?.expiresAt
+            };
         }),
 
     checkIntegrity: protectedProcedure.query(async () => {

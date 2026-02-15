@@ -22,6 +22,10 @@ export default function AccountsScreen() {
   // Fetch accounts from API
   const { data: accounts, isLoading, refetch } = trpc.accounts.getAll.useQuery(undefined);
   const deleteAccountMutation = trpc.accounts.delete.useMutation();
+  const unbanMutation = (trpc as any).accounts.unban.useMutation();
+  const removeDuplicatesMutation = (trpc as any).accounts.removeDuplicates.useMutation();
+  const warmAllMutation = (trpc as any).accounts.warmAll.useMutation();
+  const router = require("expo-router").useRouter();
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -30,16 +34,22 @@ export default function AccountsScreen() {
   }, [refetch]);
 
   const handleAddAccount = () => {
-    Alert.alert("إضافة حساب", "يمكنك إضافة حسابات فردية أو دفعات كبيرة عبر صفحة Onboarding");
+    router.push("/onboarding");
   };
 
-  const handleSmartUnban = (phoneNumber: string) => {
+  const handleSmartUnban = (id: number) => {
     Alert.alert(
       "فك الحظر الذكي",
-      `هل تريد بدء عملية فك الحظر الذكية للحساب ${phoneNumber}؟ سيقوم النظام بإرسال طلبات رسمية ومتابعتها.`,
+      "هل تريد بدء عملية فك الحظر الذكية لهذا الحساب؟ سيقوم النظام بإرسال طلبات رسمية ومتابعتها.",
       [
         { text: "إلغاء", style: "cancel" },
-        { text: "بدء الآن", onPress: () => Alert.alert("تم البدء", "بدأت عملية فك الحظر في السيرفر") }
+        {
+          text: "بدء الآن",
+          onPress: () => unbanMutation.mutate({ id }, {
+            onSuccess: () => Alert.alert("تم البدء", "بدأت عملية فك الحظر في السيرفر prince."),
+            onError: (err: any) => Alert.alert("خطأ", err.message || "فشل بدء العملية prince.")
+          })
+        }
       ]
     );
   };
@@ -47,10 +57,36 @@ export default function AccountsScreen() {
   const handleRemoveDuplicates = () => {
     Alert.alert(
       "إزالة التكرار",
-      "سيقوم النظام بفحص جميع الحسابات وإزالة المكرر منها بناءً على الـ ID ورقم الهاتف لضمان نظافة البيانات.",
+      "سيقوم النظام بفحص جميع الحسابات وإزالة المكرر منها لضمان نظافة البيانات.",
       [
         { text: "إلغاء", style: "cancel" },
-        { text: "تنظيف الآن", onPress: () => Alert.alert("تم", "تمت إزالة 0 حسابات مكررة") }
+        {
+          text: "تنظيف الآن",
+          onPress: () => removeDuplicatesMutation.mutate(undefined, {
+            onSuccess: (res: any) => {
+              Alert.alert("تم", `تمت إزالة ${res.removedCount} حسابات مكررة prince.`);
+              refetch();
+            },
+            onError: (err: any) => Alert.alert("خطأ", err.message || "فشل التنظيف prince.")
+          })
+        }
+      ]
+    );
+  };
+
+  const handleWarmAll = () => {
+    Alert.alert(
+      "تسخين الحسابات",
+      "هل تريد بدء جلسة تسخين شاملة لجميع الحسابات النشطة لرفع مستوى الثقة؟",
+      [
+        { text: "إلغاء", style: "cancel" },
+        {
+          text: "تسخين الآن",
+          onPress: () => warmAllMutation.mutate(undefined, {
+            onSuccess: () => Alert.alert("تم", "بدأت عملية تسخين الحسابات في الخلفية prince."),
+            onError: (err: any) => Alert.alert("خطأ", err.message || "فشل بدء التسخين prince.")
+          })
+        }
       ]
     );
   };
@@ -91,6 +127,7 @@ export default function AccountsScreen() {
               <Text className="text-xs font-bold text-foreground">إزالة التكرار</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              onPress={handleWarmAll}
               className="flex-1 bg-surface border border-border p-4 rounded-2xl items-center gap-2"
             >
               <IconSymbol name="flame.fill" size={20} color={colors.warning} />
@@ -166,10 +203,10 @@ export default function AccountsScreen() {
                         onPress={() => deleteAccountMutation.mutate({ id: account.id }, {
                           onSuccess: () => {
                             refetch();
-                            Alert.alert("تم", "تم حذف الحساب بنجاح");
+                            Alert.alert("تم", "تم حذف الحساب بنجاح prince.");
                           },
                           onError: (err: any) => {
-                            Alert.alert("خطأ", err.message || "فشل حذف الحساب");
+                            Alert.alert("خطأ", err.message || "فشل حذف الحساب prince.");
                           }
                         })}
                         className="w-10 h-10 rounded-xl bg-error/10 items-center justify-center"
@@ -179,7 +216,7 @@ export default function AccountsScreen() {
 
                       {!account.isActive && (
                         <TouchableOpacity
-                          onPress={() => handleSmartUnban(account.phoneNumber)}
+                          onPress={() => handleSmartUnban(account.id)}
                           className="w-10 h-10 rounded-xl bg-warning/10 items-center justify-center"
                         >
                           <IconSymbol name="lifepreserver.fill" size={18} color={colors.warning} />

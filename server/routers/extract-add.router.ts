@@ -276,6 +276,22 @@ export const extractAddRouter = router({
           return sum;
         }, 0);
 
+        // Calculate most active groups
+        const sourceGroups = pipelines.map(p => p.sourceGroupId).filter(Boolean);
+        const targetGroups = pipelines.map(p => p.targetGroupId).filter(Boolean);
+
+        const getMostFrequent = (arr: (string | null)[]) => {
+          if (arr.length === 0) return 'N/A';
+          const counts = arr.reduce((acc, val) => {
+            if (val) acc[val] = (acc[val] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+          return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+        };
+
+        const mostActiveSourceGroup = getMostFrequent(sourceGroups);
+        const mostActiveTargetGroup = getMostFrequent(targetGroups);
+
         return {
           success: true,
           data: {
@@ -284,12 +300,12 @@ export const extractAddRouter = router({
             failedPipelines: failed.length,
             totalMembersExtracted,
             totalMembersAdded,
-            averageSuccessRate: pipelines.length > 0 ? (successful.length / pipelines.length) * 100 : 0,
-            averageSpeed: 0, // Hard to calc without granular logs
+            averageSuccessRate: pipelines.length > 0 ? (totalMembersAdded / totalMembersExtracted) * 100 : 0,
+            averageSpeed: totalRuntime > 0 ? (totalMembersAdded / (totalRuntime / 1000)) : 0,
             totalRuntime,
             averageRuntime: pipelines.length > 0 ? totalRuntime / pipelines.length : 0,
-            mostActiveSourceGroup: 'Check Analytics', // Placeholder
-            mostActiveTargetGroup: 'Check Analytics', // Placeholder
+            mostActiveSourceGroup,
+            mostActiveTargetGroup,
             // ... omitting detailed nested objects if they break schema, or returning safe defaults
             performance: {
               extraction: { averageSpeed: 0, averageAccuracy: 0, totalProcessed: totalMembersExtracted },

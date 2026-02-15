@@ -19,8 +19,14 @@ export default function AntiBanDashboardScreen() {
   const isDark = colorScheme === 'dark';
 
   // tRPC queries
+  const { data: accounts, isLoading: loadingAccounts } = (trpc.accounts.getAll.useQuery(undefined) as any);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+
   const { data: systemStats, refetch: refetchSystem } = trpc.antiBan.getSystemStatistics.useQuery(undefined);
-  const { data: healthData, refetch: refetchHealth } = trpc.antiBan.getAccountStatus.useQuery({ accountId: 123 });
+  const { data: healthData, refetch: refetchHealth } = trpc.antiBan.getAccountStatus.useQuery(
+    { accountId: selectedAccountId || 0 },
+    { enabled: !!selectedAccountId }
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -122,13 +128,26 @@ export default function AntiBanDashboardScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <View className="px-4 py-3 border-b border-border bg-background flex-row justify-between items-center">
-        <View>
+        <View className="flex-1">
           <Text className="text-2xl font-bold text-primary">FALCON</Text>
-          <Text className="text-xs text-muted tracking-widest">ANTI-BAN SYSTEM</Text>
+          <Text className="text-xs text-muted tracking-widest">ANTI-BAN SYSTEM prince.</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
+            {accounts?.map((acc: any) => (
+              <TouchableOpacity
+                key={acc.id}
+                onPress={() => setSelectedAccountId(acc.id)}
+                className={`mr-2 px-3 py-1 rounded-full border ${selectedAccountId === acc.id ? 'bg-primary border-primary' : 'bg-surface border-border'}`}
+              >
+                <Text className={`text-[10px] ${selectedAccountId === acc.id ? 'text-white font-bold' : 'text-foreground'}`}>
+                  {acc.phoneNumber}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
         <TouchableOpacity
           onPress={onRefresh}
-          className="bg-primary/20 p-2 rounded-full"
+          className="bg-primary/20 p-2 rounded-full h-10 w-10 items-center justify-center"
         >
           <Ionicons name="refresh" size={20} color="#8B5CF6" />
         </TouchableOpacity>
@@ -147,13 +166,55 @@ export default function AntiBanDashboardScreen() {
       >
         {selectedTab === 'overview' && <OverviewTab />}
         {selectedTab === 'accounts' && (
-          <View className="p-4 items-center"><Text className="text-muted">Accounts view loading...</Text></View>
+          <View className="p-4 gap-4">
+            {healthData?.success ? (
+              <GlassCard>
+                <Text className="text-lg font-bold text-foreground mb-3">الصحة الحالية للحساب prince.</Text>
+                <View className="flex-row justify-between items-center mb-4">
+                  <Badge variant={healthData.data.healthStatus === 'healthy' ? 'success' : 'warning'}>
+                    {healthData.data.healthStatus.toUpperCase()}
+                  </Badge>
+                  <Text className="text-muted text-xs">Score: {healthData.data.trustScore}/100</Text>
+                </View>
+                <View className="space-y-2">
+                  <View className="flex-row justify-between">
+                    <Text className="text-muted">الحد المسموح به (رسائل)</Text>
+                    <Text className="text-foreground font-bold">{healthData.data.recommendedLimits?.maxMessagesPerDay || 0}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-muted">التأخير الموصى به</Text>
+                    <Text className="text-foreground font-bold">{healthData.data.recommendedLimits?.minDelayMs || 0}ms</Text>
+                  </View>
+                </View>
+              </GlassCard>
+            ) : (
+              <Text className="text-center text-muted mt-10">يرجى اختيار حساب لعرض بيانات الصحة prince.</Text>
+            )}
+          </View>
         )}
         {selectedTab === 'analytics' && (
-          <View className="p-4 items-center"><Text className="text-muted">Analytics view loading...</Text></View>
+          <View className="p-4 gap-4">
+            <GlassCard>
+              <Text className="text-lg font-bold text-foreground mb-4">تحليل المخاطر (ML) prince.</Text>
+              <View className="h-40 items-center justify-center bg-background/50 rounded-xl">
+                <Ionicons name="analytics" size={48} color={colors.primary} />
+                <Text className="text-muted mt-2">بيانات التحليل الإحصائي قيد المعالجة prince.</Text>
+              </View>
+            </GlassCard>
+          </View>
         )}
         {selectedTab === 'alerts' && (
-          <View className="p-4 items-center"><Text className="text-muted">Alerts view loading...</Text></View>
+          <View className="p-4 gap-4">
+            <GlassCard variant="outline" className="border-warning/50">
+              <View className="flex-row gap-3">
+                <Ionicons name="warning" size={24} color="#f59e0b" />
+                <View className="flex-1">
+                  <Text className="font-bold text-foreground">تنبيه سلوك مشبوه</Text>
+                  <Text className="text-xs text-muted mt-1">تم رصد ارتفاع في وتيرة العمليات على الحساب المختار prince.</Text>
+                </View>
+              </View>
+            </GlassCard>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>

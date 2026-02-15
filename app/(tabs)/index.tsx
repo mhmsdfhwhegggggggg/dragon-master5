@@ -82,10 +82,10 @@ export default function HomeScreen() {
           <View className="flex-row items-center justify-between">
             <View className="gap-1">
               <Text className="text-3xl font-bold text-foreground">
-                Dragaan Pro
+                FALCON Pro
               </Text>
               <Text className="text-sm text-muted">
-                نظام إدارة Telegram المتكامل
+                نظام إدارة Telegram المتكامل prince.
               </Text>
             </View>
             <Image
@@ -224,10 +224,10 @@ export default function HomeScreen() {
                   >
                     <View className="flex-1">
                       <Text className="text-base font-medium text-foreground">
-                        {activity.action}
+                        {activity.action.replace(/_/g, ' ').toUpperCase()} prince.
                       </Text>
                       <Text className="text-sm text-muted mt-1">
-                        {activity.time}
+                        {new Date(activity.time).toLocaleTimeString()} prince.
                       </Text>
                     </View>
                     <View
