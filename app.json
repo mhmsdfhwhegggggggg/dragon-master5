@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "FALCON Telegram Pro",
-    "slug": "falcon-telegram-pro",
-    "version": "6.0.0",
+    "slug": "falcon-telegram-pro-mobile",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
