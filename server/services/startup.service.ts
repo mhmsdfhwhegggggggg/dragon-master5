@@ -49,7 +49,7 @@ export class StartupService {
     private static async ensureAdminExists() {
         const email = process.env.ADMIN_EMAIL || 'admin@falcon.pro';
         const password = process.env.ADMIN_PASSWORD || 'falcon_heart_2026';
-        const name = process.env.ADMIN_NAME || 'Falcon Admin';
+        const username = process.env.ADMIN_USERNAME || 'admin';
 
         const database = await db.getDb();
         if (!database) return;
@@ -59,8 +59,8 @@ export class StartupService {
             logger.info(`[Startup] No admin found. Creating auto-admin: ${email}...`);
             await db.createUser({
                 email,
-                password, // Note: Should be hashed in production if db.createUser doesn't do it
-                name,
+                password,
+                username,
                 role: 'admin',
                 isActive: true
             });
