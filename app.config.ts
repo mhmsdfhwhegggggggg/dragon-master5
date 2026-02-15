@@ -7,8 +7,8 @@ import type { ExpoConfig } from "expo/config";
 // Bundle ID can only contain letters, numbers, and dots
 // Android requires each dot-separated segment to start with a letter
 const rawBundleId = "space.manus.falcon.telegram.pro.mobile.t20260204132529";
-const bundleId = "com.falcon.telegrampro";
-const schemeFromBundleId = "falcon-telegram-pro";
+const bundleId = "space.manus.falcon.telegram.pro.mobile.t20260204132529";
+const schemeFromBundleId = "manus20260204132529";
 
 const env = {
   // App branding - update these values directly (do not use env vars)

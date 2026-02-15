@@ -16,14 +16,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.falcon.telegrampro"
+      "bundleIdentifier": "space.manus.falcon.telegram.pro.mobile.t20260204132529"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.falcon.telegrampro"
+      "package": "space.manus.falcon.telegram.pro.mobile.t20260204132529"
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
