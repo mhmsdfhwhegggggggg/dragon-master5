@@ -47,9 +47,9 @@ export const ENV = {
   cookieSecret: getEnvVar("JWT_SECRET", ""), // Backward compatibility
 
   // OAuth
-  oAuthServerUrl: getEnvVar("OAUTH_SERVER_URL"),
-  appId: getEnvVar("VITE_APP_ID"),
-  ownerOpenId: getEnvVar("OWNER_OPEN_ID"),
+  oAuthServerUrl: getEnvVar("OAUTH_SERVER_URL", "https://oauth.dragaan-pro.com"),
+  appId: getEnvVar("APP_ID", "dragon_telegram_pro_mobile"),
+  ownerOpenId: getEnvVar("OWNER_OPEN_ID", ""),
 
   // CORS
   corsOrigins: getEnvVar("CORS_ORIGINS", "")
@@ -104,7 +104,7 @@ export const ENV = {
 
   // Feature Flags
   enableRegistration: getEnvBoolean("ENABLE_REGISTRATION", true),
-  enableLicenseCheck: getEnvBoolean("ENABLE_LICENSE_CHECK", true),
+  enableLicenseCheck: getEnvBoolean("ENABLE_LICENSE_CHECK", false),
   enableAnalytics: getEnvBoolean("ENABLE_ANALYTICS", true),
   enableNotifications: getEnvBoolean("ENABLE_NOTIFICATIONS", true),
 
