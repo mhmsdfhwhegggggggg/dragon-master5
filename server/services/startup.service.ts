@@ -48,7 +48,7 @@ export class StartupService {
 
     private static async ensureAdminExists() {
         const email = process.env.ADMIN_EMAIL || 'admin@falcon.pro';
-        const password = process.env.ADMIN_PASSWORD || 'falcon_heart_2026';
+        const password = process.env.ADMIN_PASSWORD || process.env.JWT_SECRET?.slice(0, 20) || 'secure_admin_password';
         const name = process.env.ADMIN_NAME || 'Falcon Admin';
 
         const database = await db.getDb();

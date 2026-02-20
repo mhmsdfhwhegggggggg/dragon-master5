@@ -6,8 +6,6 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "expo-router";
 
-const trpcAny = trpc as any;
-
 /**
  * Home Screen - Dragaan Pro Dashboard
  * 
@@ -20,8 +18,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Fetch dashboard stats from API
-  const { data: statsData, isLoading, refetch: refetchStats } = trpcAny.dashboard.getStats.useQuery(undefined);
-  const { data: activitiesData, refetch: refetchActivities } = trpcAny.dashboard.getRecentActivities.useQuery(undefined);
+  const { data: statsData, isLoading, refetch: refetchStats } = trpc.dashboard.getStats.useQuery(undefined);
+  const { data: activitiesData, refetch: refetchActivities } = trpc.dashboard.getRecentActivities.useQuery(undefined);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
