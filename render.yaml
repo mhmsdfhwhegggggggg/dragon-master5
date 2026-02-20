@@ -5,8 +5,8 @@ services:
     env: node
     plan: free
     region: oregon
-    buildCommand: npm install && npm run build && npm run build:worker
-    startCommand: npm run start:free-tier
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
     envVars:
       - key: NODE_ENV
         value: production
@@ -33,12 +33,14 @@ services:
       - key: ENCRYPTION_KEY
         generateValue: true
         
-      # OAuth & Config
-      - key: OAUTH_SERVER_URL
-        value: https://oauth.manus.im
-      - key: VITE_APP_ID
-        value: dragon_telegram_pro_mobile
+      # CORS & Config
       - key: CORS_ORIGINS
-        value: https://dragon-telegram-api.onrender.com
+        value: "*"
       - key: ANTI_BAN_ENABLED
         value: true
+      - key: ENABLE_LICENSE_CHECK
+        value: false
+      - key: LOG_LEVEL
+        value: info
+    healthCheckPath: /health
+    autoDeploy: true
