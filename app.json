@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "FALCON Telegram Pro",
-    "slug": "falcon-telegram-pro",
-    "version": "6.0.0",
+    "name": "Dragon Telegram Pro",
+    "slug": "dragon-telegram-pro",
+    "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -15,35 +15,22 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.falcon.telegrampro"
+      "bundleIdentifier": "com.dragaantelegram.pro"
     },
     "android": {
+      "package": "com.dragaantelegram.pro",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "com.falcon.telegrampro"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "web": {
-      "favicon": "./assets/images/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "static"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
+      "expo-router"
     ],
-    "scheme": "falcon-telegram-pro",
-    "experiments": {
-      "typedRoutes": true
-    }
+    "scheme": "dragon-telegram-pro"
   }
 }
