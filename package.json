@@ -48,6 +48,7 @@
     "concurrently": "^9.2.1",
     "cookie": "^1.1.1",
     "dotenv": "^16.6.1",
+    "drizzle-kit": "^0.31.9",
     "drizzle-orm": "^0.44.7",
     "expo": "~54.0.29",
     "expo-audio": "~1.1.0",
@@ -73,7 +74,6 @@
     "jose": "6.1.0",
     "jsonwebtoken": "^9.0.2",
     "lru-cache": "^11.2.5",
-    "mysql2": "^3.16.0",
     "nanoid": "^5.1.6",
     "nativewind": "^4.2.1",
     "node-machine-id": "^1.1.12",
@@ -94,8 +94,7 @@
     "tailwind-merge": "^2.6.0",
     "telegram": "^2.26.22",
     "webpack-obfuscator": "^3.6.0",
-    "zod": "^4.2.1",
-    "drizzle-kit": "^0.31.9"
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@expo/ngrok": "^4.1.3",

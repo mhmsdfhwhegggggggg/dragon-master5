@@ -59,13 +59,16 @@ venv/
 chainlit.md
 .chainlit
 .ipynb_checkpoints/
-.ac
 
 # Deployment
 .vercel
 
 # Data and databases
 agenthub/agents/youtube/db
+*.db
+*.sqlite
+*.sqlite3
+dev.db
 
 # Archive files and large assets
 **/*.zip
