@@ -1,0 +1,39 @@
+{
+  "license": {
+    "key": "DTP-PRO-90E9869A18956ACF9B47D90EC4FBDC25",
+    "type": "pro",
+    "hardwareId": "2aa7-021a-571e-d0f5-11b0-c15a-d473-5b49-2d55-cf30-8780-8682-0485-e5c1-45fe-fdbe",
+    "issuedAt": 1771286030106,
+    "expiresAt": 1802822030106,
+    "features": [
+      "basic_operations",
+      "anti_ban",
+      "bulk_operations",
+      "ml_engine",
+      "advanced_proxies"
+    ],
+    "maxAccounts": 500,
+    "maxOperationsPerDay": 100000,
+    "signature": "e3d6be94fcf17819368220294140cd9cde4928ddc8cdc77b35f00a64b112a99a"
+  },
+  "metadata": {
+    "email": "prince@falcon.pro",
+    "name": "Prince",
+    "generatedAt": "2026-02-16T23:53:50.106Z",
+    "hardwareFingerprint": {
+      "id": "2aa7-021a-571e-d0f5-11b0-c15a-d473-5b49-2d55-cf30-8780-8682-0485-e5c1-45fe-fdbe",
+      "components": {
+        "machineId": "0943786f-3ba2-449b-aacd-47f3b521c886",
+        "cpuModel": "AMD Ryzen 3 3250U with Radeon Graphics         ",
+        "cpuCores": 4,
+        "totalMemory": 6323187712,
+        "macAddress": "00:15:5d:89:ef:8a",
+        "hostname": "DESKTOP-8GQI3U6",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "timestamp": 1771286030104,
+      "signature": "67a10016959b0b9d26c03a2529840de1fa2c2822d08d7078bca7919825102c42"
+    }
+  }
+}
