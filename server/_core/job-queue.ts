@@ -14,7 +14,7 @@
  */
 
 import { Queue, Worker, Job, QueueEvents, JobsOptions } from 'bullmq';
-import Redis from 'ioredis';
+import Redis, { type RedisOptions } from 'ioredis';
 
 export interface JobData {
   type: string;
@@ -37,11 +37,15 @@ export type JobHandler<T = any, R = any> = (job: Job<T>) => Promise<R>;
 
 export class JobQueueSystem {
   private static instance: JobQueueSystem;
-  private redis: Redis;
+  private redis: RedisOptions | undefined;
   private queues: Map<string, Queue> = new Map();
-  private workers: Map<string, Worker> = new Map();
   private queueEvents: Map<string, QueueEvents> = new Map();
+  private workers: Map<string, Worker> = new Map();
   private handlers: Map<string, JobHandler> = new Map();
+
+  constructor(redis?: RedisOptions) {
+    this.redis = redis;
+  }
 
   /**
    * Industrial Queue configurations
@@ -144,11 +148,13 @@ export class JobQueueSystem {
     },
   };
 
-  private constructor(redis: Redis) {
+  private redis: RedisOptions | undefined;
+
+  constructor(redis?: RedisOptions) {
     this.redis = redis;
   }
 
-  static getInstance(redis?: Redis): JobQueueSystem {
+  static getInstance(redis?: RedisOptions): JobQueueSystem {
     if (!this.instance) {
       if (!redis) {
         throw new Error('JobQueueSystem not initialized. Provide Redis client on first call.');
@@ -158,8 +164,9 @@ export class JobQueueSystem {
     return this.instance;
   }
 
-  async initialize(): Promise<void> {
+  async initialize(redis?: Redis): Promise<void> {
     console.log('[JobQueue] Initializing industrial queues...');
+    this.redis = redis;
     for (const [priority, config] of Object.entries(this.QUEUE_CONFIGS)) {
       await this.createQueue(priority, config);
     }

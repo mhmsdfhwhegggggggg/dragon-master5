@@ -15,7 +15,9 @@
       "**/*"
     ],
     "ios": {
+      "supportsTablet": true,
       "bundleIdentifier": "com.dragaantelegram.pro",
+      "buildNumber": "1.0.0",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
@@ -23,6 +25,7 @@
     },
     "android": {
       "package": "com.dragaantelegram.pro",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"

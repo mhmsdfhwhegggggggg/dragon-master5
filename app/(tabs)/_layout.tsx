@@ -18,7 +18,7 @@ export default function TabLayout() {
     getUserInfo().then(setUser);
   }, []);
 
-  const isAdmin = user?.role === 'admin' || user?.email === 'admin@falcon.pro';
+  const isAdmin = user?.role === 'admin' || user?.email === 'admin@falcon.pro' || false;
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const tabBarHeight = 56 + bottomPadding;
@@ -43,7 +43,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "الرئيسية",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
 
@@ -51,7 +51,7 @@ export default function TabLayout() {
         name="accounts"
         options={{
           title: "الحسابات",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
         }}
       />
 
@@ -59,7 +59,7 @@ export default function TabLayout() {
         name="tools"
         options={{
           title: "الأدوات",
-          tabBarIcon: ({ color }) => <IconSymbol size={32} name="square.grid.2x2.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="square.grid.2x2.fill" color={color} />,
         }}
       />
 
@@ -75,7 +75,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: "الإعدادات",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
 
@@ -91,7 +91,7 @@ export default function TabLayout() {
         name="developer-dashboard"
         options={{
           href: isAdmin ? "/developer-dashboard" : null,
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="lock.shield.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="plus.circle.fill" color={color} />,
         }}
       />
       <Tabs.Screen name="onboarding" options={{ href: null }} />

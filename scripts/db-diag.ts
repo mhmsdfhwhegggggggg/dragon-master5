@@ -18,13 +18,12 @@ async function diagnose() {
         const testEmail = 'diag_' + Date.now() + '@test.com';
         const inserted = await sql`
       INSERT INTO users (username, email, password, "isActive", role)
-      VALUES ('DiagUser_' || ${Date.now():: text
-    }, ${ testEmail }, 'testhash', true, 'user')
+      VALUES ('DiagUser_' || ${Date.now()}, ${ testEmail }, 'testhash', true, 'user')
       RETURNING id, username, email
         `;
     console.log('\n=== TEST INSERT OK ===', inserted[0]);
     // Cleanup
-    await sql`DELETE FROM users WHERE email = ${ testEmail } `;
+    await sql`DELETE FROM users WHERE email = ${testEmail}`;
     console.log('Cleanup done.');
   } catch(e: any) {
     console.error('\n=== INSERT ERROR ===', e.message);

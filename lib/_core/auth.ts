@@ -7,6 +7,7 @@ export type User = {
   openId: string;
   name: string | null;
   email: string | null;
+  role: string | null;
   loginMethod: string | null;
   lastSignedIn: Date;
 };

@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, timestamp, varchar, decimal, json } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, varchar, decimal, json, serial } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 /**
@@ -6,13 +6,14 @@ import { relations } from "drizzle-orm";
  * Stores application users
  */
 export const users = pgTable("users", {
-  id: integer().primaryKey().generatedAlwaysAsIdentity(),
-  email: varchar({ length: 255 }).unique().notNull(),
-  username: varchar({ length: 255 }).unique().notNull(),
-  passwordHash: text().notNull(),
-  createdAt: timestamp().defaultNow().notNull(),
-  updatedAt: timestamp().defaultNow().notNull(),
-  isActive: boolean().default(true).notNull(),
+  id: serial('id').primaryKey(),
+  username: varchar('username', { length: 255 }).notNull().unique(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  password: varchar('password', { length: 255 }).notNull(),
+  isActive: boolean('isActive').default(true).notNull(),
+  role: varchar('role', { length: 50 }).notNull().default('user'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
