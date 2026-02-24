@@ -49,6 +49,24 @@ export class StartupService {
                 stack: error.stack,
                 data: error.data || error.details
             });
+
+            // Diagnostic: Check what columns actually exist in the database
+            try {
+                const database = await db.getDb();
+                if (database) {
+                    const tables = ['users', 'telegram_accounts'];
+                    for (const table of tables) {
+                        const cols = await (database as any).execute(db.sql`
+                           SELECT column_name 
+                           FROM information_schema.columns 
+                           WHERE table_name = ${table}
+                       `);
+                        logger.warn(`[Diagnostic] Columns for table "${table}":`, cols.map((c: any) => c.column_name));
+                    }
+                }
+            } catch (diagError) {
+                logger.error('[Diagnostic] Failed to get schema info', diagError);
+            }
         }
     }
 

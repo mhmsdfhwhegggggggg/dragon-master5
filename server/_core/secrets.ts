@@ -103,7 +103,24 @@ export const Secrets = {
 
   getRedisUrl(): string | null {
     const s = readSecrets();
-    return s.REDIS_URL || process.env.REDIS_URL || null;
+    let url = s.REDIS_URL || process.env.REDIS_URL || null;
+
+    if (url) {
+      // Clean redis-cli -u redis://... or other command flags
+      if (url.includes("redis://") || url.includes("rediss://")) {
+        const match = url.match(/(rediss?:\/\/.*)/);
+        if (match && match[1]) {
+          url = match[1].split(' ')[0].trim(); // Take only the URL part
+        }
+      }
+      // Trim and remove any hidden quotes
+      url = url.replace(/['"]/g, "").trim();
+
+      // Ensure rediss:// is used if it was a TLS command but the URL itself didn't have it
+      // though typically the URL is provided correctly by Upstash.
+    }
+
+    return url;
   },
 
   setRedisUrl(url: string) {
