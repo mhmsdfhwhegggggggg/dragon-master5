@@ -85,11 +85,16 @@ export const Secrets = {
 
     // Aggressive cleanup for Neon/Pooler params that might cause auth issues
     if (url) {
+      // Remove channel_binding=require which some poolers (like Neon) don't support
       url = url.replace(/[&?]channel_binding=require/g, "");
+
       // Ensure sslmode=require is present if it's a neon URL but don't double up
       if (url.includes("neon.tech") && !url.includes("sslmode=")) {
         url += (url.includes("?") ? "&" : "?") + "sslmode=require";
       }
+
+      // Fix potential space encoding or other common copy-paste errors
+      url = url.trim().replace(/['"]/g, "");
     }
 
     return url;
