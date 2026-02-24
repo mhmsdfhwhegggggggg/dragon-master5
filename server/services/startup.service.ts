@@ -44,7 +44,11 @@ export class StartupService {
 
             logger.info('[Startup] All services initialized successfully');
         } catch (error: any) {
-            logger.error('[Startup] Initialization failed', { error: error.message });
+            logger.error('[Startup] Initialization failed', {
+                error: error.message,
+                stack: error.stack,
+                data: error.data || error.details
+            });
         }
     }
 

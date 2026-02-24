@@ -67,14 +67,24 @@ export async function getDb() {
   const url = Secrets.getDatabaseUrl();
   if (!_db && url) {
     try {
-      _client = postgres(url);
+      _client = postgres(url, {
+        connect_timeout: 10,
+        idle_timeout: 20,
+        max: 10
+      });
       _db = drizzle(_client, { schema });
+      // Verify connection with a simple query
+      await _client`SELECT 1`;
       console.log("[Database] Connected successfully to PostgreSQL:", url.replace(/\/\/.*@/, '//***@'));
     } catch (error: any) {
+      const errorMsg = error.message || String(error);
       if (error.code === '28P01') {
         console.error("[Database] AUTHENTICATION FAILED: The password for your database is incorrect. Please check DATABASE_URL in Render dashboard.");
+      } else if (error.code === 'ECONNREFUSED' || error.message?.includes('ENOTFOUND')) {
+        console.error("[Database] CONNECTION FAILED: Could not reach database server. Check if the database URL is correct and the server is accessible.");
       } else {
-        console.warn("[Database] Failed to connect:", error.message || error);
+        console.warn("[Database] Failed to connect:", errorMsg);
+        if (error.stack) console.debug(error.stack);
       }
       _db = null;
       _client = null;
@@ -130,7 +140,7 @@ export async function getUserById(id: number) {
 export async function getActiveAccountsCount(): Promise<number> {
   const database = (await getDb()) as any;
   if (!database) return 0;
-  const result = await database.execute(sql`SELECT count(*) as count FROM telegram_accounts WHERE status = 'active'`);
+  const result = await database.execute(sql`SELECT count(*) as count FROM telegram_accounts WHERE is_active = true`);
   return Number(result[0]?.count) || 0;
 }
 

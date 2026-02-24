@@ -6,55 +6,55 @@ export const users = pgTable('users', {
   username: varchar('username', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }).notNull(),
-  isActive: boolean('isActive').default(true).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
   role: varchar('role', { length: 50 }).notNull().default('user'),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Licenses table
 export const licenses = pgTable('licenses', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  licenseKey: varchar('licenseKey', { length: 255 }).notNull().unique(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  licenseKey: varchar('license_key', { length: 255 }).notNull().unique(),
   type: varchar('type', { length: 50 }).notNull(), // trial, basic, premium, enterprise
   status: varchar('status', { length: 50 }).notNull().default('inactive'), // active, inactive, expired, suspended
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  activatedAt: timestamp('activatedAt'),
-  expiresAt: timestamp('expiresAt'),
-  maxAccounts: integer('maxAccounts').notNull().default(1),
-  maxMessages: integer('maxMessages').notNull().default(1000),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  activatedAt: timestamp('activated_at'),
+  expiresAt: timestamp('expires_at'),
+  maxAccounts: integer('max_accounts').notNull().default(1),
+  maxMessages: integer('max_messages').notNull().default(1000),
   features: text('features').array().notNull().default([]),
-  hardwareId: varchar('hardwareId', { length: 255 }),
-  lastValidated: timestamp('lastValidated'),
-  usageCount: integer('usageCount').notNull().default(0),
-  maxUsage: integer('maxUsage'),
-  autoRenew: boolean('autoRenew').notNull().default(false),
-  renewalPrice: decimal('renewalPrice', { precision: 10, scale: 2 }),
+  hardwareId: varchar('hardware_id', { length: 255 }),
+  lastValidated: timestamp('last_validated'),
+  usageCount: integer('usage_count').notNull().default(0),
+  maxUsage: integer('max_usage'),
+  autoRenew: boolean('auto_renew').notNull().default(false),
+  renewalPrice: decimal('renewal_price', { precision: 10, scale: 2 }),
 });
 
 // Subscriptions table
 export const subscriptions = pgTable('subscriptions', {
   id: serial('id').primaryKey(),
-  licenseId: integer('licenseId').notNull().references(() => licenses.id, { onDelete: 'cascade' }),
+  licenseId: integer('license_id').notNull().references(() => licenses.id, { onDelete: 'cascade' }),
   plan: varchar('plan', { length: 50 }).notNull(), // monthly, quarterly, yearly, lifetime
   status: varchar('status', { length: 50 }).notNull().default('inactive'), // active, inactive, cancelled, expired
-  startDate: timestamp('startDate').notNull(),
-  endDate: timestamp('endDate').notNull(),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
   price: decimal('price', { precision: 10, scale: 2 }).notNull(),
   currency: varchar('currency', { length: 10 }).notNull().default('USD'),
-  autoRenew: boolean('autoRenew').notNull().default(true),
-  nextBillingDate: timestamp('nextBillingDate'),
-  paymentMethod: varchar('paymentMethod', { length: 100 }),
-  paymentId: varchar('paymentId', { length: 255 }),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  autoRenew: boolean('auto_renew').notNull().default(true),
+  nextBillingDate: timestamp('next_billing_date'),
+  paymentMethod: varchar('payment_method', { length: 100 }),
+  paymentId: varchar('payment_id', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // License usage logs
 export const licenseUsageLogs = pgTable('license_usage_logs', {
   id: serial('id').primaryKey(),
-  licenseId: integer('licenseId').notNull().references(() => licenses.id, { onDelete: 'cascade' }),
+  licenseId: integer('license_id').notNull().references(() => licenses.id, { onDelete: 'cascade' }),
   action: varchar('action', { length: 100 }).notNull(),
   metadata: text('metadata'), // JSON string
   timestamp: timestamp('timestamp').defaultNow().notNull(),
@@ -63,70 +63,70 @@ export const licenseUsageLogs = pgTable('license_usage_logs', {
 // Telegram accounts table (existing)
 export const telegramAccounts = pgTable('telegram_accounts', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  phoneNumber: varchar('phoneNumber', { length: 20 }).notNull().unique(),
-  telegramId: varchar('telegramId', { length: 50 }).unique(),
-  firstName: varchar('firstName', { length: 255 }),
-  lastName: varchar('lastName', { length: 255 }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  phoneNumber: varchar('phone_number', { length: 20 }).notNull().unique(),
+  telegramId: varchar('telegram_id', { length: 50 }).unique(),
+  firstName: varchar('first_name', { length: 255 }),
+  lastName: varchar('last_name', { length: 255 }),
   username: varchar('username', { length: 255 }),
-  sessionString: text('sessionString').notNull(),
-  isActive: boolean('isActive').default(true).notNull(),
-  isRestricted: boolean('isRestricted').default(false).notNull(),
-  restrictionReason: text('restrictionReason'),
-  warmingLevel: integer('warmingLevel').default(0).notNull(),
-  messagesSentToday: integer('messagesSentToday').default(0).notNull(),
-  dailyLimit: integer('dailyLimit').default(100).notNull(),
-  lastActivityAt: timestamp('lastActivityAt'),
-  lastRestrictedAt: timestamp('lastRestrictedAt'),
-  deviceSignature: text('deviceSignature'), // JSON: device, system, appVersion, lang, tz
-  hardwareId: varchar('hardwareId', { length: 255 }), // Unique ID for the hardware signature
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  sessionString: text('session_string').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  isRestricted: boolean('is_restricted').default(false).notNull(),
+  restrictionReason: text('restriction_reason'),
+  warmingLevel: integer('warming_level').default(0).notNull(),
+  messagesSentToday: integer('messages_sent_today').default(0).notNull(),
+  dailyLimit: integer('daily_limit').default(100).notNull(),
+  lastActivityAt: timestamp('last_activity_at'),
+  lastRestrictedAt: timestamp('last_restricted_at'),
+  deviceSignature: text('device_signature'), // JSON: device, system, appVersion, lang, tz
+  hardwareId: varchar('hardware_id', { length: 255 }), // Unique ID for the hardware signature
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Extracted members table (existing)
 export const extractedMembers = pgTable('extracted_members', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  telegramAccountId: integer('telegramAccountId').notNull().references(() => telegramAccounts.id, { onDelete: 'cascade' }),
-  sourceGroupId: varchar('sourceGroupId', { length: 255 }).notNull(),
-  memberTelegramId: varchar('memberTelegramId', { length: 50 }).notNull(),
-  memberUsername: varchar('memberUsername', { length: 255 }),
-  memberFirstName: varchar('memberFirstName', { length: 255 }),
-  memberLastName: varchar('memberLastName', { length: 255 }),
-  memberPhone: varchar('memberPhone', { length: 20 }),
-  extractionDate: timestamp('extractionDate').defaultNow().notNull(),
-  isAdded: boolean('isAdded').default(false).notNull(),
-  addedDate: timestamp('addedDate'),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  telegramAccountId: integer('telegram_account_id').notNull().references(() => telegramAccounts.id, { onDelete: 'cascade' }),
+  sourceGroupId: varchar('source_group_id', { length: 255 }).notNull(),
+  memberTelegramId: varchar('member_telegram_id', { length: 50 }).notNull(),
+  memberUsername: varchar('member_username', { length: 255 }),
+  memberFirstName: varchar('member_first_name', { length: 255 }),
+  memberLastName: varchar('member_last_name', { length: 255 }),
+  memberPhone: varchar('member_phone', { length: 20 }),
+  extractionDate: timestamp('extraction_date').defaultNow().notNull(),
+  isAdded: boolean('is_added').default(false).notNull(),
+  addedDate: timestamp('added_date'),
 });
 
 // Bulk operations table (existing)
 export const bulkOperations = pgTable('bulk_operations', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
-  operationType: varchar('operationType', { length: 50 }).notNull(), // add_members, send_message, etc.
-  sourceGroupId: varchar('sourceGroupId', { length: 255 }),
-  targetGroupId: varchar('targetGroupId', { length: 255 }),
-  messageContent: text('messageContent'),
-  delayBetweenMessages: integer('delayBetweenMessages').default(1000),
-  totalMembers: integer('totalMembers').default(0),
-  processedMembers: integer('processedMembers').default(0),
-  successfulMembers: integer('successfulMembers').default(0),
-  failedMembers: integer('failedMembers').default(0),
+  operationType: varchar('operation_type', { length: 50 }).notNull(), // add_members, send_message, etc.
+  sourceGroupId: varchar('source_group_id', { length: 255 }),
+  targetGroupId: varchar('target_group_id', { length: 255 }),
+  messageContent: text('message_content'),
+  delayBetweenMessages: integer('delay_between_messages').default(1000),
+  totalMembers: integer('total_members').default(0),
+  processedMembers: integer('processed_members').default(0),
+  successfulMembers: integer('successful_members').default(0),
+  failedMembers: integer('failed_members').default(0),
   status: varchar('status', { length: 50 }).notNull().default('pending'), // pending, running, completed, failed, paused
-  startedAt: timestamp('startedAt'),
-  completedAt: timestamp('completedAt'),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Activity logs table (existing)
 export const activityLogs = pgTable('activity_logs', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  telegramAccountId: integer('telegramAccountId').references(() => telegramAccounts.id, { onDelete: 'set null' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  telegramAccountId: integer('telegram_account_id').references(() => telegramAccounts.id, { onDelete: 'set null' }),
   action: varchar('action', { length: 100 }).notNull(),
   details: text('details'),
   status: varchar('status', { length: 50 }).notNull(), // success, error, warning
@@ -136,97 +136,97 @@ export const activityLogs = pgTable('activity_logs', {
 // Statistics table (existing)
 export const statistics = pgTable('statistics', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   date: timestamp('date').notNull(),
-  messagesSent: integer('messagesSent').default(0),
-  membersAdded: integer('membersAdded').default(0),
-  operationsCompleted: integer('operationsCompleted').default(0),
+  messagesSent: integer('messages_sent').default(0),
+  membersAdded: integer('members_added').default(0),
+  operationsCompleted: integer('operations_completed').default(0),
   errors: integer('errors').default(0),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // Anti-ban rules table (existing)
 export const antiBanRules = pgTable('anti_ban_rules', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  telegramAccountId: integer('telegramAccountId').references(() => telegramAccounts.id, { onDelete: 'cascade' }),
-  ruleName: varchar('ruleName', { length: 255 }).notNull(),
-  ruleType: varchar('ruleType', { length: 50 }).notNull(), // rate_limit, delay_pattern, content_filter, etc.
-  ruleConfig: text('ruleConfig').notNull(), // JSON string
-  isActive: boolean('isActive').default(true).notNull(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  telegramAccountId: integer('telegram_account_id').references(() => telegramAccounts.id, { onDelete: 'cascade' }),
+  ruleName: varchar('rule_name', { length: 255 }).notNull(),
+  ruleType: varchar('rule_type', { length: 50 }).notNull(), // rate_limit, delay_pattern, content_filter, etc.
+  ruleConfig: text('rule_config').notNull(), // JSON string
+  isActive: boolean('is_active').default(true).notNull(),
   priority: integer('priority').default(0).notNull(),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Proxy configs table (existing)
 export const proxyConfigs = pgTable('proxy_configs', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  telegramAccountId: integer('telegramAccountId').references(() => telegramAccounts.id, { onDelete: 'set null' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  telegramAccountId: integer('telegram_account_id').references(() => telegramAccounts.id, { onDelete: 'set null' }),
   host: varchar('host', { length: 255 }).notNull(),
   port: integer('port').notNull(),
   type: varchar('type', { length: 20 }).notNull(), // http, https, socks4, socks5
   username: varchar('username', { length: 255 }),
   password: varchar('password', { length: 255 }),
   health: varchar('health', { length: 20 }).default('unknown').notNull(), // healthy, unhealthy, unknown
-  lastCheckedAt: timestamp('lastCheckedAt'),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  lastCheckedAt: timestamp('last_checked_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Auto-reply rules table
 export const autoReplyRules = pgTable('auto_reply_rules', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  telegramAccountId: integer('telegramAccountId').notNull().references(() => telegramAccounts.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  telegramAccountId: integer('telegram_account_id').notNull().references(() => telegramAccounts.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
   keywords: text('keywords').array().notNull(),
-  matchType: varchar('matchType', { length: 20 }).notNull(), // exact, contains, regex
-  replyType: varchar('replyType', { length: 20 }).notNull(), // fixed, template, ai
-  replyContent: text('replyContent').notNull(), // JSON for arrays
-  aiPrompt: text('aiPrompt'),
-  delayMin: integer('delayMin').default(2000),
-  delayMax: integer('delayMax').default(5000),
+  matchType: varchar('match_type', { length: 20 }).notNull(), // exact, contains, regex
+  replyType: varchar('reply_type', { length: 20 }).notNull(), // fixed, template, ai
+  replyContent: text('reply_content').notNull(), // JSON for arrays
+  aiPrompt: text('ai_prompt'),
+  delayMin: integer('delay_min').default(2000),
+  delayMax: integer('delay_max').default(5000),
   reactions: text('reactions').array(),
-  targetTypes: text('targetTypes').array().notNull(), // private, group, channel
-  dailyLimit: integer('dailyLimit').default(50),
+  targetTypes: text('target_types').array().notNull(), // private, group, channel
+  dailyLimit: integer('daily_limit').default(50),
   priority: integer('priority').default(0),
   options: text('options'), // JSON for extra settings
-  isActive: boolean('isActive').default(true),
-  usageCount: integer('usageCount').default(0),
-  lastUsedAt: timestamp('lastUsedAt'),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  isActive: boolean('is_active').default(true),
+  usageCount: integer('usage_count').default(0),
+  lastUsedAt: timestamp('last_used_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Content Cloner rules table
 export const contentClonerRules = pgTable('content_cloner_rules', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  telegramAccountId: integer('telegramAccountId').notNull().references(() => telegramAccounts.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  telegramAccountId: integer('telegram_account_id').notNull().references(() => telegramAccounts.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(),
-  sourceChannelIds: text('sourceChannelIds').array().notNull(),
-  targetChannelIds: text('targetChannelIds').array().notNull(),
+  sourceChannelIds: text('source_channel_ids').array().notNull(),
+  targetChannelIds: text('target_channel_ids').array().notNull(),
   filters: text('filters').notNull(), // JSON: mediaType, keywords, etc.
   modifications: text('modifications').notNull(), // JSON: replace, remove, etc.
   schedule: text('schedule'), // JSON: delays, active hours
-  isActive: boolean('isActive').default(true),
-  lastRunAt: timestamp('lastRunAt'),
-  totalCloned: integer('totalCloned').default(0),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  isActive: boolean('is_active').default(true),
+  lastRunAt: timestamp('last_run_at'),
+  totalCloned: integer('total_cloned').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Learning data table
 export const learningData = pgTable('learning_data', {
   id: serial('id').primaryKey(),
-  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   key: varchar('key', { length: 255 }).notNull(),
   value: text('value').notNull(),
   category: varchar('category', { length: 100 }),
   confidence: decimal('confidence', { precision: 3, scale: 2 }).default('1.00'),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // Export all tables
