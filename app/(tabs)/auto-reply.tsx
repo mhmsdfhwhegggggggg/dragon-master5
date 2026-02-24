@@ -13,6 +13,46 @@ export default function AutoReplyScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'rules' | 'history' | 'stats'>('rules');
     const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newRule, setNewRule] = useState({
+        name: '',
+        keywords: '',
+        replyType: 'fixed' as 'fixed' | 'template' | 'ai',
+        replyContent: '',
+        matchType: 'contains' as 'exact' | 'contains' | 'fuzzy' | 'regex',
+    });
+
+    const createRuleMutation = (trpcAny.autoReply.createRule.useMutation() as any);
+
+    const handleCreateRule = () => {
+        if (!selectedAccountId) return Alert.alert("خطأ", "يرجى اختيار حساب أولاً");
+        if (!newRule.name || !newRule.keywords || !newRule.replyContent) {
+            return Alert.alert("خطأ", "يرجى ملء جميع الحقول");
+        }
+
+        createRuleMutation.mutate({
+            accountId: selectedAccountId,
+            name: newRule.name,
+            keywords: newRule.keywords.split(',').map(k => k.trim()).filter(Boolean),
+            replyType: newRule.replyType,
+            replyContent: newRule.replyType === 'template' ? [newRule.replyContent] : newRule.replyContent,
+            matchType: newRule.matchType,
+            delay: { min: 2000, max: 5000 },
+            options: {
+                targetTypes: ['private', 'group', 'supergroup'],
+                ignoreBots: true,
+                caseSensitive: false
+            }
+        }, {
+            onSuccess: () => {
+                Alert.alert("نجاح", "تم إنشاء القاعدة بنجاح");
+                setShowCreateModal(false);
+                setNewRule({ name: '', keywords: '', replyType: 'fixed', replyContent: '', matchType: 'contains' });
+                rulesQuery.refetch();
+            },
+            onError: (err: any) => Alert.alert("خطأ", err.message)
+        });
+    };
 
     const accountsQuery = (trpcAny.accounts.getAll.useQuery(undefined) as any);
     const accounts = accountsQuery.data || [];
@@ -54,10 +94,79 @@ export default function AutoReplyScreen() {
                             ))}
                         </ScrollView>
                     </View>
-                    <TouchableOpacity onPress={() => Alert.alert('قريباً', 'نافذة إنشاء قاعدة جديدة')}>
+                    <TouchableOpacity onPress={() => setShowCreateModal(true)}>
                         <IconSymbol name="plus.circle.fill" size={24} color={colors.primary} />
                     </TouchableOpacity>
                 </View>
+
+                {showCreateModal && (
+                    <View className="absolute inset-0 z-50 bg-black/50 justify-center p-6">
+                        <ScrollView className="bg-surface rounded-2xl border border-border max-h-[80%] p-6">
+                            <Text className="text-xl font-bold text-foreground mb-4">إنشاء قاعدة رد تلقائي جديدة</Text>
+
+                            <Text className="text-xs text-muted mb-1">اسم القاعدة</Text>
+                            <TextInput
+                                placeholder="مثال: الترحيب بالعملاء"
+                                value={newRule.name}
+                                onChangeText={(text) => setNewRule({ ...newRule, name: text })}
+                                className="bg-background p-3 rounded-lg text-foreground border border-border mb-3"
+                            />
+
+                            <Text className="text-xs text-muted mb-1">الكلمات المفتاحية (فاصلة بين كل كلمة)</Text>
+                            <TextInput
+                                placeholder="مرحباً, اهلا, كيف"
+                                value={newRule.keywords}
+                                onChangeText={(text) => setNewRule({ ...newRule, keywords: text })}
+                                className="bg-background p-3 rounded-lg text-foreground border border-border mb-3"
+                            />
+
+                            <Text className="text-xs text-muted mb-1">نوع الرد</Text>
+                            <View className="flex-row gap-2 mb-3">
+                                {(['fixed', 'template', 'ai'] as const).map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        onPress={() => setNewRule({ ...newRule, replyType: type })}
+                                        className={`flex-1 p-2 rounded-lg items-center border ${newRule.replyType === type ? 'bg-primary border-primary' : 'bg-background border-border'}`}
+                                    >
+                                        <Text className={`text-[10px] ${newRule.replyType === type ? 'text-white font-bold' : 'text-muted'}`}>
+                                            {type === 'fixed' ? 'نص ثابت' : type === 'template' ? 'قالب' : 'ذكاء اصطناعي'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <Text className="text-xs text-muted mb-1">محتوى الرد</Text>
+                            <TextInput
+                                placeholder={newRule.replyType === 'ai' ? 'وصف طبيعة الرد الذكي...' : 'اكتب نص الرد هنا...'}
+                                multiline
+                                numberOfLines={3}
+                                value={newRule.replyContent}
+                                onChangeText={(text) => setNewRule({ ...newRule, replyContent: text })}
+                                className="bg-background p-3 rounded-lg text-foreground border border-border mb-4 min-h-[80px]"
+                            />
+
+                            <View className="flex-row gap-3 mt-2">
+                                <TouchableOpacity
+                                    onPress={() => setShowCreateModal(false)}
+                                    className="flex-1 bg-surface-variant p-3 rounded-lg items-center"
+                                >
+                                    <Text className="text-foreground">إلغاء</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={handleCreateRule}
+                                    disabled={createRuleMutation.isLoading}
+                                    className={`flex-1 p-3 rounded-lg items-center ${createRuleMutation.isLoading ? 'bg-muted' : 'bg-primary'}`}
+                                >
+                                    {createRuleMutation.isLoading ? (
+                                        <ActivityIndicator size="small" color="white" />
+                                    ) : (
+                                        <Text className="text-white font-bold">حفظ القاعدة</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
+                    </View>
+                )}
 
                 <View className="flex-row bg-surface border-b border-border">
                     {[

@@ -19,6 +19,7 @@ import type {
   JobType,
   SendBulkMessagesPayload,
   JoinGroupsPayload,
+  AddUsersPayload,
   ExtractAndAddPayload,
 } from "./_core/queue";
 
@@ -40,6 +41,9 @@ const worker = new Worker(
       }
       if (type === "join-groups") {
         return await handleJoinGroups(job);
+      }
+      if (type === "add-users") {
+        return await handleAddUsers(job);
       }
     } catch (error: any) {
       console.error(`[Worker] Job ${job.id} failed: ${error.message}`);
@@ -138,9 +142,108 @@ async function handleExtractAndAdd(job: Job) {
   return { extracted: extractedCount, success, failed };
 }
 
-// Simplified handlers for other types...
-async function handleBulkMessages(job: Job) { /* Implementation */ }
-async function handleJoinGroups(job: Job) { /* Implementation */ }
+/**
+ * Handle Mass Messaging
+ */
+async function handleBulkMessages(job: Job) {
+  const p = job.data as SendBulkMessagesPayload;
+  const account = await db.getTelegramAccountById(p.accountId);
+  if (!account) throw new Error("Account not found");
+
+  const credentials = tg.getApiCredentials();
+  const client = await tg.initializeClient(
+    p.accountId,
+    account.phoneNumber,
+    account.sessionString,
+    credentials.apiId,
+    credentials.apiHash
+  );
+
+  const result = await tg.sendBulkMessages(
+    p.accountId,
+    p.userIds.map(id => parseInt(id)),
+    p.messageTemplate,
+    p.delayMs
+  );
+
+  return result;
+}
+
+/**
+ * Handle Mass Group/Channel Joining
+ */
+async function handleJoinGroups(job: Job) {
+  const p = job.data as JoinGroupsPayload;
+  const account = await db.getTelegramAccountById(p.accountId);
+  if (!account) throw new Error("Account not found");
+
+  const credentials = tg.getApiCredentials();
+  const client = await tg.initializeClient(
+    p.accountId,
+    account.phoneNumber,
+    account.sessionString,
+    credentials.apiId,
+    credentials.apiHash
+  );
+
+  let success = 0;
+  let failed = 0;
+
+  for (let i = 0; i < p.groupLinks.length; i++) {
+    try {
+      const res = await (tg as any).joinGroup(p.accountId, p.groupLinks[i]);
+      if (res) success++; else failed++;
+    } catch (e) {
+      failed++;
+    }
+
+    const progress = Math.floor(((i + 1) / p.groupLinks.length) * 100);
+    await job.updateProgress(progress);
+
+    // Jittered delay
+    await new Promise(r => setTimeout(r, p.delayMs + Math.random() * 1000));
+  }
+
+  return { success, failed };
+}
+
+/**
+ * Handle Direct User Addition to Group/Channel
+ */
+async function handleAddUsers(job: Job) {
+  const p = job.data as AddUsersPayload;
+  const account = await db.getTelegramAccountById(p.accountId);
+  if (!account) throw new Error("Account not found");
+
+  const credentials = tg.getApiCredentials();
+  const client = await tg.initializeClient(
+    p.accountId,
+    account.phoneNumber,
+    account.sessionString,
+    credentials.apiId,
+    credentials.apiHash
+  );
+
+  let success = 0;
+  let failed = 0;
+
+  for (let i = 0; i < p.userIds.length; i++) {
+    try {
+      const res = await (tg as any).addUserToGroup(p.accountId, p.groupId, p.userIds[i]);
+      if (res) success++; else failed++;
+    } catch (e) {
+      failed++;
+    }
+
+    const progress = Math.floor(((i + 1) / p.userIds.length) * 100);
+    await job.updateProgress(progress);
+
+    // Jittered delay
+    await new Promise(r => setTimeout(r, p.delayMs + Math.random() * 1000));
+  }
+
+  return { success, failed };
+}
 
 worker.on("completed", (job) => console.log(`[Worker] Job ${job.id} completed`));
 worker.on("failed", (job, err) => console.error(`[Worker] Job ${job?.id} failed: ${err.message}`));

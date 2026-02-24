@@ -242,14 +242,11 @@ export class ContentClonerService {
             for (const r of mods.replaceText) text = text.split(r.old).join(r.new);
         }
 
-        // FALCON SMART REWRITE
-        // Simple synonym replacement to evade basic hash detection
+        // FALCON SMART REWRITE (V2)
         if (mods.rewriteAi) {
+            text = await this.aiRewrite(text, mods.rewritePrompt);
+        } else if (mods.replaceText) {
             text = this.smartRewrite(text);
-        }
-        if (mods.rewritePrompt) {
-            // Placeholder for actual AI API
-            text = `[AI Refined] ${text}`;
         }
 
         if (mods.addPrefix) text = `${mods.addPrefix}\n\n${text}`;
@@ -258,26 +255,39 @@ export class ContentClonerService {
         return text;
     }
 
+    private async aiRewrite(text: string, prompt?: string): Promise<string> {
+        try {
+            const { aiChatEngine } = await import('./ai-chat-engine');
+            return await aiChatEngine.generateResponse({
+                history: [{ role: 'user', content: text }],
+                targetUser: { name: 'Audience' },
+                personality: 'helpful',
+                // customPrompt: prompt // If aiChatEngine supported it
+            });
+        } catch (e) {
+            return this.smartRewrite(text);
+        }
+    }
+
     private smartRewrite(text: string): string {
         const synonyms: Record<string, string[]> = {
-            "best": ["top", "premier", "leading"],
-            "new": ["fresh", "latest", "updated"],
-            "join": ["enter", "subscribe", "follow"],
-            "crypto": ["cryptocurrency", "digital assets", "coins"],
-            "exclusive": ["premium", "vip", "select"],
-            "fast": ["quick", "rapid", "speedy"],
-            "click": ["tap", "press", "hit"]
+            "best": ["top", "premier", "leading", "للأفضل", "أفضل ما يكون"],
+            "new": ["fresh", "latest", "updated", "جديد", "أحدث"],
+            "join": ["enter", "subscribe", "follow", "انضم", "اشترك"],
+            "crypto": ["cryptocurrency", "digital assets", "coins", "كريبتو", "العملات الرقمية"],
+            "exclusive": ["premium", "vip", "select", "حصري", "مميز"],
+            "fast": ["quick", "rapid", "speedy", "سريع", "فوري"],
+            "click": ["tap", "press", "hit", "اضغط", "انقر"]
         };
 
         let newText = text;
         Object.keys(synonyms).forEach(key => {
-            if (newText.toLowerCase().includes(key)) {
-                // 50% chance to replace
-                if (Math.random() > 0.5) {
+            const regex = new RegExp(`\\b${key}\\b`, 'gi');
+            if (regex.test(newText)) {
+                if (Math.random() > 0.4) {
                     const options = synonyms[key];
                     const replacement = options[Math.floor(Math.random() * options.length)];
-                    // Simple replacement (case insensitive regex needed for better results)
-                    newText = newText.replace(new RegExp(key, 'gi'), replacement);
+                    newText = newText.replace(regex, replacement);
                 }
             }
         });
@@ -290,15 +300,27 @@ export class ContentClonerService {
             if (!client) throw new Error("Client not found");
 
             if (originalMsg.media) {
-                // FALCON SMART MEDIA HANDLING
-                // Instead of just passing the media object (which might be treated as a forward reference),
-                // we should try to ensure it looks like a new upload if possible.
-                // For now, we rely on the client sending the file object which usually triggers a re-upload of the file reference
-                // but avoids the 'forwarded from' tag.
+                // FALCON SMART MEDIA RANDOMIZER
+                // To bypass Telegram's exact hash detection:
+                // 1. Download the media to memory.
+                // 2. Add 1-5 random bytes at the end of the buffer (non-destructive for most media).
+                // 3. Re-upload as a new file.
 
-                // If we wanted to change the HASH, we would need to download and modify bytes.
-                // For "Copycat" level 1, just sending as new message is sufficient to remove "Forwarded" tag.
-                await client.sendMessage(targetId, { message: newText, file: originalMsg.media });
+                this.logger.info(`[Cloner] Randomizing media hash for: ${originalMsg.id}`);
+                const buffer = await client.downloadMedia(originalMsg.media);
+                if (buffer) {
+                    const randomPadding = Buffer.from(Math.random().toString(36).substring(7));
+                    const randomizedBuffer = Buffer.concat([buffer, randomPadding]);
+
+                    await client.sendMessage(targetId, {
+                        message: newText,
+                        file: randomizedBuffer,
+                        forceDocument: originalMsg.media.className === 'MessageMediaDocument'
+                    });
+                } else {
+                    // Fallback to direct sending if buffer fails
+                    await client.sendMessage(targetId, { message: newText, file: originalMsg.media });
+                }
             } else {
                 await client.sendMessage(targetId, { message: newText });
             }

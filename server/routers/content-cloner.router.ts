@@ -209,8 +209,11 @@ export const contentClonerRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloning statistics
-        return await contentClonerService.getCloningStats(input.accountId);
+        const stats = await contentClonerService.getCloningStats(input.accountId);
+        return {
+          success: true,
+          data: stats
+        };
       } catch (error: any) {
         return {
           success: false,
@@ -229,76 +232,12 @@ export const contentClonerRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement recent activity retrieval
-        const activities = [
-          {
-            id: 'activity-1',
-            ruleId: 'cloner-1',
-            ruleName: 'Competitor Monitor - Tech News',
-            sourceChannel: '@competitor1',
-            targetChannels: ['@mychannel1', '@mychannel2'],
-            clonedPost: {
-              id: 'post-123',
-              content: 'Breaking: New AI technology released! 🚀',
-              mediaType: 'text',
-              views: 5000,
-              reactions: 120
-            },
-            modifications: [
-              'Replaced @competitor with @mychannel',
-              'Replaced competitor.com with mywebsite.com'
-            ],
-            status: 'success',
-            processingTime: 35000,
-            timestamp: new Date('2026-02-09T15:30:00Z')
-          },
-          {
-            id: 'activity-2',
-            ruleId: 'cloner-2',
-            ruleName: 'Content Aggregator - Multiple Sources',
-            sourceChannel: '@source2',
-            targetChannels: ['@aggregator'],
-            clonedPost: {
-              id: 'post-124',
-              content: 'Amazing sunset view 🌅',
-              mediaType: 'image',
-              views: 1200,
-              reactions: 85
-            },
-            modifications: [
-              'Added prefix: 📰 ',
-              'Added suffix: #aggregated'
-            ],
-            status: 'success',
-            processingTime: 28000,
-            timestamp: new Date('2026-02-09T14:45:00Z')
-          },
-          {
-            id: 'activity-3',
-            ruleId: 'cloner-1',
-            ruleName: 'Competitor Monitor - Tech News',
-            sourceChannel: '@competitor1',
-            targetChannels: ['@mychannel1', '@mychannel2'],
-            clonedPost: {
-              id: 'post-125',
-              content: 'Spam content detected',
-              mediaType: 'text',
-              views: 50,
-              reactions: 2
-            },
-            modifications: [],
-            status: 'filtered',
-            processingTime: 5000,
-            timestamp: new Date('2026-02-09T14:20:00Z'),
-            reason: 'Content excluded by keyword filter: spam'
-          }
-        ];
-
+        const history = await contentClonerService.getCloningHistory(input.accountId, input.limit);
         return {
           success: true,
           data: {
-            activities: activities.slice(0, input.limit),
-            total: activities.length
+            activities: history.history,
+            total: history.total
           }
         };
 

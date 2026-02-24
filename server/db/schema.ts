@@ -78,6 +78,8 @@ export const telegramAccounts = pgTable('telegram_accounts', {
   dailyLimit: integer('dailyLimit').default(100).notNull(),
   lastActivityAt: timestamp('lastActivityAt'),
   lastRestrictedAt: timestamp('lastRestrictedAt'),
+  deviceSignature: text('deviceSignature'), // JSON: device, system, appVersion, lang, tz
+  hardwareId: varchar('hardwareId', { length: 255 }), // Unique ID for the hardware signature
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
@@ -231,6 +233,7 @@ export const schema = {
   proxyConfigs,
   autoReplyRules,
   contentClonerRules,
+  learningData,
 };
 
 // Type Inferences
@@ -254,3 +257,5 @@ export type AutoReplyRule = typeof autoReplyRules.$inferSelect;
 export type InsertAutoReplyRule = typeof autoReplyRules.$inferInsert;
 export type ContentClonerRule = typeof contentClonerRules.$inferSelect;
 export type InsertContentClonerRule = typeof contentClonerRules.$inferInsert;
+export type LearningEntry = typeof learningData.$inferSelect;
+export type InsertLearningEntry = typeof learningData.$inferInsert;

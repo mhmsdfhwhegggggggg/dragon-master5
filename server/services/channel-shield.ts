@@ -88,14 +88,27 @@ export class ChannelShield {
 
     /**
      * Detect if a group is a "Spam Trap" based on abnormal behavior
+     * UPDATED: Integrated Leaver-Kill-Switch
      */
     private async detectHoneypot(channelId: string): Promise<boolean> {
         const leaveKey = `shield:activity:${channelId}:leave`;
-        const leaves = await this.cache.get<number>(leaveKey) || 0;
+        const addKey = `shield:activity:${channelId}:add`;
 
-        // If more than 5 members leave/get banned immediately after adds, it's a trap prince
-        if (leaves > 5) {
-            this.logger.warn(`[ChannelShield] HONEYPOT ALERT for ${channelId}: High immediate leave rate detected!`);
+        const leaves = await this.cache.get<number>(leaveKey) || 0;
+        const adds = await this.cache.get<number>(addKey) || 1;
+
+        const leaverRatio = (leaves / adds) * 100;
+
+        // FALCON SENTINEL: LEAVER-KILL-SWITCH (LKS)
+        // If ratio > 15% after at least 10 adds, it's a confirmed trap
+        if (adds >= 10 && leaverRatio > 15) {
+            this.logger.error(`[ChannelShield] SENTINEL LKS TRIGGERED for ${channelId}: High leaver ratio (${leaverRatio.toFixed(1)}%)!`);
+            return true;
+        }
+
+        // Traditional immediate burst detection
+        if (leaves > 8) {
+            this.logger.warn(`[ChannelShield] HONEYPOT ALERT for ${channelId}: High immediate leave volume!`);
             return true;
         }
         return false;

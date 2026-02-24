@@ -16,7 +16,8 @@ import { RiskDetector } from './risk-detection';
 import { proxyIntelligenceManager } from './proxy-intelligence';
 import { antiBanEngineV5 } from './anti-ban-engine-v5';
 import { telegramClientService } from './telegram-client.service';
-import { ultraExtractor } from './ultra-extractor';
+import { quantumExtractor } from './quantum-extractor';
+import { masterPipeline } from './master-pipeline';
 import { channelShield } from './channel-shield';
 import * as db from '../db';
 
@@ -188,24 +189,14 @@ export class ExtractAddPipeline {
   }
 
   /**
-   * Extract members from source group
+   * Extract members from source group using Quantum Engine
    */
   private async extractMembers(options: ExtractAddOptions): Promise<ExtractedMember[]> {
-    const cacheKey = `extracted:${options.sourceGroupId}:${JSON.stringify(options.filters)}`;
-
-    // Check cache first
-    const cached = this.cache ? await this.cache.get<ExtractedMember[]>(cacheKey) : null;
-    if (cached && cached.length > 0) {
-      this.logger.info('[Pipeline] Using cached extraction results');
-      return cached;
-    }
-
     const client = await this.getTelegramClient(options.accountId);
     const members: ExtractedMember[] = [];
 
     try {
-      // Use UltraExtractor with God-Mode (Standard + History Scraper + Auto-Join)
-      const participants = await ultraExtractor.extractMembers(
+      await quantumExtractor.extract(
         client,
         options.accountId,
         options.sourceGroupId,
@@ -213,38 +204,26 @@ export class ExtractAddPipeline {
           limit: options.maxMembers || 10000,
           mustHaveUsername: options.filters.hasUsername,
           mustHavePhoto: options.filters.hasPhoto,
-          minDaysActive: options.filters.daysActive
+          premiumOnly: options.filters.isPremium,
+          activityDays: options.filters.daysActive,
+          excludeBots: options.filters.excludeBots
+        },
+        {
+          onBatch: async (batch) => {
+            members.push(...batch.map(u => ({
+              ...u,
+              bio: '', // Bio needs separate fetch in Quantum if needed, but keeping simple for now
+              qualityScore: 80, // Default for Quantum yield
+              riskLevel: 'low',
+              extractionTime: new Date()
+            } as ExtractedMember)));
+          }
         }
       );
 
-      for (const user of participants) {
-        const member = {
-          id: user.id.toString(),
-          username: user.username,
-          firstName: user.firstName || '',
-          lastName: user.lastName || '',
-          bio: (user as any).about || '',
-          hasPhoto: !!user.photo,
-          isPremium: user.premium || false,
-          isBot: user.bot || false,
-          isRestricted: user.restricted || false,
-          qualityScore: this.calculateQualityScore(user),
-          riskLevel: 'low',
-          extractionTime: new Date()
-        } as ExtractedMember;
-
-        members.push(member);
-      }
-
-      // Cache results for 1 hour
-      if (this.cache) {
-        await this.cache.set(cacheKey, members, { ttl: 3600 });
-      }
-
       return members;
-
     } catch (error: any) {
-      this.logger.error('[Pipeline] Extraction failed', { error: error.message });
+      this.logger.error('[Pipeline] Quantum Extraction failed', { error: error.message });
       throw error;
     }
   }

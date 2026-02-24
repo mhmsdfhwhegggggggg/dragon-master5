@@ -28,6 +28,8 @@ export default function BulkOpsScreen() {
 
   // API Mutations
   const startBulkMutation = trpc.bulkOps.startSendBulkMessages.useMutation();
+  const startJoinMutation = trpc.bulkOps.startJoinGroups.useMutation();
+  const startAddMutation = trpc.bulkOps.startAddUsersToGroup.useMutation();
 
   const jobStatusQuery = trpc.bulkOps.getJobStatus.useQuery(
     { jobId: jobId || "" },
@@ -45,6 +47,7 @@ export default function BulkOpsScreen() {
     if (!targetList.trim()) return Alert.alert("تنبيه", "يرجى إدخال قائمة الأهداف");
 
     const targets = targetList.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+    const delay = parseInt(delayMs) || 2000;
 
     if (operationType === "messages") {
       if (!messageTemplate) return Alert.alert("تنبيه", "يرجى إدخال نص الرسالة");
@@ -52,19 +55,46 @@ export default function BulkOpsScreen() {
         accountId: selectedAccountId,
         userIds: targets,
         messageTemplate,
-        delayMs: parseInt(delayMs) || 2000,
+        delayMs: delay,
         autoRepeat,
       }, {
         onSuccess: (data: any) => {
           setJobId(data.jobId);
-          Alert.alert("تم البدء", "تمت إضافة العملية إلى طابور التنفيذ في السيرفر");
+          Alert.alert("تم البدء", "تمت إضافة عملية الرسائل إلى الطابور");
         },
-        onError: (error: any) => {
-          Alert.alert("خطأ", error.message || "فشل بدء العملية");
-        },
+        onError: (error: any) => Alert.alert("خطأ", error.message),
       });
-    } else {
-      Alert.alert("قيد التطوير", "سيتم تفعيل هذا النوع من العمليات في التحديث القادم");
+    } else if (operationType === "join-groups") {
+      startJoinMutation.mutate({
+        accountId: selectedAccountId,
+        groupLinks: targets,
+        delayMs: delay,
+      }, {
+        onSuccess: (data: any) => {
+          setJobId(data.jobId);
+          Alert.alert("تم البدء", "بدأت عملية الانضمام التلقائي في الخلفية");
+        },
+        onError: (error: any) => Alert.alert("خطأ", error.message),
+      });
+    } else if (operationType === "add-users") {
+      // For add-users, we need a group ID. Let's assume the first target is the group Link/ID 
+      // or we should have a better UI. For now, since it's a "restoration", I will adapt the target logic.
+      // Better: In target list, the first line is Group, subsequent lines are Users.
+      if (targets.length < 2) return Alert.alert("تنبيه", "يجب أن يكون السطر الأول هو رابط الجروب، والأسطر التالية هي اليوزرات");
+
+      const [groupId, ...userIds] = targets;
+      startAddMutation.mutate({
+        accountId: selectedAccountId,
+        groupId,
+        userIds,
+        delayMs: delay,
+      }, {
+        onSuccess: (data: any) => {
+          setJobId(data.jobId);
+          Alert.alert("تم البدء", "بدأت عملية إضافة الأعضاء في الخلفية");
+        },
+        onError: (error: any) => Alert.alert("خطأ", error.message),
+      });
     }
   };
 

@@ -19,6 +19,7 @@ import { CacheSystem } from '../_core/cache-system';
 import { RiskDetector } from './risk-detection';
 import { proxyIntelligenceManager } from './proxy-intelligence';
 import * as db from '../db';
+import { and, eq, desc } from 'drizzle-orm';
 import { telegramClientService } from './telegram-client.service';
 import { channelShield } from './channel-shield';
 import { Api } from 'telegram';
@@ -143,46 +144,100 @@ export class AntiBanEngineV5 {
   }
 
   /**
-   * Generate a randomized hardware signature for "Signature Randomization"
+   * Generate or retrieve a persistent hardware signature for "Signature Randomization"
+   * UPDATED: Now supports Identity Binding (Persistent Device Fingerprint)
    */
-  async generateHardwareSignature() {
+  async getHardwareSignature(accountId: number) {
+    const cacheKey = `shield:fingerprint:${accountId}`;
+    const cached = await this.cache.get<any>(cacheKey);
+    if (cached) return cached;
+
+    // Check Database for persisted signature
+    const account = await db.getTelegramAccountById(accountId);
+    if (account?.deviceSignature) {
+      try {
+        const signature = JSON.parse(account.deviceSignature);
+        await this.cache.set(cacheKey, signature);
+        return signature;
+      } catch (e) { /* Fallback to generation */ }
+    }
+
     const devices = ['iPhone 15 Pro', 'Samsung S24 Ultra', 'Google Pixel 8', 'Xiaomi 14', 'OnePlus 12'];
     const systems = ['iOS 17.4.1', 'Android 14', 'iOS 17.5', 'Android 13'];
 
-    return {
+    const signature = {
       device: devices[Math.floor(Math.random() * devices.length)],
       system: systems[Math.floor(Math.random() * systems.length)],
       appVersion: `10.${Math.floor(Math.random() * 9)}.${Math.floor(Math.random() * 5)}`,
       lang: 'ar-SA',
-      tz: 'Asia/Riyadh'
+      tz: 'Asia/Riyadh',
+      hardwareId: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
     };
+
+    // Persist to DB for Identity Binding
+    await db.updateTelegramAccount(accountId, {
+      deviceSignature: JSON.stringify(signature),
+      hardwareId: signature.hardwareId
+    } as any);
+
+    await this.cache.set(cacheKey, signature);
+    return signature;
   }
 
   /**
    * Simulate "Reading/Browsing" behavior (Heart-Beat)
+   * UPDATED: Integrated Chaos Behavior (Non-linear interaction)
    */
   async simulateDeepInteraction(client: any, chatId: string) {
     if (!this.heartBeatV6Enabled) return;
 
     this.logger.info(`[Heart-Beat] Simulating organic browsing in ${chatId}...`);
 
-    // 1. Mark as read
     try {
+      // 1. Initial Read
       await client.invoke(new Api.messages.ReadHistory({ peer: chatId, maxId: 0 }));
-    } catch (e) { }
 
-    // 2. Random thinking delay (GHOST MODE)
-    const thinkingTime = 2000 + Math.random() * 5000;
-    await new Promise(r => setTimeout(r, thinkingTime));
+      // 2. CHAOS MOVE: Random Scrolling or Profile View
+      await this.chaosInteraction(client, chatId);
 
-    // 3. Simulating "Typing" or "Looking" state
-    try {
+      // 3. Simulating "Typing" or "Looking" state
       await client.invoke(new Api.messages.SetTyping({
         peer: chatId,
         action: new Api.SendMessageTypingAction()
       }));
-      await new Promise(r => setTimeout(r, 1500));
-    } catch (e) { }
+      await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
+
+    } catch (e: any) {
+      this.logger.warn(`[Heart-Beat] Interaction jitter: ${e.message}`);
+    }
+  }
+
+  /**
+   * Stochastic Chaos Interaction
+   * Performs non-linear actions to confuse bot detection.
+   */
+  private async chaosInteraction(client: any, chatId: string) {
+    const actions = ['scroll', 'view_profile', 'idle', 'read_top'];
+    const chosen = actions[Math.floor(Math.random() * actions.length)];
+
+    switch (chosen) {
+      case 'scroll':
+        // Stochastic Scrolling
+        const offset = Math.floor(Math.random() * 50);
+        await client.getMessages(chatId, { limit: 10, addOffset: offset });
+        break;
+      case 'view_profile':
+        // Simulate looking at group info
+        try { await client.invoke(new Api.channels.GetFullChannel({ channel: chatId })); } catch (e) { }
+        break;
+      case 'read_top':
+        // View pinned message
+        try { await client.getMessages(chatId, { limit: 1 }); } catch (e) { }
+        break;
+      default:
+        // Dynamic Thinking
+        await new Promise(r => setTimeout(r, 3000 + Math.random() * 7000));
+    }
   }
 
   static getInstance(): AntiBanEngineV5 {
@@ -649,36 +704,43 @@ export class AntiBanEngineV5 {
 
   /**
    * Update learning data
+   * UPDATED: Now persists to Postgres (Persistent Intelligence)
    */
   private async updateLearningData(
     context: OperationContext,
     features: OperationFeatures
   ): Promise<void> {
-    const learningEntry: LearningData = {
-      accountId: context.accountId,
-      operationType: context.operationType,
-      features,
-      outcome: 'success', // Will be updated later
-      timestamp: Date.now(),
-      context
-    };
+    const database = await db.getDb();
+    if (!database) return;
 
-    this.learningData.push(learningEntry);
+    try {
+      const learningEntry = {
+        accountId: context.accountId,
+        operationType: context.operationType,
+        features: JSON.stringify(features),
+        outcome: 'success', // Initial assumption, updated by recordOperationOutcome
+        timestamp: new Date(),
+      };
 
-    // Keep only last 10000 entries per account
-    const accountData = this.learningData.filter(d => d.accountId === context.accountId);
-    if (accountData.length > 10000) {
-      this.learningData = this.learningData.filter(d => d.accountId !== context.accountId);
-      this.learningData.push(...accountData.slice(-10000));
+      // 1. Persist to Postgres
+      await database.insert((db as any).learningData).values(learningEntry);
+
+      // 2. Update local learning data for speed
+      if (this.learningData.length > 5000) this.learningData.shift();
+      this.learningData.push({ ...learningEntry, features: features as any, outcome: 'success', timestamp: Date.now(), context });
+
+      // 3. Save summary to cache
+      const cacheKey = `anti-ban-learning:summary:${context.accountId}`;
+      await this.cache.set(cacheKey, learningEntry, { ttl: 24 * 3600 });
+
+    } catch (error: any) {
+      this.logger.error('[AntiBanV5] Persistent learning failed', { error: error.message });
     }
-
-    // Save to cache
-    const cacheKey = `anti-ban-learning:${context.accountId}`;
-    await this.cache.set(cacheKey, learningEntry, { ttl: 7 * 24 * 3600 }); // 7 days
   }
 
   /**
    * Record operation outcome for learning
+   * UPDATED: Synchronizes with Postgres (Persistent Intelligence)
    */
   async recordOperationOutcome(
     accountId: number,
@@ -686,7 +748,23 @@ export class AntiBanEngineV5 {
     outcome: 'success' | 'rate_limited' | 'banned' | 'warning'
   ): Promise<void> {
     try {
-      // Update recent learning entry
+      const database = await db.getDb();
+      if (database) {
+        // Update the most recent entry for this account/type in Postgres
+        const results = await database.select()
+          .from((db as any).learningData)
+          .where(and(eq((db as any).learningData.accountId, accountId), eq((db as any).learningData.operationType, operationType)))
+          .orderBy(desc((db as any).learningData.timestamp))
+          .limit(1);
+
+        if (results.length > 0) {
+          await database.update((db as any).learningData)
+            .set({ outcome })
+            .where(eq((db as any).learningData.id, results[0].id));
+        }
+      }
+
+      // Update local cache
       const recentEntry = this.learningData
         .filter(d => d.accountId === accountId && d.operationType === operationType)
         .pop();
@@ -698,7 +776,7 @@ export class AntiBanEngineV5 {
       // Update behavior pattern
       await this.updateBehaviorPattern(accountId, operationType, outcome);
 
-      this.logger.info('[AntiBanV5] Operation outcome recorded', {
+      this.logger.info('[AntiBanV5] Operation outcome recorded (Persisted)', {
         accountId,
         operationType,
         outcome
