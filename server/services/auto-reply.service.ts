@@ -109,8 +109,8 @@ export class AutoReplyService {
     if (this.monitoredAccounts.has(accountId)) return;
 
     try {
-      await telegramClientService.addEventHandler(accountId, async (event) => {
-        if (event instanceof NewMessage && event.message) {
+      await telegramClientService.addEventHandler(accountId, async (event: any) => {
+        if (event instanceof NewMessage && (event as any).message) {
           await this.handleNewMessage(accountId, event);
         }
       }, new NewMessage({}));
@@ -629,6 +629,63 @@ export class AutoReplyService {
       this.logger.error('[AutoReply] Failed to get stats', { error: error.message });
       throw error;
     }
+  }
+
+  /**
+   * Export rules for an account
+   */
+  async exportRules(accountId: number): Promise<any> {
+    const rules = await this.getRules(accountId);
+    return {
+      rules: rules.map(r => ({
+        name: r.name,
+        keywords: r.keywords,
+        matchType: r.matchType,
+        replyType: r.replyType,
+        replyContent: r.replyContent,
+        delay: r.delay,
+        reactions: r.reactions,
+        options: r.options,
+        priority: r.priority
+      })),
+      exportedAt: new Date(),
+      version: '6.1.1'
+    };
+  }
+
+  /**
+   * Import rules for an account
+   */
+  async importRules(accountId: number, userId: number, rules: any[]): Promise<{ imported: number, skipped: number }> {
+    let imported = 0;
+    let skipped = 0;
+
+    for (const rule of rules) {
+      try {
+        await this.createRule({
+          name: rule.name,
+          accountId,
+          userId,
+          keywords: rule.keywords,
+          matchType: rule.matchType,
+          replyType: rule.replyType,
+          replyContent: rule.replyContent,
+          aiPrompt: rule.aiPrompt,
+          delay: rule.delay,
+          reactions: rule.reactions || [],
+          options: rule.options,
+          priority: rule.priority || 0,
+          isActive: true
+        });
+        imported++;
+      } catch (e) {
+        this.logger.error('[AutoReply] Failed to import rule', { name: rule.name, error: (e as Error).message });
+        skipped++;
+      }
+    }
+
+    await this.clearRulesCache(accountId);
+    return { imported, skipped };
   }
 
   /**

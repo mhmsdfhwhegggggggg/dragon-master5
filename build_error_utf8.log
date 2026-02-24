@@ -1,0 +1,68 @@
+﻿node.exe : X [ERROR] The symbol "details" has 
+already been declared
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (X [ER 
+   ROR] The s...y been declared:String) [], Remot  
+  eException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+    
+server/services/content-cloner.service.ts:577:22:
+      577 ظ¤é                 const details = 
+JSON.parse(log.details || '{}');
+          ظـ╡                       ~~~~~~~
+
+  The symbol "details" was originally declared 
+here:
+
+    
+server/services/content-cloner.service.ts:575:20:
+      575 ظ¤é                 let details: any = 
+{};
+          ظـ╡                     ~~~~~~~
+
+1 error
+node:child_process:964
+    throw err;
+    ^
+
+Error: Command failed: C:\Users\mohammd 
+alkmaliy\Downloads\dragaan-master (1)\dragaan-maste
+r\node_modules\@esbuild\win32-x64\esbuild.exe 
+server/_core/index.ts --platform=node 
+--packages=external --bundle --format=esm 
+--outdir=dist
+    at genericNodeError 
+(node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError 
+(node:child_process:925:11)
+    at Object.execFileSync 
+(node:child_process:961:15)
+    at Object.<anonymous> (C:\Users\mohammd 
+alkmaliy\Downloads\dragaan-master (1)\dragaan-maste
+r\node_modules\esbuild\bin\esbuild:222:28)
+    at Module._compile 
+(node:internal/modules/cjs/loader:1760:14)
+    at Object..js 
+(node:internal/modules/cjs/loader:1893:10)
+    at Module.load 
+(node:internal/modules/cjs/loader:1480:32)
+    at Module._load 
+(node:internal/modules/cjs/loader:1299:12)
+    at TracingChannel.traceSync 
+(node:diagnostics_channel:328:14) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 12080,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.11.0

@@ -168,12 +168,12 @@ export class JobQueueSystem {
 
   private async createQueue(name: string, config: any): Promise<Queue> {
     const queue = new Queue(config.name, {
-      connection: this.redis,
+      connection: this.redis as any,
       defaultJobOptions: config.defaultJobOptions,
     });
 
     const queueEvents = new QueueEvents(config.name, {
-      connection: this.redis,
+      connection: this.redis as any,
     });
 
     this.queues.set(name, queue);
@@ -202,7 +202,7 @@ export class JobQueueSystem {
         return await handler(job);
       },
       {
-        connection: this.redis,
+        connection: this.redis as any,
         concurrency: this.getConcurrency(priority),
         limiter: config.limiter,
       }

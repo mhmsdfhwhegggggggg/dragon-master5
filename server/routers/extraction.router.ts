@@ -37,10 +37,18 @@ export const extractionRouter = router({
           credentials.apiHash
         );
 
-        // Extract members
-        const members = await telegramClientService.extractGroupMembers(
+        // Extract members via Quantum Engine (High-Performance)
+        const members: any[] = [];
+        await (await import("../services/quantum-extractor")).quantumExtractor.extract(
+          client,
           input.accountId,
-          input.groupId
+          input.groupId,
+          { limit: 5000 }, // Standard limit for base extraction
+          {
+            onBatch: async (batch) => {
+              members.push(...batch);
+            }
+          }
         );
 
         // Save to database
@@ -119,10 +127,20 @@ export const extractionRouter = router({
           credentials.apiHash
         );
 
-        const members = await telegramClientService.extractEngagedMembers(
+        const members: any[] = [];
+        await (await import("../services/quantum-extractor")).quantumExtractor.extract(
+          client,
           input.accountId,
           input.groupId,
-          input.daysActive
+          {
+            limit: 5000,
+            activityDays: input.daysActive
+          },
+          {
+            onBatch: async (batch) => {
+              members.push(...batch);
+            }
+          }
         );
 
         const extractedMembers = members.map((member: any) => ({

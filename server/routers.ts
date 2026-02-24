@@ -20,6 +20,7 @@ import { authRouter } from "./routers/auth.router";
 import { backupRouter } from "./routers/backup.router";
 import { aiAntiBanRouter } from "./routers/ai-anti-ban.router";
 import { securityRouter } from "./routers/security.router";
+import { apexRouter } from "./routers/apex.router";
 
 // Export types for anti-ban integration
 export type {
@@ -55,6 +56,7 @@ export const appRouter = router({
   backup: backupRouter,
   aiAntiBan: aiAntiBanRouter,
   security: securityRouter,
+  apex: apexRouter,
 });
 
 export type AppRouter = typeof appRouter;

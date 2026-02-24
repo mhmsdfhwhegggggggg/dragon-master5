@@ -431,26 +431,7 @@ export const autoReplyRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement rules export
-        const exportData = {
-          rules: [
-            {
-              name: 'Price Inquiries',
-              keywords: ['السعر', 'كم', 'التكلفة'],
-              matchType: 'contains',
-              replyType: 'fixed',
-              replyContent: 'السعر 100 ريال فقط! 🎉',
-              delay: { min: 2000, max: 5000 },
-              options: {
-                targetTypes: ['private', 'group'],
-                dailyLimit: 50
-              }
-            }
-          ],
-          exportedAt: new Date(),
-          version: '6.0.0'
-        };
-
+        const exportData = await autoReplyService.exportRules(input.accountId);
         return {
           success: true,
           data: exportData,
@@ -472,40 +453,19 @@ export const autoReplyRouter = router({
   importRules: protectedProcedure
     .input(z.object({
       accountId: z.number(),
-      rules: z.array(z.object({
-        name: z.string(),
-        keywords: z.array(z.string()),
-        matchType: z.enum(['exact', 'contains', 'regex']),
-        replyType: z.enum(['fixed', 'template', 'ai']),
-        replyContent: z.union([z.string(), z.array(z.string())]),
-        delay: z.object({
-          min: z.number(),
-          max: z.number()
-        }),
-        options: z.object({
-          targetTypes: z.array(z.enum(['private', 'group', 'supergroup', 'channel'])),
-          dailyLimit: z.number()
-        })
-      })),
+      rules: z.array(z.any()),
       overwrite: z.boolean().default(false)
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement rules import
-        const importResults = {
-          imported: input.rules.length,
-          skipped: 0,
-          errors: 0,
-          details: input.rules.map((rule, index) => ({
-            index: index + 1,
-            name: rule.name,
-            status: 'success'
-          }))
-        };
-
+        const result = await autoReplyService.importRules(input.accountId, ctx.user.id, input.rules);
         return {
           success: true,
-          data: importResults,
+          data: {
+            imported: result.imported,
+            skipped: result.skipped,
+            total: input.rules.length
+          },
           message: 'Rules imported successfully'
         };
 

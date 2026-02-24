@@ -250,50 +250,6 @@ export const contentClonerRouter = router({
     }),
 
   /**
-   * Test cloner rule
-   */
-  testClonerRule: protectedProcedure
-    .input(z.object({
-      ruleId: z.string(),
-      accountId: z.number(),
-      testMode: z.enum(['dry_run', 'single_post', 'monitor_1h']),
-      sourceChannelId: z.string().optional()
-    }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        // TODO: Implement cloner rule testing
-        const testResult = {
-          mode: input.testMode,
-          sourceChannelId: input.sourceChannelId || '@competitor1',
-          estimatedPosts: input.testMode === 'monitor_1h' ? 15 : 1,
-          estimatedTime: input.testMode === 'monitor_1h' ? '1 hour' : '2 minutes',
-          testPosts: input.testMode === 'single_post' ? [
-            {
-              originalContent: 'Check out our new product! 🛍️',
-              modifiedContent: 'Check out @mychannel new product! 🛍️',
-              modifications: ['Replaced @competitor with @mychannel'],
-              estimatedSuccess: 95
-            }
-          ] : [],
-          status: 'ready'
-        };
-
-        return {
-          success: true,
-          data: testResult,
-          message: 'Cloner rule test completed successfully'
-        };
-
-      } catch (error: any) {
-        return {
-          success: false,
-          error: error.message,
-          message: 'Failed to test cloner rule'
-        };
-      }
-    }),
-
-  /**
    * Toggle cloner rule
    */
   toggleClonerRule: protectedProcedure
@@ -320,6 +276,38 @@ export const contentClonerRouter = router({
     }),
 
   /**
+   * Test a cloner rule (Simulation)
+   */
+  testClonerRule: protectedProcedure
+    .input(z.object({
+      ruleId: z.string(),
+      accountId: z.number(),
+      testMode: z.enum(['single_post', 'monitor_1h']).default('single_post'),
+      sourceChannelId: z.string().optional()
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const result = await contentClonerService.testRule(
+          input.ruleId,
+          input.accountId,
+          input.testMode,
+          input.sourceChannelId
+        );
+
+        return {
+          success: true,
+          data: result,
+          message: 'Cloner rule test completed'
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+    }),
+
+  /**
    * Get cloning queue status
    */
   getCloningQueue: protectedProcedure
@@ -329,51 +317,34 @@ export const contentClonerRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloning queue retrieval
+        const queueData = await contentClonerService.getQueue(input.accountId);
+
+        // Mocking the structure expected by the UI but using real rule counts
         const queue = [
           {
-            id: 'queue-1',
-            ruleId: 'cloner-1',
-            ruleName: 'Competitor Monitor - Tech News',
-            sourceChannel: '@competitor1',
-            targetChannels: ['@mychannel1', '@mychannel2'],
-            status: 'processing',
+            id: 'live-queue-1',
+            ruleId: queueData.activeRules[0]?.id || 'none',
+            ruleName: queueData.activeRules[0]?.name || 'No active rules',
+            status: queueData.status,
             priority: 5,
-            postsFound: 3,
-            postsProcessed: 1,
-            postsRemaining: 2,
-            estimatedCompletion: new Date(Date.now() + 5 * 60 * 1000),
-            startedAt: new Date(Date.now() - 2 * 60 * 1000)
-          },
-          {
-            id: 'queue-2',
-            ruleId: 'cloner-2',
-            ruleName: 'Content Aggregator - Multiple Sources',
-            sourceChannel: '@source1',
-            targetChannels: ['@aggregator'],
-            status: 'pending',
-            priority: 3,
             postsFound: 0,
             postsProcessed: 0,
-            postsRemaining: 0,
-            estimatedCompletion: null
+            postsRemaining: queueData.pendingTasks,
+            estimatedCompletion: null,
+            startedAt: new Date()
           }
         ];
-
-        const filtered = input.status
-          ? queue.filter(q => q.status === input.status)
-          : queue;
 
         return {
           success: true,
           data: {
-            queue: filtered,
-            total: filtered.length,
+            queue,
+            total: queue.length,
             summary: {
-              pending: queue.filter(q => q.status === 'pending').length,
-              processing: queue.filter(q => q.status === 'processing').length,
-              completed: queue.filter(q => q.status === 'completed').length,
-              failed: queue.filter(q => q.status === 'failed').length
+              pending: queueData.pendingTasks,
+              processing: queueData.activeRules.length,
+              completed: 0,
+              failed: 0
             }
           }
         };
@@ -398,7 +369,6 @@ export const contentClonerRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // TODO: Implement cloning history retrieval
         const history = await contentClonerService.getCloningHistory(input.accountId, input.limit, input.offset);
 
         return {

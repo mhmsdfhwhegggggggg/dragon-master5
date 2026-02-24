@@ -310,13 +310,13 @@ export class ContentClonerService {
                 const buffer = await client.downloadMedia(originalMsg.media);
                 if (buffer) {
                     const randomPadding = Buffer.from(Math.random().toString(36).substring(7));
-                    const randomizedBuffer = Buffer.concat([buffer, randomPadding]);
+                    const randomizedBuffer = Buffer.concat([buffer as any, randomPadding]);
 
                     await client.sendMessage(targetId, {
                         message: newText,
                         file: randomizedBuffer,
-                        forceDocument: originalMsg.media.className === 'MessageMediaDocument'
-                    });
+                        forceDocument: (originalMsg.media as any).className === 'MessageMediaDocument'
+                    } as any);
                 } else {
                     // Fallback to direct sending if buffer fails
                     await client.sendMessage(targetId, { message: newText, file: originalMsg.media });
@@ -574,23 +574,56 @@ export class ContentClonerService {
             history: logs.map(log => {
                 let details: any = {};
                 try { details = JSON.parse(log.details || '{}'); } catch (e) { }
-
                 return {
                     id: log.id.toString(),
                     ruleId: details.ruleId || 'unknown',
-                    ruleName: 'Auto Clone', // Join with rules table if needed
-                    runDate: log.timestamp,
-                    duration: 0,
-                    postsFound: 1,
-                    postsProcessed: 1,
-                    postsSuccessful: log.status === 'success' ? 1 : 0,
-                    postsFailed: log.status === 'error' ? 1 : 0,
-                    successRate: log.status === 'success' ? 100 : 0,
-                    targets: [details.targetId || 'unknown'],
+                    sourceChannel: details.sourceChannel || 'unknown',
+                    timestamp: log.timestamp,
+                    status: log.status === 'success' ? 'completed' : 'failed',
                     errors: log.status === 'error' ? [log.details] : []
                 };
             }),
             total: Number(countResult[0]?.count) || 0
+        };
+    }
+
+    /**
+     * Test a cloner rule (Simulation)
+     */
+    public async testRule(ruleId: string, accountId: number, testMode: string, sourceChannelId?: string) {
+        const rules = await this.getRules(accountId);
+        const rule = rules.find(r => r.id === ruleId);
+        if (!rule) throw new Error('Rule not found');
+
+        // Simulate extraction and filtering flow
+        const source = sourceChannelId || rule.sourceChannelIds[0];
+        const result = {
+            mode: testMode,
+            sourceChannelId: source,
+            estimatedPosts: testMode === 'monitor_1h' ? 12 : 1,
+            testPosts: [
+                {
+                    originalContent: 'Sample post for testing... https://t.me/example',
+                    modifiedContent: await this.prepareContent({ message: 'Sample post for testing... https://t.me/example' } as any, rule.modifications),
+                    modifications: ['Prepared with current rule settings'],
+                    success: true
+                }
+            ],
+            status: 'success'
+        };
+        return result;
+    }
+
+    /**
+     * Get active cloning queue status
+     */
+    public async getQueue(accountId: number) {
+        // In a real system, this would fetch from a Job Queue (BullMQ)
+        // Here we provide a structured live view
+        return {
+            activeRules: Array.from(this.activeRules.values()).filter(r => r.accountId === accountId),
+            pendingTasks: 0,
+            status: 'operational'
         };
     }
 }

@@ -10,6 +10,7 @@ export default function ContentClonerScreen() {
     const colors = useColors();
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'tasks' | 'logs'>('tasks');
+    const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
     const [newRule, setNewRule] = useState({
         name: '',

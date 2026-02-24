@@ -13,6 +13,7 @@ export const users = pgTable("users", {
   createdAt: timestamp().defaultNow().notNull(),
   updatedAt: timestamp().defaultNow().notNull(),
   isActive: boolean().default(true).notNull(),
+  role: varchar({ length: 50 }).notNull().default('user'),
 });
 
 export type User = typeof users.$inferSelect;

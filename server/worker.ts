@@ -12,7 +12,7 @@ import { Worker, Job } from "bullmq";
 import IORedis from "ioredis";
 import { ENV } from "./_core/env";
 import { TelegramClientService } from "./services/telegram-client.service";
-import { industrialExtractor } from "./services/industrial-extractor";
+import { quantumExtractor } from "./services/quantum-extractor";
 import { highSpeedAdder } from "./services/high-speed-adder";
 import * as db from "./db";
 import type {
@@ -51,7 +51,7 @@ const worker = new Worker(
     }
   },
   {
-    connection,
+    connection: connection as any,
     concurrency: 50, // Industrial scale concurrency
     limiter: { max: 1000, duration: 1000 }
   }
@@ -86,20 +86,22 @@ async function handleExtractAndAdd(job: Job) {
   let failed = 0;
   const toAdd: any[] = [];
 
-  // 2. Industrial Extraction (Streaming)
-  await industrialExtractor.industrialExtract(
+  // 2. Quantum Extraction (Streaming)
+  await quantumExtractor.extract(
     client,
     p.accountId,
     p.source,
     {
       limit: p.limit,
-      hasUsername: p.requireUsername,
+      mustHaveUsername: p.requireUsername,
       activityDays: p.daysActive
     },
-    async (batch) => {
-      toAdd.push(...batch);
-      extractedCount += batch.length;
-      await job.updateProgress(Math.min(20, Math.floor((extractedCount / (p.limit || 1000)) * 20)));
+    {
+      onBatch: async (batch) => {
+        toAdd.push(...batch);
+        extractedCount += batch.length;
+        await job.updateProgress(Math.min(20, Math.floor((extractedCount / (p.limit || 1000)) * 20)));
+      }
     }
   );
 

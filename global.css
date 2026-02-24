@@ -1,3 +1,35 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    --apex-blue: #00f2ff;
+    --apex-gold: #ffcf00;
+    --apex-background: #05070a;
+    --apex-glass-bg: rgba(255, 255, 255, 0.03);
+    --apex-glass-border: rgba(255, 255, 255, 0.1);
+    --apex-hologram-gradient: linear-gradient(135deg, #00f2ff 0%, #7000ff 50%, #ff00c8 100%);
+}
+
+.dark {
+    --apex-background: #020408;
+}
+
+@layer components {
+    .apex-glass {
+        @apply bg-[rgba(255, 255, 255, 0.03)] border border-[rgba(255, 255, 255, 0.1)] rounded-2xl;
+        backdrop-filter: blur(20px) saturate(180%);
+    }
+
+    .apex-hologram-text {
+        @apply font-bold;
+        background: var(--apex-hologram-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .apex-glow {
+        box-shadow: 0 0 30px rgba(0, 242, 255, 0.15);
+    }
+}

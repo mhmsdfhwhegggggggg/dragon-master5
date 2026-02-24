@@ -55,7 +55,9 @@ export interface MappedRateLimit {
   count: number;
 }
 
-let _db: ReturnType<typeof drizzle> | null = null;
+import { schema } from "./db/schema";
+
+let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
 
 /**
@@ -66,7 +68,7 @@ export async function getDb() {
   if (!_db && url) {
     try {
       _client = postgres(url);
-      _db = drizzle(_client);
+      _db = drizzle(_client, { schema });
       console.log("[Database] Connected successfully to PostgreSQL:", url.replace(/\/\/.*@/, '//***@'));
     } catch (error: any) {
       if (error.code === '28P01') {

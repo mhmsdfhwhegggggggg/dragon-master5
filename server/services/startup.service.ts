@@ -10,6 +10,8 @@ import { logger } from '../_core/logger';
 import * as db from '../db';
 import { eq } from 'drizzle-orm';
 import { Secrets } from '../_core/secrets';
+import { apexResilience } from '../_core/resilience';
+import { apexOrchestrator } from './apex-orchestrator.service';
 
 export class StartupService {
     /**
@@ -60,7 +62,7 @@ export class StartupService {
             await db.createUser({
                 email,
                 password, // Note: Should be hashed in production if db.createUser doesn't do it
-                name,
+                username: name,
                 role: 'admin',
                 isActive: true
             });

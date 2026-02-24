@@ -218,6 +218,17 @@ export const contentClonerRules = pgTable('content_cloner_rules', {
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
+// Learning data table
+export const learningData = pgTable('learning_data', {
+  id: serial('id').primaryKey(),
+  userId: integer('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  key: varchar('key', { length: 255 }).notNull(),
+  value: text('value').notNull(),
+  category: varchar('category', { length: 100 }),
+  confidence: decimal('confidence', { precision: 3, scale: 2 }).default('1.00'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
 // Export all tables
 export const schema = {
   users,

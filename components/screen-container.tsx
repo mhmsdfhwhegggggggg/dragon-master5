@@ -21,6 +21,10 @@ export interface ScreenContainerProps extends ViewProps {
    * Additional className for the SafeAreaView (content layer).
    */
   safeAreaClassName?: string;
+  /**
+   * Whether to show the default header.
+   */
+  showHeader?: boolean;
 }
 
 /**
@@ -44,6 +48,7 @@ export function ScreenContainer({
   className,
   containerClassName,
   safeAreaClassName,
+  showHeader,
   style,
   ...props
 }: ScreenContainerProps) {

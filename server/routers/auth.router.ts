@@ -6,6 +6,8 @@ import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { ENV } from "../_core/env";
 import { hashPassword, verifyPassword } from "../_core/crypto";
+import { COOKIE_NAME } from "../../shared/const.js";
+import { getSessionCookieOptions } from "../_core/cookies";
 
 export const authRouter = router({
     login: publicProcedure
@@ -56,7 +58,14 @@ export const authRouter = router({
         }),
 
     logout: publicProcedure
-        .mutation(async () => {
+        .mutation(async ({ ctx }) => {
+            if (ctx.res) {
+                const options = getSessionCookieOptions(ctx.req);
+                ctx.res.clearCookie(COOKIE_NAME, {
+                    ...options,
+                    maxAge: -1,
+                });
+            }
             return { success: true };
         }),
 });

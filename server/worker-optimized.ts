@@ -23,7 +23,7 @@ const connection = new Redis(REDIS_URL);
 export class OptimizedWorker {
   private worker: Worker;
   private monitoring = getMonitoring();
-  
+
   constructor(queueName: string) {
     this.worker = new Worker(
       queueName,
@@ -31,7 +31,7 @@ export class OptimizedWorker {
         return await this.processJob(job);
       },
       {
-        connection,
+        connection: connection as any,
         concurrency: this.calculateOptimalConcurrency(),
         limiter: {
           max: 1000,
@@ -39,13 +39,13 @@ export class OptimizedWorker {
         },
       }
     );
-    
+
     this.setupEvents();
   }
-  
+
   private async processJob(job: Job) {
     const { type, accountId, payload } = job.data;
-    
+
     // 1. Anti-Ban Check
     const antiBan = await antiBanDistributed.canPerformOperation(accountId, type);
     if (!antiBan.allowed) {
@@ -53,16 +53,16 @@ export class OptimizedWorker {
       await job.moveToDelayed(Date.now() + antiBan.waitMs);
       return;
     }
-    
+
     // 2. Proxy Assignment
     const proxy = await proxyManagerAdvanced.getProxyForAccount(accountId);
-    
+
     try {
       console.log(`[Worker] Processing ${type} for account ${accountId}...`);
-      
+
       // Perform actual operation here
       // const result = await telegramService.execute(type, accountId, payload, proxy);
-      
+
       await antiBanDistributed.recordOperationResult(accountId, type, true);
       return { success: true };
     } catch (error: any) {
@@ -71,30 +71,30 @@ export class OptimizedWorker {
       throw error; // Let BullMQ handle retries
     }
   }
-  
+
   private calculateOptimalConcurrency(): number {
     const cpuCores = require('os').cpus().length;
     // Base concurrency: 10 per core, adjusted by system load
     return Math.max(5, cpuCores * 10);
   }
-  
+
   private setupEvents() {
     this.worker.on('completed', (job) => {
       console.log(`[Worker] Job ${job.id} completed successfully`);
     });
-    
+
     this.worker.on('failed', (job, err) => {
       console.error(`[Worker] Job ${job?.id} failed with error: ${err.message}`);
     });
   }
-  
+
   private categorizeError(error: any): any {
     if (error.message.includes('FLOOD_WAIT')) return 'flood';
     if (error.message.includes('PHONE_NUMBER_BANNED')) return 'ban';
     if (error.message.includes('PEER_FLOOD')) return 'spam';
     return 'other';
   }
-  
+
   async shutdown() {
     await this.worker.close();
     await connection.quit();

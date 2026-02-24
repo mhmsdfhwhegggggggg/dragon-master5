@@ -79,7 +79,7 @@ export default function ToolsScreen() {
     ];
 
     return (
-        <ScreenContainer title="الأدوات" showHeader={false}>
+        <ScreenContainer showHeader={false}>
             <View className="items-center mt-6 mb-8">
                 <FalconLogo size={80} animated={false} />
                 <Text className="text-2xl font-bold text-foreground mt-4">أدوات الصقر</Text>

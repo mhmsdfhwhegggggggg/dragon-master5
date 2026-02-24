@@ -1,5 +1,5 @@
 /**
- * Quantum Extractor v1.0.0 - The Universal Titan
+ * Quantum Extractor v1.1.0 - The Universal Titan
  * 
  * Consolidates all legacy extractors (Industrial, Sovereign, Ultra, Universal) 
  * into a single unified high-performance engine.
@@ -10,6 +10,9 @@
  * - Anti-Detection Patterns (Jitter, Randomized Batches)
  * - Real-time Data Piping for simultaneous Adding.
  * - Resilience: Auto-resume on flood and error recovery.
+ * 
+ * @module QuantumExtractor
+ * @author FALCON Team
  */
 
 import { TelegramClient } from 'telegram';

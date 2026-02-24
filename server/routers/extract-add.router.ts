@@ -11,7 +11,7 @@
 
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
-import { extractAddPipeline } from "../services/extract-add-pipeline.service";
+// Unified Pipeline Orchestrator is imported dynamically in procedures
 import { logger } from "../_core/logger";
 import * as db from "../db";
 
@@ -77,9 +77,18 @@ export const extractAddRouter = router({
           failedMembers: 0
         });
 
-        // Execute pipeline with operation ID
-        const result = await extractAddPipeline.executePipeline({
-          ...input,
+        // Execute pipeline via Apex Orchestrator (Unified Distributed Gateway)
+        const { apexPipelineOrchestrator } = await import("../services/apex-pipeline-orchestrator");
+        const client = await (await import("../services/telegram-client.service")).telegramClientService.getClient(input.accountId);
+        if (!client) throw new Error("Client not initialized");
+
+        const result = await apexPipelineOrchestrator.executeApexMove({
+          sourceId: input.sourceGroupId,
+          targetId: input.targetGroupIds[0], // Simplified for now, or use loop for multi-target
+          extractorAccountId: input.accountId,
+          adderAccountIds: [input.accountId], // Use pool in real implementation
+          filters: input.filters,
+          client: client,
           operationId: operation.id
         });
 
@@ -452,7 +461,8 @@ export const extractAddRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         // Real preview based on sampling
-        const preview = await extractAddPipeline.getPreview({ ...input, sourceGroupId: input.sourceGroupId, speed: input.speed, filters: input.filters as any });
+        const { apexPipelineOrchestrator } = await import("../services/apex-pipeline-orchestrator");
+        const preview = await apexPipelineOrchestrator.getPreview({ ...input, sourceId: input.sourceGroupId, extractorAccountId: input.accountId, adderAccountIds: [input.accountId], client: null } as any);
         return {
           success: true,
           data: preview

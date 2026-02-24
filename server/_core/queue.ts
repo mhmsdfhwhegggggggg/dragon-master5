@@ -135,8 +135,8 @@ async function initializeQueue() {
     // Try to connect
     await connection.connect();
     redis = connection;
-    bulkOpsQueue = new Queue("bulkOps", { connection });
-    bulkOpsEvents = new QueueEvents("bulkOps", { connection });
+    bulkOpsQueue = new Queue("bulkOps", { connection: connection as any });
+    bulkOpsEvents = new QueueEvents("bulkOps", { connection: connection as any });
     if (bulkOpsEvents.waitUntilReady) {
       await bulkOpsEvents.waitUntilReady();
     }

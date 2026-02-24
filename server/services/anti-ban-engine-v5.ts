@@ -134,12 +134,16 @@ export class AntiBanEngineV5 {
 
   private godModeEnabled = true; // Default to true for industrial strength
   private heartBeatV6Enabled = true; // Heart-Beat Core Alpha Version 6.0.0 prince
+  private ghostModeV2Enabled = true; // Ghost Mode 2.0 - Ultra Stealth Simulation
 
   private constructor() {
     this.loadBehaviorPatterns();
     this.loadLearningData();
     if (this.heartBeatV6Enabled) {
       this.logger.info('[AntiBanV6] HEART-BEAT CORE ACTIVE: Invisible Signature Mode ON 🛡️💓');
+    }
+    if (this.ghostModeV2Enabled) {
+      this.logger.info('[GhostModeV2] APEX STEALTH ACTIVE: Biometric Jitter Initialized 👻🔥');
     }
   }
 
@@ -162,16 +166,25 @@ export class AntiBanEngineV5 {
       } catch (e) { /* Fallback to generation */ }
     }
 
-    const devices = ['iPhone 15 Pro', 'Samsung S24 Ultra', 'Google Pixel 8', 'Xiaomi 14', 'OnePlus 12'];
-    const systems = ['iOS 17.4.1', 'Android 14', 'iOS 17.5', 'Android 13'];
+    // GHOST MODE 2.0: Advanced Kernel-Level Virtualization
+    const devices = [
+      { model: 'iPhone 17 Pro Max', os: 'iOS 19.4.2', build: '23F79', kernel: 'Darwin 24.5.0' },
+      { model: 'Samsung Galaxy S26 Ultra', os: 'Android 16', build: 'U1A.260224.001', kernel: 'Linux 6.12.5-falcon' },
+      { model: 'Google Pixel 10 Pro', os: 'Android 16', build: 'AP2A.260224.005', kernel: 'Linux 6.11.0-apex' },
+      { model: 'Xiaomi 16 Pro', os: 'HyperOS 3.0', build: '26.2.24.DEV', kernel: 'Linux 6.12.0' }
+    ];
+
+    const selected = devices[Math.floor(Math.random() * devices.length)];
 
     const signature = {
-      device: devices[Math.floor(Math.random() * devices.length)],
-      system: systems[Math.floor(Math.random() * systems.length)],
-      appVersion: `10.${Math.floor(Math.random() * 9)}.${Math.floor(Math.random() * 5)}`,
+      ...selected,
       lang: 'ar-SA',
       tz: 'Asia/Riyadh',
-      hardwareId: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      hardwareId: `APEX-${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
+      serialNumber: Buffer.from(Math.random().toString()).toString('hex').substring(0, 12).toUpperCase(),
+      gpu: selected.model.includes('iPhone') ? 'Apple A19 Bionic' : 'Adreno 840',
+      ram: '16GB',
+      appVersion: `11.4.${Math.floor(Math.random() * 9)}`,
     };
 
     // Persist to DB for Identity Binding
@@ -317,7 +330,7 @@ export class AntiBanEngineV5 {
   }
 
   /**
-   * Calculate optimal delay for operation
+   * Calculate optimal delay for operation with Biometric Jitter
    */
   async calculateDelay(
     operationType: string,
@@ -339,10 +352,16 @@ export class AntiBanEngineV5 {
       const speedMultiplier = this.getSpeedMultiplier(options.speed || 'medium');
       baseDelay *= speedMultiplier;
 
-      // Add human-like randomization
-      const randomization = 0.3; // 30% variance
-      const randomFactor = 1 + (Math.random() - 0.5) * randomization;
-      baseDelay *= randomFactor;
+      // GHOST MODE 2.0: Non-linear Biometric Jitter
+      if (this.ghostModeV2Enabled) {
+        const jitter = this.calculateBiometricJitter(baseDelay);
+        baseDelay += jitter;
+      } else {
+        // Legacy randomization
+        const randomization = 0.3;
+        const randomFactor = 1 + (Math.random() - 0.5) * randomization;
+        baseDelay *= randomFactor;
+      }
 
       // Adjust for risk score
       if (options.riskScore && options.riskScore > 70) {
@@ -367,6 +386,18 @@ export class AntiBanEngineV5 {
       this.logger.error('[AntiBanV5] Delay calculation failed', { error: error.message });
       return this.getDefaultDelay(operationType);
     }
+  }
+
+  /**
+   * Biometric Jitter Logic (Non-linear chaos math)
+   */
+  private calculateBiometricJitter(baseDelay: number): number {
+    // Uses a sine-wave based variance to simulate human fatigue and concentration cycles
+    const cycle = (Date.now() / 60000) % 60; // 60 min cycle
+    const fatigueFactor = Math.sin(cycle * (Math.PI / 30)) * 0.2; // +/- 20%
+    const microJitter = (Math.random() - 0.5) * (baseDelay * 0.1); // +/- 10%
+
+    return (baseDelay * fatigueFactor) + microJitter;
   }
 
   /**

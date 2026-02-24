@@ -266,6 +266,7 @@ export class CacheSystem {
     const ttl = options.ttl || this.DEFAULT_TTL;
 
     try {
+      if (!this.redis) return;
       const pipeline = this.redis.pipeline();
 
       for (const { key, value } of entries) {
@@ -281,7 +282,7 @@ export class CacheSystem {
         }
       }
 
-      if (this.redis) {
+      if (pipeline) {
         await pipeline.exec();
       }
       this.metrics.sets += entries.length;

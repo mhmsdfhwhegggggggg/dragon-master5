@@ -29,6 +29,14 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
+        name="apex-dashboard"
+        options={{
+          title: "Apex Core",
+          tabBarIcon: ({ color }: { color: string }) => <IconSymbol size={28} name="sparkles" color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
         name="index"
         options={{
           title: "الرئيسية",

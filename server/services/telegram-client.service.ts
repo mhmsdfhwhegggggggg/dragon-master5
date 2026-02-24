@@ -110,14 +110,13 @@ export class TelegramClientService {
 
     while (true) {
       try {
-        const result = await client.invoke({
-          _: 'channels.getParticipants',
+        const result = await client.invoke(new Api.channels.GetParticipants({
           channel: entity,
-          filter: { _: 'channelParticipantsRecent' },
+          filter: new Api.ChannelParticipantsRecent(),
           offset,
           limit,
-          hash: BigInt(0)
-        });
+          hash: BigInt(0) as any
+        }));
 
         if (!result || !(result as any).participants || (result as any).participants.length === 0) break;
 
@@ -189,22 +188,20 @@ export class TelegramClientService {
 
     try {
       const messageIds = Array.isArray(messageId) ? messageId : [messageId];
-      await client.invoke({
-        _: 'channels.deleteMessages',
+      await client.invoke(new Api.channels.DeleteMessages({
         channel: chatId,
         id: messageIds
-      } as any);
+      }));
       return true;
     } catch (error) {
       console.error('Delete message error:', error);
       // Fallback for non-channel chats
       try {
         const messageIds = Array.isArray(messageId) ? messageId : [messageId];
-        await client.invoke({
-          _: 'messages.deleteMessages',
+        await client.invoke(new Api.messages.DeleteMessages({
           id: messageIds,
           revoke: true
-        } as any);
+        }));
         return true;
       } catch (e) {
         console.error('Fallback delete message error:', e);
@@ -221,11 +218,10 @@ export class TelegramClientService {
     if (!client) throw new Error("Client not initialized");
 
     try {
-      await client.invoke({
-        _: 'messages.readHistory',
+      await client.invoke(new Api.messages.ReadHistory({
         peer: chatId,
         maxId: messageId
-      } as any);
+      }));
       return true;
     } catch (error) {
       console.error('Mark as read error:', error);
@@ -241,11 +237,10 @@ export class TelegramClientService {
     if (!client) throw new Error("Client not initialized");
 
     try {
-      const result = await client.invoke({
-        _: 'channels.getParticipant',
+      const result = await client.invoke(new Api.channels.GetParticipant({
         channel: groupId,
         participant: participantId
-      } as any);
+      }));
       return (result as any).participant;
     } catch (error) {
       console.error('Get participant info error:', error);
