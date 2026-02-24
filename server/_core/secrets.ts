@@ -111,18 +111,16 @@ export const Secrets = {
     let url = s.REDIS_URL || process.env.REDIS_URL || null;
 
     if (url) {
-      // Clean redis-cli -u redis://... or other command flags
-      if (url.includes("redis://") || url.includes("rediss://")) {
-        const match = url.match(/(rediss?:\/\/.*)/);
-        if (match && match[1]) {
-          url = match[1].split(' ')[0].trim(); // Take only the URL part
-        }
+      // Aggressively find ANY redis:// or rediss:// and take ONLY that part
+      // This handles cases like: redis-cli --tls -u redis://... or encoded spaces
+      const matches = url.match(/(rediss?:\/\/[\/\w\.-]+(:\d+)?(@[\/\w\.-]+(:\d+)?)?(\/.*)?)/);
+      if (matches && matches[0]) {
+        url = matches[0].split(/[ \t\n\r"']/)[0].trim();
       }
-      // Trim and remove any hidden quotes
-      url = url.replace(/['"]/g, "").trim();
 
-      // Ensure rediss:// is used if it was a TLS command but the URL itself didn't have it
-      // though typically the URL is provided correctly by Upstash.
+      // Secondary cleanup for common copy-paste artifacts
+      url = url.split(' ')[0].trim();
+      url = url.replace(/['"]/g, "").trim();
     }
 
     return url;

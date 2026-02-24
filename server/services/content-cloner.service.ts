@@ -64,7 +64,8 @@ export class ContentClonerService {
     private logger = logger;
 
     constructor() {
-        this.initialize();
+        // We no longer call this.initialize() here to prevent auto-start on import.
+        // It must be called explicitly by StartupService to ensure setup is ready.
     }
 
     public static getInstance(): ContentClonerService {
