@@ -68,9 +68,10 @@ export async function getDb() {
   if (!_db && url) {
     try {
       _client = postgres(url, {
-        connect_timeout: 10,
+        connect_timeout: 30,
         idle_timeout: 20,
-        max: 10
+        max: 10,
+        ssl: 'require'
       });
       _db = drizzle(_client, { schema });
       // Verify connection with a simple query

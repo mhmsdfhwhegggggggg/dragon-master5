@@ -136,8 +136,8 @@ async function initializeQueue() {
       },
 
       // Timeouts
-      connectTimeout: 10000,
-      commandTimeout: 5000,
+      connectTimeout: 30000,
+      commandTimeout: 10000,
 
       // Socket
       keepAlive: 30000,

@@ -116,7 +116,7 @@ export class StartupService {
  * Enforces column existence and naming. Gracefully handles existing schema.
  * This is the ultimate fallback for Render deployment issues.
  */
-class SchemaHealer {
+export class SchemaHealer {
     static async heal() {
         const database = await db.getDb();
         if (!database) return;
@@ -171,6 +171,7 @@ class SchemaHealer {
             { table: 'auto_reply_rules', old: 'dailyLimit', new: 'daily_limit' },
             { table: 'auto_reply_rules', old: 'usageCount', new: 'usage_count' },
             { table: 'auto_reply_rules', old: 'lastUsedAt', new: 'last_used_at' },
+            { table: 'auto_reply_rules', old: 'isActive', new: 'is_active' },
             { table: 'auto_reply_rules', old: 'createdAt', new: 'created_at' },
             { table: 'auto_reply_rules', old: 'updatedAt', new: 'updated_at' },
             // Bulk Operations
@@ -194,6 +195,7 @@ class SchemaHealer {
             { table: 'anti_ban_rules', old: 'ruleName', new: 'rule_name' },
             { table: 'anti_ban_rules', old: 'ruleType', new: 'rule_type' },
             { table: 'anti_ban_rules', old: 'ruleConfig', new: 'rule_config' },
+            { table: 'anti_ban_rules', old: 'isActive', new: 'is_active' },
             { table: 'anti_ban_rules', old: 'createdAt', new: 'created_at' },
             { table: 'anti_ban_rules', old: 'updatedAt', new: 'updated_at' },
             // Statistics
