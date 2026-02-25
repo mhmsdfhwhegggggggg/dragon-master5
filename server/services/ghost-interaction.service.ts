@@ -1,4 +1,6 @@
-import { TelegramClient, Api } from "telegram";
+import type { TelegramClient } from "telegram";
+import pkg from "telegram";
+const { Api } = pkg;
 import { logger } from "../_core/logger";
 
 /**

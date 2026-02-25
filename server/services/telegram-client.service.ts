@@ -1,4 +1,6 @@
-import { TelegramClient, Api, connection } from "telegram";
+import type { TelegramClient } from "telegram";
+import pkg from "telegram";
+const { Api, connection, TelegramClient: ClientClass } = pkg;
 import { StringSession } from "telegram/sessions/index.js";
 import { NewMessage } from "telegram/events/index.js";
 import * as db from "../db";
@@ -76,7 +78,7 @@ export class TelegramClientService {
     const proxy = await proxyManager.getProxyForAccount(accountId);
     const connParams = await FingerprintPrevention.getConnectionParams(accountId);
 
-    const client = new TelegramClient(session, credentials.apiId, credentials.apiHash, {
+    const client = new ClientClass(session, credentials.apiId, credentials.apiHash, {
       connection: connection.ConnectionTCPObfuscated,
       proxy: proxy ? {
         host: proxy.host,
