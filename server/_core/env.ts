@@ -32,7 +32,7 @@ export const ENV = {
   databaseUrl: getEnvVar("DATABASE_URL", "file:./dev.db"),
 
   // Redis
-  redisUrl: getEnvVar("REDIS_URL", "redis://127.0.0.1:6379"),
+  redisUrl: getEnvVar("REDIS_URL", ""),
   redisPassword: getEnvVar("REDIS_PASSWORD"),
   redisDb: getEnvNumber("REDIS_DB", 0),
 

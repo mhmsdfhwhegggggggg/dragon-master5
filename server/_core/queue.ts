@@ -106,7 +106,7 @@ let bulkOpsQueue: Queue | MockQueue;
 let bulkOpsEvents: QueueEvents | null = null;
 
 async function initializeQueue() {
-  const redisUrl = Secrets.getRedisUrl() || ENV.redisUrl;
+  const redisUrl = Secrets.getRedisUrl() || (ENV.redisUrl && ENV.redisUrl !== 'redis://127.0.0.1:6379' ? ENV.redisUrl : null);
 
   if (!redisUrl) {
     console.info('[Queue] No Redis URL provided, using mock queue by default.');
@@ -116,43 +116,84 @@ async function initializeQueue() {
   }
 
   try {
+    // Comprehensive Redis options
     const redisOptions: any = {
-      maxRetriesPerRequest: null, // Critical for BullMQ
+      // BullMQ requirements
+      maxRetriesPerRequest: null,
       enableReadyCheck: false,
-      lazyConnect: true,
+
+      // Connection handling
+      lazyConnect: false,
+      reconnectOnError: (err: Error) => {
+        if (err.message.includes('READONLY')) return true;
+        return false;
+      },
+
+      // Retry config
+      retryStrategy: (times: number) => {
+        if (times > 5) return null; // Give up after 5 retries
+        return Math.min(times * 200, 2000);
+      },
+
+      // Timeouts
+      connectTimeout: 10000,
+      commandTimeout: 5000,
+
+      // Socket
+      keepAlive: 30000,
+      noDelay: true,
     };
 
+    // TLS for rediss://
     if (redisUrl.startsWith('rediss://')) {
-      redisOptions.tls = { rejectUnauthorized: false };
+      redisOptions.tls = {
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2',
+      };
     }
+
+    console.info('[Queue] Initializing Redis connection:', {
+      url: redisUrl.replace(/:[^@]*@/, ':***@'),
+      isTLS: redisUrl.startsWith('rediss://'),
+    });
 
     connection = new IORedis(redisUrl, redisOptions);
 
-    // Test connection
+    // Event handlers
+    connection.on('connect', () => console.info('[Queue] ✅ Redis connected'));
+    connection.on('ready', () => console.info('[Queue] ✅ Redis ready'));
     connection.on('error', (err) => {
-      // Only warn if we haven't already fallen back
+      console.error('[Queue] Redis error:', err.message);
       if (connection) {
-        console.warn('[Queue] Redis connection error, falling back to mock queue:', err.message);
         connection = null;
         bulkOpsQueue = new MockQueue();
       }
     });
+    connection.on('close', () => console.warn('[Queue] Redis connection closed'));
+    connection.on('reconnecting', () => console.info('[Queue] Redis reconnecting...'));
 
-    // Try to connect
-    await connection.connect();
+    // Test with timeout
+    const testPromise = connection.ping();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Redis connection timeout (10s)')), 10000)
+    );
+    await Promise.race([testPromise, timeoutPromise]);
+
     redis = connection;
     bulkOpsQueue = new Queue("bulkOps", { connection: connection as any });
     bulkOpsEvents = new QueueEvents("bulkOps", { connection: connection as any });
     if (bulkOpsEvents.waitUntilReady) {
       await bulkOpsEvents.waitUntilReady();
     }
-    console.log('[Queue] Connected to Redis successfully');
+    console.info('[Queue] ✅ Redis queue initialized successfully');
   } catch (error: any) {
-    console.warn('[Queue] Redis not available, using mock queue:', error.message);
+    console.error('[Queue] ❌ Failed to connect to Redis:', error.message);
+    console.info('[Queue] Falling back to mock queue for this session');
     connection = null;
     bulkOpsQueue = new MockQueue();
   }
 }
+
 
 // Initialize queue asynchronously
 initializeQueue().catch(console.error);

@@ -110,23 +110,48 @@ export const Secrets = {
     const s = readSecrets();
     let url = s.REDIS_URL || process.env.REDIS_URL || null;
 
-    if (url) {
-      // Clean and extract only the URL part
-      // Supports redis://default:PASSWORD@HOST:PORT and rediss://
-      url = url.trim().replace(/['"]/g, "");
-
-      const match = url.match(/(rediss?:\/\/[^\s]+)/);
-      if (match && match[1]) {
-        url = match[1];
-      }
-
-      if (!url.startsWith('redis://') && !url.startsWith('rediss://')) {
-        console.warn('[Redis] Invalid URL format. Falling back to mock.');
-        return null;
-      }
+    if (!url) {
+      console.info('[Redis] No Redis URL provided');
+      return null;
     }
 
-    return url;
+    try {
+      // Basic cleanup: remove quotes and whitespace
+      url = url.trim().replace(/['"]/g, "").replace(/\s+/g, "");
+
+      // Validate format
+      if (!url.startsWith('redis://') && !url.startsWith('rediss://')) {
+        console.error('[Redis] Invalid Redis URL format. Must start with redis:// or rediss://');
+        return null;
+      }
+
+      // Validate using URL constructor
+      try {
+        const urlObj = new URL(url);
+        if (!urlObj.hostname) {
+          console.error('[Redis] Redis URL missing hostname');
+          return null;
+        }
+        if (!urlObj.port) {
+          console.error('[Redis] Redis URL missing port');
+          return null;
+        }
+        console.info('[Redis] Valid Redis URL detected:', {
+          protocol: urlObj.protocol,
+          hostname: urlObj.hostname,
+          port: urlObj.port,
+          hasPassword: !!urlObj.password,
+        });
+      } catch (parseError) {
+        console.error('[Redis] Failed to parse Redis URL:', parseError);
+        return null;
+      }
+
+      return url;
+    } catch (error) {
+      console.error('[Redis] Error processing Redis URL:', error);
+      return null;
+    }
   },
 
   setRedisUrl(url: string) {
