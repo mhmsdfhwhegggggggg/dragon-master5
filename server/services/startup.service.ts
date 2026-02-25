@@ -121,9 +121,11 @@ class SchemaHealer {
 
         // 1. Rename Tasks (Legacy -> Snake Case)
         const renames: Array<{ table: string; old: string; new: string }> = [
+            // Users
             { table: 'users', old: 'isActive', new: 'is_active' },
             { table: 'users', old: 'createdAt', new: 'created_at' },
             { table: 'users', old: 'updatedAt', new: 'updated_at' },
+            // Telegram Accounts
             { table: 'telegram_accounts', old: 'userId', new: 'user_id' },
             { table: 'telegram_accounts', old: 'phoneNumber', new: 'phone_number' },
             { table: 'telegram_accounts', old: 'telegramId', new: 'telegram_id' },
@@ -142,11 +144,72 @@ class SchemaHealer {
             { table: 'telegram_accounts', old: 'hardwareId', new: 'hardware_id' },
             { table: 'telegram_accounts', old: 'createdAt', new: 'created_at' },
             { table: 'telegram_accounts', old: 'updatedAt', new: 'updated_at' },
+            // Content Cloner Rules
             { table: 'content_cloner_rules', old: 'userId', new: 'user_id' },
             { table: 'content_cloner_rules', old: 'telegramAccountId', new: 'telegram_account_id' },
+            { table: 'content_cloner_rules', old: 'sourceChannelIds', new: 'source_channel_ids' },
+            { table: 'content_cloner_rules', old: 'targetChannelIds', new: 'target_channel_ids' },
             { table: 'content_cloner_rules', old: 'isActive', new: 'is_active' },
+            { table: 'content_cloner_rules', old: 'lastRunAt', new: 'last_run_at' },
+            { table: 'content_cloner_rules', old: 'totalCloned', new: 'total_cloned' },
             { table: 'content_cloner_rules', old: 'createdAt', new: 'created_at' },
-            { table: 'content_cloner_rules', old: 'updatedAt', new: 'updated_at' }
+            { table: 'content_cloner_rules', old: 'updatedAt', new: 'updated_at' },
+            // Auto Reply Rules
+            { table: 'auto_reply_rules', old: 'userId', new: 'user_id' },
+            { table: 'auto_reply_rules', old: 'telegramAccountId', new: 'telegram_account_id' },
+            { table: 'auto_reply_rules', old: 'matchType', new: 'match_type' },
+            { table: 'auto_reply_rules', old: 'replyType', new: 'reply_type' },
+            { table: 'auto_reply_rules', old: 'replyContent', new: 'reply_content' },
+            { table: 'auto_reply_rules', old: 'aiPrompt', new: 'ai_prompt' },
+            { table: 'auto_reply_rules', old: 'delayMin', new: 'delay_min' },
+            { table: 'auto_reply_rules', old: 'delayMax', new: 'delay_max' },
+            { table: 'auto_reply_rules', old: 'targetTypes', new: 'target_types' },
+            { table: 'auto_reply_rules', old: 'dailyLimit', new: 'daily_limit' },
+            { table: 'auto_reply_rules', old: 'usageCount', new: 'usage_count' },
+            { table: 'auto_reply_rules', old: 'lastUsedAt', new: 'last_used_at' },
+            { table: 'auto_reply_rules', old: 'createdAt', new: 'created_at' },
+            { table: 'auto_reply_rules', old: 'updatedAt', new: 'updated_at' },
+            // Bulk Operations
+            { table: 'bulk_operations', old: 'userId', new: 'user_id' },
+            { table: 'bulk_operations', old: 'operationType', new: 'operation_type' },
+            { table: 'bulk_operations', old: 'sourceGroupId', new: 'source_group_id' },
+            { table: 'bulk_operations', old: 'targetGroupId', new: 'target_group_id' },
+            { table: 'bulk_operations', old: 'messageContent', new: 'message_content' },
+            { table: 'bulk_operations', old: 'delayBetweenMessages', new: 'delay_between_messages' },
+            { table: 'bulk_operations', old: 'totalMembers', new: 'total_members' },
+            { table: 'bulk_operations', old: 'processedMembers', new: 'processed_members' },
+            { table: 'bulk_operations', old: 'successfulMembers', new: 'successful_members' },
+            { table: 'bulk_operations', old: 'failedMembers', new: 'failed_members' },
+            { table: 'bulk_operations', old: 'startedAt', new: 'started_at' },
+            { table: 'bulk_operations', old: 'completedAt', new: 'completed_at' },
+            { table: 'bulk_operations', old: 'createdAt', new: 'created_at' },
+            { table: 'bulk_operations', old: 'updatedAt', new: 'updated_at' },
+            // Anti Ban Rules
+            { table: 'anti_ban_rules', old: 'userId', new: 'user_id' },
+            { table: 'anti_ban_rules', old: 'telegramAccountId', new: 'telegram_account_id' },
+            { table: 'anti_ban_rules', old: 'ruleName', new: 'rule_name' },
+            { table: 'anti_ban_rules', old: 'ruleType', new: 'rule_type' },
+            { table: 'anti_ban_rules', old: 'ruleConfig', new: 'rule_config' },
+            { table: 'anti_ban_rules', old: 'createdAt', new: 'created_at' },
+            { table: 'anti_ban_rules', old: 'updatedAt', new: 'updated_at' },
+            // Statistics
+            { table: 'statistics', old: 'userId', new: 'user_id' },
+            { table: 'statistics', old: 'messagesSent', new: 'messages_sent' },
+            { table: 'statistics', old: 'membersAdded', new: 'members_added' },
+            { table: 'statistics', old: 'operationsCompleted', new: 'operations_completed' },
+            { table: 'statistics', old: 'createdAt', new: 'created_at' },
+            // Extracted Members
+            { table: 'extracted_members', old: 'userId', new: 'user_id' },
+            { table: 'extracted_members', old: 'telegramAccountId', new: 'telegram_account_id' },
+            { table: 'extracted_members', old: 'sourceGroupId', new: 'source_group_id' },
+            { table: 'extracted_members', old: 'memberTelegramId', new: 'member_telegram_id' },
+            { table: 'extracted_members', old: 'memberUsername', new: 'member_username' },
+            { table: 'extracted_members', old: 'memberFirstName', new: 'member_first_name' },
+            { table: 'extracted_members', old: 'memberLastName', new: 'member_last_name' },
+            { table: 'extracted_members', old: 'memberPhone', new: 'member_phone' },
+            { table: 'extracted_members', old: 'extractionDate', new: 'extraction_date' },
+            { table: 'extracted_members', old: 'isAdded', new: 'is_added' },
+            { table: 'extracted_members', old: 'addedDate', new: 'added_date' }
         ];
 
         for (const task of renames) {

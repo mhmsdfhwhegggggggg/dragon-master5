@@ -111,11 +111,11 @@ export const Secrets = {
     let url = s.REDIS_URL || process.env.REDIS_URL || null;
 
     if (url) {
-      // Aggressively find ANY redis:// or rediss:// and take ONLY that part
-      // This handles cases like: redis-cli --tls -u redis://... or encoded spaces
-      const matches = url.match(/(rediss?:\/\/[\/\w\.-]+(:\d+)?(@[\/\w\.-]+(:\d+)?)?(\/.*)?)/);
-      if (matches && matches[0]) {
-        url = matches[0].split(/[ \t\n\r"']/)[0].trim();
+      // Clean and extract only the URL part
+      // Supports redis://default:PASSWORD@HOST:PORT
+      const match = url.match(/(rediss?:\/\/[^ \t\n\r"']+)/);
+      if (match && match[1]) {
+        url = match[1].trim();
       }
 
       // Secondary cleanup for common copy-paste artifacts
