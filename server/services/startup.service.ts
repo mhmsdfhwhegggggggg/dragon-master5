@@ -231,7 +231,8 @@ class SchemaHealer {
             { table: 'telegram_accounts', column: 'hardware_id', type: 'varchar(255)' },
             { table: 'users', column: 'role', type: 'varchar(50) DEFAULT \'user\'' },
             { table: 'content_cloner_rules', column: 'source_channel_ids', type: 'text[]' },
-            { table: 'content_cloner_rules', column: 'target_channel_ids', type: 'text[]' }
+            { table: 'content_cloner_rules', column: 'target_channel_ids', type: 'text[]' },
+            { table: 'auto_reply_rules', column: 'telegram_account_id', type: 'integer' }
         ];
 
         for (const task of additions) {
