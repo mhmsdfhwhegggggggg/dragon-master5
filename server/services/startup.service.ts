@@ -237,20 +237,19 @@ class SchemaHealer {
 
         for (const task of additions) {
             try {
-                // Check if column exists first (Postgres specific)
-                const exists = await (database as any).execute(db.sql`
-                    SELECT 1 FROM information_schema.columns 
-                    WHERE table_name = ${task.table} AND column_name = ${task.column}
-                `);
-
-                if (exists.length === 0) {
-                    logger.info(`[SchemaHealer] Adding missing column "${task.column}" to table "${task.table}"...`);
-                    await (database as any).execute(db.sql.raw(`ALTER TABLE "${task.table}" ADD COLUMN IF NOT EXISTS ${task.column} ${task.type}`));
-                }
+                // Use ADD COLUMN IF NOT EXISTS directly — idempotent and safe.
+                // Previously used exists.length === 0 check which was broken with Drizzle
+                // (Drizzle returns an object, not an array, so .length is always undefined)
+                logger.info(`[SchemaHealer] Ensuring column "${task.column}" in "${task.table}"...`);
+                await (database as any).execute(db.sql.raw(
+                    `ALTER TABLE "${task.table}" ADD COLUMN IF NOT EXISTS ${task.column} ${task.type}`
+                ));
+                logger.info(`[SchemaHealer] ✅ Column "${task.column}" ensured in "${task.table}"`);
             } catch (err: any) {
-                logger.debug(`[SchemaHealer] Failed to add column "${task.column}": ${err.message}`);
+                logger.debug(`[SchemaHealer] Column "${task.column}" in "${task.table}": ${err.message}`);
             }
         }
+
 
         logger.info('[SchemaHealer] Hammer Strategy 2.0 completed.');
     }
