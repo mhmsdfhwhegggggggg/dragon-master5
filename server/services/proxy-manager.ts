@@ -19,7 +19,7 @@ export class ProxyManager {
   private static instance: ProxyManager;
   private proxies: Map<number, ProxyConfig[]> = new Map();
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): ProxyManager {
     if (!this.instance) {
@@ -29,19 +29,19 @@ export class ProxyManager {
   }
 
   /**
-   * Get proxy for specific account
+   * Get proxy for specific account (Strict 1:1:1 Binding)
    */
   async getProxyForAccount(accountId: number): Promise<ProxyConfig | null> {
     const accountProxies = this.proxies.get(accountId) || [];
-    
+
     // Get active and working proxies
     const activeProxies = accountProxies.filter(p => p.isActive && p.isWorking);
-    
+
     if (activeProxies.length === 0) return null;
-    
-    // Simple round-robin selection
-    const index = accountId % activeProxies.length;
-    return activeProxies[index];
+
+    // V10.0: Strict Sticky Selection - always use the first assigned proxy for this account
+    // This ensures the account never changes IP mid-session
+    return activeProxies[0];
   }
 
   /**
@@ -53,7 +53,7 @@ export class ProxyManager {
       ...proxy,
       id: Date.now() + Math.random(),
     };
-    
+
     accountProxies.push(newProxy);
     this.proxies.set(accountId, accountProxies);
   }

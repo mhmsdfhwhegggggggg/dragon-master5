@@ -236,20 +236,29 @@ export class SmartDelaySystem {
     // عشوائية تعتمد على التأخير الأساسي ونمط السلوك
     const variance = pattern.delayVariance || baseDelay * 0.3;
 
-    // استخدام توزيع طبيعي بدلاً من التوزيع المنتظم
-    const randomFactor = this.gaussianRandom() * variance;
+    // Use skewed Gaussian to simulate human distraction tails
+    const randomFactor = this.skewedGaussianRandom(0.4) * variance;
 
     return randomFactor;
   }
 
   /**
-   * توليد رقم عشوائي بتوزيع طبيعي
+   * Generates a skewed Gaussian random number to simulate human "long tail" distractions.
+   * @param skew The skewness factor (positive for right-skewed, i.e., longer high-delay tail)
    */
-  private gaussianRandom(): number {
+  private skewedGaussianRandom(skew: number = 0.5): number {
     let u = 0, v = 0;
     while (u === 0) u = Math.random();
     while (v === 0) v = Math.random();
-    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+
+    // Box-Muller transform
+    const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+
+    // Apply skewness for "human distraction" tail
+    if (skew === 0) return z;
+
+    // Simple skewing: If z is positive, push it further to create a long tail
+    return z > 0 ? Math.pow(z, 1 + skew) : z;
   }
 
   /**

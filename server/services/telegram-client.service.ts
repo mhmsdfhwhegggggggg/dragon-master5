@@ -1,9 +1,15 @@
-import { TelegramClient, Api } from "telegram";
+import { TelegramClient, Api, connection } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { NewMessage } from "telegram/events/index.js";
 import * as db from "../db";
 import { Secrets } from "../_core/secrets";
 import { entityResolver } from "./entity-resolver";
+import { TransportObfuscator } from "./transport-obfuscator";
+import { FingerprintPrevention } from "./fingerprint-prevention";
+import { proxyManager } from "./proxy-manager";
+import { ghostInteractionService } from "./ghost-interaction.service";
+import { keywordObfuscatorService } from "./keyword-obfuscator.service";
+import { mediaPixelatorService } from "./media-pixelator.service";
 
 export class TelegramClientService {
   private static clients: Map<number, TelegramClient> = new Map();
@@ -63,12 +69,32 @@ export class TelegramClientService {
     apiHash?: string
   ): Promise<TelegramClient> {
     const credentials = apiId && apiHash ? { apiId, apiHash } : this.getApiCredentials();
-
     const session = new StringSession(sessionString);
+
+    // Get security parameters from V10.0 Anti-Ban logic
+    const fingerprint = await FingerprintPrevention.getDeviceFingerprint(accountId);
+    const proxy = await proxyManager.getProxyForAccount(accountId);
+    const connParams = await FingerprintPrevention.getConnectionParams(accountId);
+
     const client = new TelegramClient(session, credentials.apiId, credentials.apiHash, {
-      connectionRetries: 5,
-      retryDelay: 2000,
+      connection: connection.ConnectionTCPObfuscated,
+      proxy: proxy ? {
+        host: proxy.host,
+        port: proxy.port,
+        socksType: 5,
+        username: proxy.username,
+        password: proxy.password
+      } : undefined,
+      deviceModel: fingerprint.deviceModel,
+      systemVersion: fingerprint.systemVersion,
+      appVersion: fingerprint.appVersion,
+      langCode: fingerprint.langCode,
+      systemLangCode: fingerprint.systemLangCode,
+      ...connParams,
     });
+
+    // V10.0 Obfuscation: Ensure we are using the correct transport layer
+    console.log(`[Anti-Ban V10.0] Initializing Obfuscated Transport for account ${accountId}`);
 
     await client.connect();
 
@@ -143,8 +169,15 @@ export class TelegramClientService {
     if (!client) throw new Error("Client not initialized");
 
     try {
+      // V10.0: Obfuscate risky keywords in message
+      const riskyKeywords = ['ربح', 'اشتراك', 'رابط', 'مجانا', 'هدية']; // Could be dynamic
+      const safeMessage = keywordObfuscatorService.obfuscateText(message, riskyKeywords);
+
+      // V10.0: Simulate human presence before sending
+      await ghostInteractionService.simulateHumanPresence(client, chatId);
+
       const result = await client.sendMessage(chatId, {
-        message: message,
+        message: safeMessage,
         replyTo: options.replyTo,
         parseMode: 'html',
         ...options
@@ -256,6 +289,9 @@ export class TelegramClientService {
     if (!client) throw new Error("Client not initialized");
 
     try {
+      // V10.0: Ghosting before joining
+      await ghostInteractionService.simulateScrolling(client, groupLink);
+
       if (groupLink.includes('t.me/joinchat/') || groupLink.includes('t.me/+')) {
         const hash = groupLink.split('/').pop()?.replace('+', '');
         await client.invoke(new Api.messages.ImportChatInvite({ hash: hash! }));
@@ -280,6 +316,9 @@ export class TelegramClientService {
     try {
       const entity = await entityResolver.resolveEntity(client, groupId);
       const userEntity = await entityResolver.resolveEntity(client, userId);
+
+      // V10.0: Ghosting before adding user
+      await ghostInteractionService.simulateHumanPresence(client, entity);
 
       await client.invoke(new Api.channels.InviteToChannel({
         channel: entity,
