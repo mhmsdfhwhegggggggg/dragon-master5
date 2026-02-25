@@ -116,11 +116,17 @@ async function initializeQueue() {
   }
 
   try {
-    connection = new IORedis(redisUrl, {
-      maxRetriesPerRequest: 3,
+    const redisOptions: any = {
+      maxRetriesPerRequest: null, // Critical for BullMQ
       enableReadyCheck: false,
       lazyConnect: true,
-    });
+    };
+
+    if (redisUrl.startsWith('rediss://')) {
+      redisOptions.tls = { rejectUnauthorized: false };
+    }
+
+    connection = new IORedis(redisUrl, redisOptions);
 
     // Test connection
     connection.on('error', (err) => {

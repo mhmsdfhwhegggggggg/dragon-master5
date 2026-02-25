@@ -23,7 +23,19 @@ import type {
   ExtractAndAddPayload,
 } from "./_core/queue";
 
-const connection = new IORedis(ENV.redisUrl);
+import { Secrets } from "./_core/secrets";
+
+const redisUrl = Secrets.getRedisUrl() || ENV.redisUrl;
+const redisOptions: any = {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+};
+
+if (redisUrl?.startsWith('rediss://')) {
+  redisOptions.tls = { rejectUnauthorized: false };
+}
+
+const connection = new IORedis(redisUrl!, redisOptions);
 const tg = new TelegramClientService();
 
 const worker = new Worker(
