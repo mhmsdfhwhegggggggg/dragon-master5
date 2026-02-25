@@ -337,7 +337,8 @@ export class ChannelManagementService {
           message = await client.sendFile(channelId, {
             file: imageFile,
             caption: content.caption,
-            silent: content.silent
+            silent: content.silent,
+            schedule: content.schedule ? Math.floor(new Date(content.schedule).getTime() / 1000) : undefined
           } as any);
           break;
 
@@ -351,8 +352,9 @@ export class ChannelManagementService {
           message = await client.sendFile(channelId, {
             file: videoFile,
             caption: content.caption,
-            silent: content.silent
-          });
+            silent: content.silent,
+            schedule: content.schedule ? Math.floor(new Date(content.schedule).getTime() / 1000) : undefined
+          } as any);
           break;
 
         case 'file':
@@ -365,8 +367,9 @@ export class ChannelManagementService {
           message = await client.sendFile(channelId, {
             file: dataFile,
             caption: content.caption,
-            silent: content.silent
-          });
+            silent: content.silent,
+            schedule: content.schedule ? Math.floor(new Date(content.schedule).getTime() / 1000) : undefined
+          } as any);
           break;
 
         default:

@@ -296,20 +296,22 @@ export const channelManagementRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // TODO: Implement content scheduling
-        const scheduledPost = {
-          id: 'scheduled-' + Date.now(),
-          accountId: input.accountId,
-          channelId: input.channelId,
-          content: input.content,
-          schedule: input.content.schedule,
-          status: 'scheduled',
-          createdAt: new Date()
-        };
+        const messageId = await channelManagement.postContent(
+          input.accountId,
+          input.channelId,
+          {
+            ...input.content,
+            schedule: input.content.schedule
+          } as any
+        );
 
         return {
           success: true,
-          data: scheduledPost,
+          data: {
+            id: input.channelId + ':' + messageId,
+            messageId,
+            schedule: input.content.schedule
+          },
           message: 'Content scheduled successfully'
         };
 

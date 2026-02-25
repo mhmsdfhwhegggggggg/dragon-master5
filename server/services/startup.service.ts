@@ -97,6 +97,10 @@ export class StartupService {
                     account.phoneNumber,
                     account.sessionString
                 );
+
+                // [NEW] Hook Content Cloner into live message stream
+                await contentClonerService.ensureAccountMonitoring(account.id);
+
                 logger.info(`[Startup] Connected account ${account.id} (${account.phoneNumber})`);
             } catch (error: any) {
                 logger.error(`[Startup] Failed to connect account ${account.id}`, { error: error.message });

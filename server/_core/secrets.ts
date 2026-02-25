@@ -112,15 +112,18 @@ export const Secrets = {
 
     if (url) {
       // Clean and extract only the URL part
-      // Supports redis://default:PASSWORD@HOST:PORT
-      const match = url.match(/(rediss?:\/\/[^ \t\n\r"']+)/);
+      // Supports redis://default:PASSWORD@HOST:PORT and rediss://
+      url = url.trim().replace(/['"]/g, "");
+
+      const match = url.match(/(rediss?:\/\/[^\s]+)/);
       if (match && match[1]) {
-        url = match[1].trim();
+        url = match[1];
       }
 
-      // Secondary cleanup for common copy-paste artifacts
-      url = url.split(' ')[0].trim();
-      url = url.replace(/['"]/g, "").trim();
+      if (!url.startsWith('redis://') && !url.startsWith('rediss://')) {
+        console.warn('[Redis] Invalid URL format. Falling back to mock.');
+        return null;
+      }
     }
 
     return url;

@@ -128,6 +128,8 @@ export const extractionRouter = router({
         );
 
         const members: any[] = [];
+        const client = await telegramClientService.getClient(input.accountId);
+        if (!client) throw new Error("Client not available for account. Please reconnect.");
         await (await import("../services/quantum-extractor")).quantumExtractor.extract(
           client,
           input.accountId,

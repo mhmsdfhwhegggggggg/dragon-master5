@@ -64,7 +64,7 @@ async function handleExtractAndAdd(job: Job) {
 
   // 1. Initialize Industrial Operation
   const bulkOp = await db.createBulkOperation({
-    userId: p.accountId,
+    userId: account.userId,
     operationType: "extract-and-add",
     status: "running",
     totalMembers: 0,

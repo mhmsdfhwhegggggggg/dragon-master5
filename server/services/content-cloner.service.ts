@@ -112,7 +112,7 @@ export class ContentClonerService {
     /**
      * Ensure account is being monitored
      */
-    private async ensureAccountMonitoring(accountId: number) {
+    public async ensureAccountMonitoring(accountId: number) {
         if (this.monitoredAccounts.has(accountId)) return;
 
         try {
