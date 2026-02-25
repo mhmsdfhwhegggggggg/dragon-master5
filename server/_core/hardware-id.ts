@@ -9,7 +9,8 @@
  * @version 2.0.0
  */
 
-import { machineIdSync } from 'node-machine-id';
+import pkgMachineId from 'node-machine-id';
+const { machineIdSync } = pkgMachineId;
 import * as os from 'os';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
