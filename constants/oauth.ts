@@ -3,7 +3,7 @@ import * as ReactNative from "react-native";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "space.manus.dragon.telegram.pro.mobile.t20260204132529";
+const bundleId = "space.manus.falcon.telegram.pro.mobile.t20260204132529";
 const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
 const schemeFromBundleId = `manus${timestamp}`;
 
@@ -45,8 +45,8 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  // Fallback to empty (will use relative URL)
-  return "";
+  // Fallback to production URL
+  return "https://dragon-master5.onrender.com";
 }
 
 export const SESSION_TOKEN_KEY = "app_session_token";
