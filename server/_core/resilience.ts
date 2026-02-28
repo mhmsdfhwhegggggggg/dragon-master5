@@ -68,12 +68,18 @@ export class ApexResilience {
         if (this.isCoolingDown) return;
 
         this.isCoolingDown = true;
-        logger.error('🚨 [ApexResilience] EMERGENCY COOLDOWN INITIATED. Suspending all background ops for 5 minutes.');
+        // Real Production Feature: Suspend BullMQ queues
+        const { bulkOpsQueue } = require('./queue');
+        if (bulkOpsQueue && typeof bulkOpsQueue.pause === 'function') {
+            bulkOpsQueue.pause().catch((e: any) => logger.error(`[ApexResilience] Failed to pause queue: ${e.message}`));
+        }
 
-        // In a production setup, we would pause BullMQ queues here
         setTimeout(() => {
             this.isCoolingDown = false;
             this.currentFailures = 0;
+            if (bulkOpsQueue && typeof bulkOpsQueue.resume === 'function') {
+                bulkOpsQueue.resume().catch((e: any) => logger.error(`[ApexResilience] Failed to resume queue: ${e.message}`));
+            }
             logger.info('✅ [ApexResilience] Emergency Cooldown ended. Resuming operations.');
         }, 300000); // 5 min cooldown
     }

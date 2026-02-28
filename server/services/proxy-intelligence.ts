@@ -264,11 +264,35 @@ export class ProxyIntelligenceManager {
     const pool = this.getProxyPool(accountId);
     const activeProxies = pool.proxies.length;
 
-    // Mock stats for now since we don't track per-account detailed stats yet
+    let totalHealth = 0;
+    let totalLatency = 0;
+    let latencyCount = 0;
+
+    for (const proxy of pool.proxies) {
+      const perf = this.proxyPerformance.get(String(proxy.id));
+      if (perf) {
+        totalHealth += (perf.health === 'poor' ? 0 : (perf.health === 'fair' ? 50 : 100));
+
+        let proxyLatencyTotal = 0;
+        let proxyOpCount = 0;
+        perf.operationStats.forEach(stat => {
+          proxyLatencyTotal += stat.totalResponseTime;
+          proxyOpCount += stat.count;
+        });
+
+        if (proxyOpCount > 0) {
+          totalLatency += (proxyLatencyTotal / proxyOpCount);
+          latencyCount++;
+        }
+      } else {
+        totalHealth += 100; // Assume new proxies are healthy
+      }
+    }
+
     return {
-      healthPercentage: 100,
+      healthPercentage: activeProxies > 0 ? Math.round(totalHealth / activeProxies) : 0,
       activeProxies,
-      averageResponseTime: 200 // ms
+      averageResponseTime: latencyCount > 0 ? Math.round(totalLatency / latencyCount) : 0
     };
   }
 }
