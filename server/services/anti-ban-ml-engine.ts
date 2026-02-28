@@ -1,7 +1,7 @@
-/**
- * Anti-Ban ML Engine - Basic machine learning for ban detection
- * Provides pattern recognition and risk assessment
- */
+ * Anti - Ban ML Engine - Basic machine learning for ban detection
+  * Provides pattern recognition and risk assessment
+    */
+import { LRUCache } from 'lru-cache';
 
 export interface RiskAssessment {
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
@@ -20,9 +20,14 @@ export interface OperationPattern {
 
 export class AntiBanMLEngine {
   private static instance: AntiBanMLEngine;
-  private patterns: Map<number, OperationPattern[]> = new Map();
+  private patterns: LRUCache<number, OperationPattern[]>;
 
-  private constructor() {}
+  private constructor() {
+    this.patterns = new LRUCache({
+      max: 5000,
+      ttl: 12 * 60 * 60 * 1000, // 12 hours
+    });
+  }
 
   static getInstance(): AntiBanMLEngine {
     if (!this.instance) {
@@ -94,7 +99,7 @@ export class AntiBanMLEngine {
    */
   private generateRecommendations(riskLevel: RiskAssessment['riskLevel'], riskFactors: string[]): string[] {
     const recommendations: string[] = [];
-    
+
     switch (riskLevel) {
       case 'critical':
         recommendations.push('STOP_ALL_OPERATIONS');
@@ -114,24 +119,24 @@ export class AntiBanMLEngine {
         recommendations.push('CONTINUE_WITH_CAUTION');
         break;
     }
-    
+
     if (riskFactors.includes('HIGH_OPERATION_FREQUENCY')) {
       recommendations.push('INCREASE_DELAY_BETWEEN_OPERATIONS');
     }
-    
+
     if (riskFactors.includes('LOW_SUCCESS_RATE')) {
       recommendations.push('CHECK_ACCOUNT_STATUS');
       recommendations.push('VERIFY_PROXY_QUALITY');
     }
-    
+
     if (riskFactors.includes('IRREGULAR_TIMING')) {
       recommendations.push('IMPLEMENT_RANDOM_DELAYS');
     }
-    
+
     if (riskFactors.includes('LIMITED_OPERATION_DIVERSITY')) {
       recommendations.push('DIVERSIFY_OPERATION_TYPES');
     }
-    
+
     return recommendations;
   }
 
@@ -148,13 +153,13 @@ export class AntiBanMLEngine {
       }
       operationGroups.get(type)!.push(op);
     });
-    
+
     // Convert to patterns
     const patterns: OperationPattern[] = [];
     operationGroups.forEach((operations, type) => {
       const timing = operations.map(op => op.timestamp || Date.now());
       const successCount = operations.filter(op => op.success).length;
-      
+
       patterns.push({
         type,
         frequency: operations.length,
@@ -163,40 +168,40 @@ export class AntiBanMLEngine {
         averageDelay: this.calculateAverageDelay(timing)
       });
     });
-    
+
     return patterns;
   }
-  
+
   /**
    * Check if timing pattern is irregular
    */
   private isIrregularTiming(timing: number[]): boolean {
     if (timing.length < 2) return false;
-    
+
     const delays = [];
     for (let i = 1; i < timing.length; i++) {
-      delays.push(timing[i] - timing[i-1]);
+      delays.push(timing[i] - timing[i - 1]);
     }
-    
+
     const avgDelay = delays.reduce((a, b) => a + b, 0) / delays.length;
     const variance = delays.reduce((sum, delay) => sum + Math.pow(delay - avgDelay, 2), 0) / delays.length;
     const stdDev = Math.sqrt(variance);
-    
+
     // Consider irregular if standard deviation is more than 50% of average
     return stdDev > (avgDelay * 0.5);
   }
-  
+
   /**
    * Calculate average delay between operations
    */
   private calculateAverageDelay(timing: number[]): number {
     if (timing.length < 2) return 0;
-    
+
     const delays = [];
     for (let i = 1; i < timing.length; i++) {
-      delays.push(timing[i] - timing[i-1]);
+      delays.push(timing[i] - timing[i - 1]);
     }
-    
+
     return delays.reduce((a, b) => a + b, 0) / delays.length;
   }
 }

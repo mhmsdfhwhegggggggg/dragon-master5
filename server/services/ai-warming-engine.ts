@@ -73,7 +73,7 @@ export class AIWarmingEngine {
         }));
         await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
       }
-    } catch (e) { }
+    } catch (e: any) { console.warn(`[AIWarming] Read simulation failed: ${e.message}`); }
   }
 
   private async joinSafeGroup(client: TelegramClient, accountId: number) {
@@ -83,7 +83,7 @@ export class AIWarmingEngine {
     try {
       await client.invoke(new Api.channels.JoinChannel({ channel: target }));
       await antiBanDistributed.recordOperationResult(accountId, 'join_group', true);
-    } catch (e) { }
+    } catch (e: any) { console.warn(`[AIWarming] Group join failed: ${e.message}`); }
   }
 
   private async sendSmartMessage(client: TelegramClient, accountId: number) {
@@ -108,7 +108,7 @@ export class AIWarmingEngine {
         await client.sendMessage(target.inputEntity, { message });
         await antiBanDistributed.recordOperationResult(accountId, 'message', true);
       }
-    } catch (e) { }
+    } catch (e: any) { console.warn(`[AIWarming] Message sending failed: ${e.message}`); }
   }
 }
 

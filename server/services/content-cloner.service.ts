@@ -574,7 +574,7 @@ export class ContentClonerService {
         return {
             history: logs.map(log => {
                 let details: any = {};
-                try { details = JSON.parse(log.details || '{}'); } catch (e) { }
+                try { details = JSON.parse(log.details as string || '{}'); } catch (e: any) { this.logger.debug(`[ContentCloner] Failed to parse log details: ${e.message}`); }
                 return {
                     id: log.id.toString(),
                     ruleId: details.ruleId || 'unknown',

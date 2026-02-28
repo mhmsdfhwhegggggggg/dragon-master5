@@ -1,7 +1,4 @@
-/**
- * Anti-Ban Core - Basic anti-ban protection system
- * Provides fundamental protection against account bans
- */
+import { LRUCache } from 'lru-cache';
 
 export interface OperationRequest {
   type: string;
@@ -26,10 +23,14 @@ export interface OperationResult {
 
 export class AntiBanCore {
   private static instance: AntiBanCore;
-  private operationHistory: Map<number, OperationResult[]> = new Map();
+  private operationHistory: LRUCache<number, OperationResult[]>;
   private rateLimits: Map<string, number> = new Map();
 
   private constructor() {
+    this.operationHistory = new LRUCache({
+      max: 1000, // Limit to 1000 accounts in memory history
+      ttl: 24 * 60 * 60 * 1000, // 24 hours
+    });
     this.initializeRateLimits();
   }
 

@@ -3,6 +3,7 @@ import { getDb, sql } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
 import { licenses, subscriptions } from '../db/schema';
 import crypto from 'crypto';
+import { LRUCache } from 'lru-cache';
 
 // ... (previous code)
 
@@ -47,8 +48,15 @@ export interface ActivationResponse {
 
 export class ActivationSystem {
   private static instance: ActivationSystem;
-  private activationCache: Map<string, { response: ActivationResponse; timestamp: number }> = new Map();
+  private activationCache: LRUCache<string, { response: ActivationResponse; timestamp: number }>;
   private readonly CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+  private constructor() {
+    this.activationCache = new LRUCache({
+      max: 500, // Limit to 500 active sessions
+      ttl: this.CACHE_DURATION,
+    });
+  }
 
   static getInstance(): ActivationSystem {
     if (!ActivationSystem.instance) {

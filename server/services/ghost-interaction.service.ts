@@ -56,7 +56,9 @@ export class GhostInteractionService {
         try {
             await client.getMessages(peer, { limit: 5 });
             await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
-        } catch (e) { }
+        } catch (e: any) {
+            logger.debug(`[GhostService] Scrolling simulation jitter: ${e.message}`);
+        }
     }
 }
 

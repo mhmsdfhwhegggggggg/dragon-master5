@@ -31,6 +31,11 @@
     "plugins": [
       "expo-router"
     ],
-    "scheme": "dragon-telegram-pro"
+    "scheme": "dragon-telegram-pro",
+    "extra": {
+      "eas": {
+        "projectId": "58444108-1925-4a14-acfc-c0ceb5d8931f"
+      }
+    }
   }
 }

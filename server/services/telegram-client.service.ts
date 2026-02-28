@@ -1,6 +1,7 @@
-import type { TelegramClient } from "telegram";
+import { Api, TelegramClient } from "telegram";
 import pkg from "telegram";
-const { Api, connection, TelegramClient: ClientClass } = pkg;
+const { connection } = pkg;
+const ClientClass = TelegramClient;
 import { StringSession } from "telegram/sessions/index.js";
 import { NewMessage } from "telegram/events/index.js";
 import * as db from "../db";
@@ -12,6 +13,7 @@ import { proxyManager } from "./proxy-manager";
 import { ghostInteractionService } from "./ghost-interaction.service";
 import { keywordObfuscatorService } from "./keyword-obfuscator.service";
 import { mediaPixelatorService } from "./media-pixelator.service";
+import { antiBanDistributed } from "./anti-ban-distributed";
 
 export class TelegramClientService {
   private static clients: Map<number, TelegramClient> = new Map();
@@ -185,8 +187,11 @@ export class TelegramClientService {
         ...options
       });
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Send message error:', error);
+      if (error.seconds) {
+        await antiBanDistributed.recordOperationResult(accountId, 'message', false, 'flood', error.seconds * 1000 + 5000);
+      }
       throw error;
     }
   }
@@ -302,8 +307,11 @@ export class TelegramClientService {
         await client.invoke(new Api.channels.JoinChannel({ channel: username! }));
       }
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Join group error:', error);
+      if (error.seconds) {
+        await antiBanDistributed.recordOperationResult(accountId, 'join_group', false, 'flood');
+      }
       return false;
     }
   }
@@ -327,8 +335,11 @@ export class TelegramClientService {
         users: [userEntity]
       }));
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Add user error:', error);
+      if (error.seconds) {
+        await antiBanDistributed.recordOperationResult(accountId, 'add_user', false, 'flood');
+      }
       return false;
     }
   }

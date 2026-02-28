@@ -99,7 +99,9 @@ export class AutoRecovery {
           // Optionally clean or alert
         }
       }
-    } catch (e) { }
+    } catch (e: any) {
+      console.warn(`[AutoRecovery] Failed to restore state: ${e.message}`);
+    }
   }
 
   private async cleanStuckJobs() {

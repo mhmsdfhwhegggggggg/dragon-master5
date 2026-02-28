@@ -12,6 +12,7 @@ import { logger } from '../_core/logger';
 import { aiChatEngine } from './ai-chat-engine';
 import { telegramClientService } from './telegram-client.service';
 import { behaviorShield } from './behavior-shield';
+import { LRUCache } from 'lru-cache';
 
 export type AgentRole = 'researcher' | 'content_creator' | 'strategy_manager' | 'security_sentinel';
 
@@ -35,9 +36,13 @@ export interface AgentResponse {
 export class ApexOrchestrator {
     private static instance: ApexOrchestrator;
     private logger = logger;
-    private activeTasks: Map<string, ApexTask> = new Map();
+    private activeTasks: LRUCache<string, ApexTask>;
 
     private constructor() {
+        this.activeTasks = new LRUCache({
+            max: 2000, // Limit tracked tasks
+            ttl: 4 * 60 * 60 * 1000, // 4 hours
+        });
         this.logger.info('[ApexOrchestrator] Autonomous Brain Initialized 🧠');
     }
 

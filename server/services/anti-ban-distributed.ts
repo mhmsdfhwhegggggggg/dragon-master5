@@ -132,7 +132,8 @@ export class AntiBanDistributed {
     accountId: number,
     operationType: OperationType,
     success: boolean,
-    errorType?: 'flood' | 'spam' | 'ban' | 'restriction' | 'network' | 'other'
+    errorType?: 'flood' | 'spam' | 'ban' | 'restriction' | 'network' | 'other',
+    cooldownMs?: number
   ): Promise<void> {
     try {
       const health = await this.getAccountHealth(accountId);
@@ -147,8 +148,9 @@ export class AntiBanDistributed {
         health.riskScore = Math.min(100, health.riskScore + riskIncrease);
 
         if (errorType === 'flood' || errorType === 'spam' || errorType === 'ban') {
-          const cooldownHours = errorType === 'ban' ? 48 : errorType === 'spam' ? 12 : 2;
-          health.cooldownUntil = Date.now() + cooldownHours * 60 * 60 * 1000;
+          const defaultCooldownHours = errorType === 'ban' ? 48 : errorType === 'spam' ? 12 : 2;
+          const cooldownDuration = cooldownMs ? cooldownMs : defaultCooldownHours * 60 * 60 * 1000;
+          health.cooldownUntil = Date.now() + cooldownDuration;
         }
       }
 

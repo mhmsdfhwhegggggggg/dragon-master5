@@ -720,7 +720,7 @@ export class AutoReplyService {
 
   private mapDbToRule(r: any): ReplyRule {
     let content = r.replyContent;
-    try { if (typeof content === 'string' && (content.startsWith('[') || content.startsWith('{'))) content = JSON.parse(content); } catch (e) { }
+    try { if (typeof content === 'string' && (content.startsWith('[') || content.startsWith('{'))) content = JSON.parse(content); } catch (e: any) { this.logger.debug(`[AutoReply] Failed to parse rule content: ${e.message}`); }
 
     const options = r.options ? (typeof r.options === 'string' ? JSON.parse(r.options) : r.options) : {
       targetTypes: (r.targetTypes || []) as any[],

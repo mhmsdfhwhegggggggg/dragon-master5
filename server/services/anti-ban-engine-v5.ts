@@ -241,11 +241,11 @@ export class AntiBanEngineV5 {
         break;
       case 'view_profile':
         // Simulate looking at group info
-        try { await client.invoke(new Api.channels.GetFullChannel({ channel: chatId })); } catch (e) { }
+        try { await client.invoke(new Api.channels.GetFullChannel({ channel: chatId })); } catch (e: any) { this.logger.debug(`[AntiBanV5] Optional browsing failed: ${e.message}`); }
         break;
       case 'read_top':
         // View pinned message
-        try { await client.getMessages(chatId, { limit: 1 }); } catch (e) { }
+        try { await client.getMessages(chatId, { limit: 1 }); } catch (e: any) { this.logger.debug(`[AntiBanV5] Optional message view failed: ${e.message}`); }
         break;
       default:
         // Dynamic Thinking
@@ -998,8 +998,41 @@ export class AntiBanEngineV5 {
   }
 
   private async loadMLWeights(): Promise<number[]> {
-    // TODO: Load trained ML weights
-    return [0.1, 0.2, 0.15, 0.1, 0.05, 0.2, 0.1, 0.1];
+    // If we have enough learning data, we can "self-calibrate" weights
+    // This turns the engine from a static heuristic to a truly learning system
+    if (this.learningData.length > 50) {
+      try {
+        this.logger.debug(`[AntiBanV5] Self-calibrating ML weights from ${this.learningData.length} samples...`);
+
+        // Features: [hour, day, opsHour, age, isPremium, msgLen, hasMedia, riskScore]
+        const sampleWeights = [0, 0, 0, 0, 0, 0, 0, 0];
+        const failCount = this.learningData.filter(d => d.outcome !== 'success').length;
+
+        if (failCount > 0) {
+          // Calculate correlation of features with failures
+          // This is a simplified Gradient Descent / Linear Regression approximation
+          for (const entry of this.learningData) {
+            const isFailure = entry.outcome !== 'success' ? 1 : -0.1; // Reward success slightly
+            const vector = this.featuresToVector(entry.features);
+
+            for (let i = 0; i < vector.length; i++) {
+              sampleWeights[i] += vector[i] * isFailure;
+            }
+          }
+
+          // Normalize weights (Softmax-like normalization)
+          const sum = sampleWeights.reduce((a, b) => a + Math.abs(b), 0);
+          if (sum > 0) {
+            return sampleWeights.map(w => Math.max(0.01, Math.min(0.5, Math.abs(w) / sum)));
+          }
+        }
+      } catch (error) {
+        this.logger.warn('[AntiBanV5] Weight calibration failed, using robust defaults', { error });
+      }
+    }
+
+    // Heuristic Initializer (Safe defaults if no data is available)
+    return [0.1, 0.05, 0.25, 0.05, 0.05, 0.15, 0.1, 0.25];
   }
 
   private calculateMLPrediction(features: number[], weights: number[]): any {
@@ -1042,7 +1075,9 @@ export class AntiBanEngineV5 {
         let details: any = {};
         try {
           details = JSON.parse(log.details as string || '{}');
-        } catch (e) { }
+        } catch (e: any) {
+          this.logger.error(`[AntiBanV5] Evaluation error: ${e.message}`);
+        }
 
         const timestamp = new Date(log.timestamp).getTime();
 
