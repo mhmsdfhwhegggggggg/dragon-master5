@@ -88,6 +88,11 @@ export class AIWarmingEngine {
 
   private async sendSmartMessage(client: TelegramClient, accountId: number) {
     try {
+      if (!process.env.OPENAI_API_KEY) {
+        console.warn('[AIWarming] No OPENAI_API_KEY found. Skipping smart message generation.');
+        return;
+      }
+
       // Generate a natural message using AI
       const response = await openai.chat.completions.create({
         model: "gpt-4.1-mini",

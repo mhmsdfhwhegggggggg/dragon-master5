@@ -63,10 +63,24 @@ export class ProxyManager {
    */
   async checkProxyHealth(proxy: ProxyConfig): Promise<boolean> {
     try {
-      // Simple health check - in production, implement actual connectivity test
+      const axios = (await import('axios')).default;
+      const { HttpProxyAgent } = await import('http-proxy-agent');
+      const { SocksProxyAgent } = await import('socks-proxy-agent');
+
+      const proxyUrl = this.getProxyString(proxy);
+      const agent = proxy.type === 'socks5'
+        ? new SocksProxyAgent(proxyUrl)
+        : new HttpProxyAgent(proxyUrl);
+
       proxy.lastCheckedAt = new Date();
-      proxy.isWorking = true;
-      return true;
+
+      const response = await axios.get('https://api.telegram.org', {
+        httpsAgent: agent,
+        timeout: 5000
+      });
+
+      proxy.isWorking = response.status === 200;
+      return proxy.isWorking;
     } catch (error) {
       proxy.isWorking = false;
       return false;

@@ -2,14 +2,22 @@ import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { ENV } from "../_core/env";
 import { TRPCError } from "@trpc/server";
+import { licenseManager } from "../services/license-manager";
 
 export const securityRouter = router({
     validateLicense: publicProcedure
         .input(z.object({ key: z.string(), hwid: z.string() }))
         .mutation(async ({ input }) => {
-            // Simple mock validation
-            if (!ENV.enableLicenseCheck) return { valid: true, type: "unimited" };
-            return { valid: true, type: "trial", expiresAt: new Date(Date.now() + 86400000) };
+            // Real V10.0 Validation Logic
+            if (!ENV.enableLicenseCheck) return { valid: true, type: "pro", expiresAt: null };
+
+            const result = await licenseManager.validateLicense(input.key, input.hwid);
+            return {
+                valid: result.valid,
+                type: result.license?.type || "unknown",
+                expiresAt: result.license?.expiresAt,
+                reason: result.reason
+            };
         }),
 
     checkIntegrity: protectedProcedure.query(async () => {

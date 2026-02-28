@@ -1,7 +1,7 @@
 import { router, publicProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { db, users } from "../db";
+import { db, users, getDb } from "../db";
 import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { ENV } from "../_core/env";
@@ -27,7 +27,7 @@ export const authRouter = router({
                 expiresIn: "7d",
             });
 
-            return { token, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
+            return { token, user: { id: user.id, email: user.email, username: user.username, role: user.role } };
         }),
 
     register: publicProcedure
@@ -50,7 +50,7 @@ export const authRouter = router({
             const [newUser] = await database.insert(users).values({
                 email: input.email,
                 password: hashPassword(input.password),
-                name: input.name,
+                username: input.name,
                 role: "user",
             }).returning();
 
@@ -58,7 +58,7 @@ export const authRouter = router({
                 expiresIn: "7d",
             });
 
-            return { token, user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role } };
+            return { token, user: { id: newUser.id, email: newUser.email, username: newUser.username, role: newUser.role } };
         }),
 
     logout: publicProcedure

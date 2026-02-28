@@ -55,15 +55,30 @@ export const accountsRouter = router({
     }),
 
   // Delete an account
-  delete: protectedProcedure
+  deleteAccount: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      await dbHelper.deleteTelegramAccount(input.id);
+    .mutation(async ({ input, ctx }) => {
+      const database = await getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+
+      // Verify ownership
+      const account = await database.query.telegramAccounts.findFirst({
+        where: and(
+          eq(db.telegramAccounts.id, input.id),
+          eq(db.telegramAccounts.userId, ctx.user.id)
+        ),
+      });
+
+      if (!account) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Account not found or access denied" });
+      }
+
+      await database.delete(db.telegramAccounts).where(eq(db.telegramAccounts.id, input.id));
       return { success: true };
     }),
 
   // Update account status
-  updateStatus: protectedProcedure
+  updateAccountStatus: protectedProcedure
     .input(
       z.object({
         id: z.number(),
@@ -71,7 +86,25 @@ export const accountsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await dbHelper.updateTelegramAccount(input.id, { isActive: input.isActive } as any);
+      const database = await getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+
+      // Verify ownership
+      const account = await database.query.telegramAccounts.findFirst({
+        where: and(
+          eq(db.telegramAccounts.id, input.id),
+          eq(db.telegramAccounts.userId, ctx.user.id)
+        ),
+      });
+
+      if (!account) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Account not found or access denied" });
+      }
+
+      await database.update(db.telegramAccounts)
+        .set({ isActive: input.isActive })
+        .where(eq(db.telegramAccounts.id, input.id));
+
       return { success: true };
     }),
 

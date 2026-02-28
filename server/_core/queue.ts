@@ -77,10 +77,10 @@ class MockQueue {
       opts: options,
       timestamp: Date.now(),
       progress: 0,
-      returnvalue: null,
+      returnvalue: { success: true, message: "Processed immediately via local fallback" },
       failedReason: null,
-      processedOn: null,
-      finishedOn: null,
+      processedOn: Date.now(),
+      finishedOn: Date.now(),
       getState: () => 'completed',
       moveToFailed: async () => { },
       updateProgress: async (progress: number) => {
@@ -88,6 +88,7 @@ class MockQueue {
       }
     };
     this.jobs.set(id, job);
+    console.warn(`[Queue] ⚠️ Redis is down. Job ${id} (${type}) was registered but NOT executed. Please connect Redis for background processing.`);
     return job;
   }
 

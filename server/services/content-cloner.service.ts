@@ -117,7 +117,15 @@ export class ContentClonerService {
 
         try {
             this.monitoredAccounts.add(accountId);
-            this.logger.info(`[ContentCloner] Started monitoring account ${accountId}`);
+
+            // Register real listener via TelegramClientService
+            await telegramClientService.addEventHandler(
+                accountId,
+                (event) => this.handleIncomingMessage(accountId, event.message),
+                new (await import('telegram/events')).NewMessage({})
+            );
+
+            this.logger.info(`[ContentCloner] Started monitoring account ${accountId} with event listener`);
         } catch (error: any) {
             this.logger.error(`[ContentCloner] Failed to monitor account ${accountId}`, { error: error.message });
         }

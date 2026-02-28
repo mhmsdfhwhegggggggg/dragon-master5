@@ -10,6 +10,8 @@ import path from 'path';
 import * as db from '../db';
 import { logger } from '../_core/logger';
 import { sql } from 'drizzle-orm';
+import crypto from 'crypto';
+import { ENV } from '../_core/env';
 
 const BACKUP_DIR = path.join(process.cwd(), "backups");
 if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR);
@@ -60,13 +62,25 @@ export class BackupService {
                 }
             };
 
-            const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json.enc`;
             const filepath = path.join(BACKUP_DIR, filename);
 
-            fs.writeFileSync(filepath, JSON.stringify(backupData, null, 2));
+            // Encryption Logic
+            const algorithm = 'aes-256-gcm';
+            const key = crypto.scryptSync(ENV.databaseUrl || 'default-secret-key', 'salt', 32);
+            const iv = crypto.randomBytes(16);
+            const cipher = crypto.createCipheriv(algorithm, key, iv);
+
+            const jsonText = JSON.stringify(backupData);
+            const encrypted = Buffer.concat([cipher.update(jsonText, 'utf8'), cipher.final()]);
+            const tag = cipher.getAuthTag();
+
+            const finalBuffer = Buffer.concat([iv, tag, encrypted]);
+            fs.writeFileSync(filepath, finalBuffer);
+
             const stats = fs.statSync(filepath);
 
-            logger.info(`[Backup] Backup created: ${filename} (${stats.size} bytes)`);
+            logger.info(`[Backup] Encrypted backup created: ${filename} (${stats.size} bytes)`);
 
             return {
                 filename,
@@ -89,8 +103,23 @@ export class BackupService {
             const filepath = path.join(BACKUP_DIR, filename);
             if (!fs.existsSync(filepath)) throw new Error("Backup file not found");
 
-            const fileContent = fs.readFileSync(filepath, 'utf-8');
-            const backup = JSON.parse(fileContent);
+            const finalBuffer = fs.readFileSync(filepath);
+
+            let backup: any;
+            if (filename.endsWith('.enc')) {
+                const algorithm = 'aes-256-gcm';
+                const key = crypto.scryptSync(ENV.databaseUrl || 'default-secret-key', 'salt', 32);
+                const iv = finalBuffer.subarray(0, 16);
+                const tag = finalBuffer.subarray(16, 32);
+                const encrypted = finalBuffer.subarray(32);
+
+                const decipher = crypto.createDecipheriv(algorithm, key, iv);
+                decipher.setAuthTag(tag);
+                const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+                backup = JSON.parse(decrypted.toString('utf8'));
+            } else {
+                backup = JSON.parse(finalBuffer.toString('utf8'));
+            }
 
             if (!backup.data) throw new Error("Invalid backup format");
 

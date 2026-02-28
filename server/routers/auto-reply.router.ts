@@ -86,7 +86,6 @@ export const autoReplyRouter = router({
       }
     }),
 
-  /**
   getRules: protectedProcedure
     .input(z.object({
       accountId: z.number(),
@@ -118,7 +117,6 @@ export const autoReplyRouter = router({
     }),
 
   /**
-   * Update reply rule
    */
   updateRule: protectedProcedure
     .input(z.object({

@@ -82,11 +82,15 @@ export const extractAddRouter = router({
         const client = await (await import("../services/telegram-client.service")).telegramClientService.getClient(input.accountId);
         if (!client) throw new Error("Client not initialized");
 
+        // Real V10.0 Feature: Pool-based Adding
+        const allAccounts = await db.getTelegramAccountsByUserId(ctx.user.id);
+        const activeAccounts = allAccounts.filter(a => a.isActive).map(a => a.id);
+
         const result = await apexPipelineOrchestrator.executeApexMove({
           sourceId: input.sourceGroupId,
           targetId: input.targetGroupIds[0], // Simplified for now, or use loop for multi-target
           extractorAccountId: input.accountId,
-          adderAccountIds: [input.accountId], // Use pool in real implementation
+          adderAccountIds: activeAccounts.length > 0 ? activeAccounts : [input.accountId],
           filters: input.filters,
           client: client,
           operationId: operation.id

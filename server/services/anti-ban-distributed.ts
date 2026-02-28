@@ -163,14 +163,23 @@ export class AntiBanDistributed {
 
   static async getAccountHealth(accountId: number): Promise<AccountHealth> {
     const key = `antiban:health:${accountId}`;
-    const data = await this.redis.get(key);
-    return data ? JSON.parse(data) : {
+    const defaultHealth = {
       accountId, riskScore: 0, lastWarning: null, warningCount: 0, lastBan: null, banCount: 0,
       successRate: 1.0, totalOperations: 0, failedOperations: 0, lastOperation: Date.now(), cooldownUntil: null
     };
+
+    if (!this.redis) return defaultHealth;
+
+    try {
+      const data = await this.redis.get(key);
+      return data ? JSON.parse(data) : defaultHealth;
+    } catch (e) {
+      return defaultHealth;
+    }
   }
 
   private static async saveAccountHealth(health: AccountHealth): Promise<void> {
+    if (!this.redis) return;
     const key = `antiban:health:${health.accountId}`;
     await this.redis.setex(key, 86400 * 30, JSON.stringify(health));
   }
