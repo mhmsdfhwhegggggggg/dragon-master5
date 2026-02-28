@@ -13,7 +13,9 @@ export const authRouter = router({
     login: publicProcedure
         .input(z.object({ email: z.string().email(), password: z.string() }))
         .mutation(async ({ input }) => {
-            const user = await db.query.users.findFirst({
+            const database = await getDb();
+            if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+            const user = await database.query.users.findFirst({
                 where: eq(users.email, input.email),
             });
 
@@ -35,7 +37,9 @@ export const authRouter = router({
                 throw new TRPCError({ code: "FORBIDDEN", message: "Registration is disabled" });
             }
 
-            const existing = await db.query.users.findFirst({
+            const database = await getDb();
+            if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+            const existing = await database.query.users.findFirst({
                 where: eq(users.email, input.email),
             });
 
@@ -43,7 +47,7 @@ export const authRouter = router({
                 throw new TRPCError({ code: "CONFLICT", message: "User already exists" });
             }
 
-            const [newUser] = await db.insert(users).values({
+            const [newUser] = await database.insert(users).values({
                 email: input.email,
                 password: hashPassword(input.password),
                 name: input.name,

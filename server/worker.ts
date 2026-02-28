@@ -35,8 +35,24 @@ if (redisUrl?.startsWith('rediss://')) {
   redisOptions.tls = { rejectUnauthorized: false };
 }
 
-const connection = new IORedis(redisUrl!, redisOptions);
+let connection: IORedis | null = null;
+if (redisUrl) {
+  try {
+    connection = new IORedis(redisUrl, redisOptions);
+    console.log("[Worker] Redis connected successfully");
+  } catch (e) {
+    console.error(`[Worker] Failed to connect to Redis: ${e instanceof Error ? e.message : e}`);
+  }
+} else {
+  console.warn("[Worker] No Redis URL provided. Distributed tasks will not work.");
+}
+
 const tg = new TelegramClientService();
+
+if (!connection) {
+  console.error("[Worker] Process running without Redis connection. Exiting to prevent silent failure.");
+  process.exit(1);
+}
 
 const worker = new Worker(
   "bulkOps",

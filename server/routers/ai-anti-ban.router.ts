@@ -8,7 +8,9 @@ export const aiAntiBanRouter = router({
     getRules: protectedProcedure
         .input(z.object({ accountId: z.number() }))
         .query(async ({ input }) => {
-            return db.query.antiBanRules.findMany({
+            const database = await getDb();
+            if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+            return database.query.antiBanRules.findMany({
                 where: eq(antiBanRules.telegramAccountId, input.accountId),
             });
         }),
@@ -23,7 +25,9 @@ export const aiAntiBanRouter = router({
             }),
         }))
         .mutation(async ({ input }) => {
-            return db.update(antiBanRules)
+            const database = await getDb();
+            if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
+            return database.update(antiBanRules)
                 .set(input.data)
                 .where(eq(antiBanRules.id, input.id))
                 .returning();
