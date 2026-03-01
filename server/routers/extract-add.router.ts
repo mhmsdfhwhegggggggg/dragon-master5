@@ -86,15 +86,26 @@ export const extractAddRouter = router({
         const allAccounts = await db.getTelegramAccountsByUserId(ctx.user.id);
         const activeAccounts = allAccounts.filter(a => a.isActive).map(a => a.id);
 
-        const result = await apexPipelineOrchestrator.executeApexMove({
-          sourceId: input.sourceGroupId,
-          targetId: input.targetGroupIds[0], // Simplified for now, or use loop for multi-target
-          extractorAccountId: input.accountId,
-          adderAccountIds: activeAccounts.length > 0 ? activeAccounts : [input.accountId],
-          filters: input.filters,
-          client: client,
-          operationId: operation.id
-        });
+        const results = [];
+        for (const targetId of input.targetGroupIds) {
+          const result = await apexPipelineOrchestrator.executeApexMove({
+            sourceId: input.sourceGroupId,
+            targetId: targetId,
+            extractorAccountId: input.accountId,
+            adderAccountIds: activeAccounts.length > 0 ? activeAccounts : [input.accountId],
+            filters: input.filters,
+            client: client,
+            operationId: operation.id
+          });
+          results.push(result);
+        }
+
+        const consolidatedResult = {
+          success: results.every(r => r.success),
+          totalPiped: results.reduce((sum, r) => sum + r.totalPiped, 0),
+          duration: results.reduce((sum, r) => sum + r.duration, 0),
+          results: results
+        };
 
         // Log activity (keep existing logging for consistency)
         await db.createActivityLog({

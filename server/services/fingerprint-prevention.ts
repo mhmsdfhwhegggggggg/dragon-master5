@@ -96,7 +96,7 @@ export class FingerprintPrevention {
   static async getDeviceFingerprint(accountId: number): Promise<DeviceFingerprint> {
     try {
       const key = `fingerprint:device:${accountId}`;
-      const cached = await this.redis.get(key);
+      const cached = this.redis ? await this.redis.get(key) : null;
 
       if (cached) {
         return JSON.parse(cached);
@@ -118,7 +118,11 @@ export class FingerprintPrevention {
       };
 
       // Cache for 30 days
-      await this.redis.setex(key, 86400 * 30, JSON.stringify(fingerprint));
+      if (this.redis) {
+        if (this.redis) {
+          await this.redis.setex(key, 86400 * 30, JSON.stringify(fingerprint));
+        }
+      }
 
       return fingerprint;
 
@@ -144,7 +148,7 @@ export class FingerprintPrevention {
   static async getBehaviorProfile(accountId: number): Promise<BehaviorProfile> {
     try {
       const key = `fingerprint:behavior:${accountId}`;
-      const cached = await this.redis.get(key);
+      const cached = this.redis ? await this.redis.get(key) : null;
 
       if (cached) {
         return JSON.parse(cached);
@@ -190,7 +194,9 @@ export class FingerprintPrevention {
       };
 
       // Cache for 30 days
-      await this.redis.setex(key, 86400 * 30, JSON.stringify(profile));
+      if (this.redis) {
+        await this.redis.setex(key, 86400 * 30, JSON.stringify(profile));
+      }
 
       return profile;
 
@@ -394,9 +400,11 @@ export class FingerprintPrevention {
    */
   static async resetFingerprint(accountId: number): Promise<void> {
     try {
-      await this.redis.del(`fingerprint:device:${accountId}`);
-      await this.redis.del(`fingerprint:behavior:${accountId}`);
-      console.log(`[FingerprintPrevention] Reset fingerprint for account ${accountId}`);
+      if (this.redis) {
+        await this.redis.del(`fingerprint:device:${accountId}`);
+        await this.redis.del(`fingerprint:behavior:${accountId}`);
+        console.log(`[FingerprintPrevention] Reset fingerprint for account ${accountId}`);
+      }
     } catch (error: any) {
       console.error('[FingerprintPrevention] Error resetting fingerprint:', error.message);
     }

@@ -15,10 +15,9 @@ import { OpenAI } from 'openai';
 import { antiBanDistributed } from './anti-ban-distributed';
 import * as db from '../db';
 
-const openai = new OpenAI();
-
 export class AIWarmingEngine {
   private static instance: AIWarmingEngine;
+  private openai: OpenAI | null = null;
 
   private constructor() { }
 
@@ -27,6 +26,19 @@ export class AIWarmingEngine {
       this.instance = new AIWarmingEngine();
     }
     return this.instance;
+  }
+
+  private getClient(): OpenAI | null {
+    if (this.openai) return this.openai;
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) return null;
+    try {
+      this.openai = new OpenAI({ apiKey });
+      return this.openai;
+    } catch (e) {
+      console.error('[AIWarming] Failed to init OpenAI:', e);
+      return null;
+    }
   }
 
   /**
@@ -43,7 +55,7 @@ export class AIWarmingEngine {
       await this.simulateReading(client);
 
       // 2. Join a "Safe" group if needed
-      if (account.warmingLevel < 10) {
+      if ((account.warmingLevel || 0) < 10) {
         await this.joinSafeGroup(client, accountId);
       }
 
@@ -56,7 +68,7 @@ export class AIWarmingEngine {
         lastActivityAt: new Date()
       });
 
-      console.log(`[AIWarming] Session completed for ${accountId}. New level: ${account.warmingLevel + 1}`);
+      console.log(`[AIWarming] Session completed for ${accountId}. New level: ${(account.warmingLevel || 0) + 1}`);
     } catch (error: any) {
       console.error(`[AIWarming] Session failed: ${error.message}`);
     }
@@ -88,14 +100,15 @@ export class AIWarmingEngine {
 
   private async sendSmartMessage(client: TelegramClient, accountId: number) {
     try {
-      if (!process.env.OPENAI_API_KEY) {
-        console.warn('[AIWarming] No OPENAI_API_KEY found. Skipping smart message generation.');
+      const aiClient = this.getClient();
+      if (!aiClient) {
+        console.warn('[AIWarming] No valid AI client. Skipping smart message generation.');
         return;
       }
 
       // Generate a natural message using AI
-      const response = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
+      const response = await aiClient.chat.completions.create({
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "Generate a short, friendly, and natural greeting or comment in Arabic for a Telegram group. No emojis, just plain text." },
           { role: "user", content: "أريد رسالة قصيرة وطبيعية للترحيب في مجموعة." }

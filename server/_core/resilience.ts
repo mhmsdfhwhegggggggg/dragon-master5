@@ -55,7 +55,7 @@ export class ApexResilience {
         }
     }
 
-    private triggerRecovery() {
+    public triggerRecovery() {
         this.currentFailures++;
         logger.warn(`[ApexResilience] Recovery triggered. Attempt ${this.currentFailures}/${this.failureThreshold}`);
 

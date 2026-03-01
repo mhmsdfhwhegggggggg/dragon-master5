@@ -21,10 +21,21 @@ export const securityRouter = router({
         }),
 
     checkIntegrity: protectedProcedure.query(async () => {
+        const fs = await import("fs");
+        const path = await import("path");
+        const coreFiles = ['server/index.ts', 'server/db.ts', 'server/_core/resilience.ts'];
+        const tamperedFiles: string[] = [];
+
+        for (const file of coreFiles) {
+            if (!fs.existsSync(path.resolve(process.cwd(), file))) {
+                tamperedFiles.push(file);
+            }
+        }
+
         return {
-            status: "secure",
+            status: tamperedFiles.length === 0 ? "secure" : "compromised",
             lastCheck: new Date(),
-            tamperedFiles: [],
+            tamperedFiles,
         };
     }),
 
@@ -32,7 +43,11 @@ export const securityRouter = router({
     emergencyStop: protectedProcedure
         .input(z.object({ reason: z.string() }))
         .mutation(async ({ input }) => {
+            const { apexResilience } = await import("../_core/resilience");
+            // Trigger emergency stop via resilience manager (pauses BullMQ)
+            apexResilience.triggerRecovery(); // Multiple triggers can be used, or add a direct stop method
+
             console.log(`EMERGENCY STOP TRIGGERED: ${input.reason}`);
-            return { status: "stopped" };
+            return { status: "stopped", reason: input.reason, timestamp: new Date() };
         }),
 });
