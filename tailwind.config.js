@@ -1,33 +1,15 @@
-const { themeColors } = require("./theme.config");
-const plugin = require("tailwindcss/plugin");
-
-const tailwindColors = Object.fromEntries(
-  Object.entries(themeColors).map(([name, swatch]) => [
-    name,
-    {
-      DEFAULT: `var(--color-${name})`,
-      light: swatch.light,
-      dark: swatch.dark,
-    },
-  ]),
-);
+import nativewind from "nativewind/preset";
 
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  darkMode: "class",
-  // Scan all component and app files for Tailwind classes
-  content: ["./app/**/*.{js,ts,tsx}", "./components/**/*.{js,ts,tsx}", "./lib/**/*.{js,ts,tsx}", "./hooks/**/*.{js,ts,tsx}"],
-
-  presets: [require("nativewind/preset")],
-  theme: {
-    extend: {
-      colors: tailwindColors,
+export default {
+    content: ["./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
+    presets: [nativewind],
+    theme: {
+        extend: {
+            colors: {
+                primary: "#2563eb",
+            },
+        },
     },
-  },
-  plugins: [
-    plugin(({ addVariant }) => {
-      addVariant("light", ':root:not([data-theme="dark"]) &');
-      addVariant("dark", ':root[data-theme="dark"] &');
-    }),
-  ],
+    plugins: [],
 };

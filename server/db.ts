@@ -470,10 +470,46 @@ export async function upsertUser(data: InsertUser) {
 }
 
 export async function getOrCreateStatistics(userId: number, date: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not connected");
+  const database = await getDb();
+  if (!database) throw new Error("Database not connected");
+
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+
+  // Try to find existing
+  const existing = await database.select().from(statistics).where(
+    and(
+      eq(statistics.userId, userId),
+      eq(statistics.date, targetDate)
+    )
+  ).limit(1);
+
+  if (existing.length > 0) {
+    const s = existing[0];
+    return {
+      date: s.date,
+      messagesSent: s.messagesSent || 0,
+      messagesFailed: s.errors || 0,
+      membersExtracted: s.membersAdded || 0, // Using membersAdded as a fallback for membersExtracted
+      groupsJoined: 0,
+      usersAdded: s.membersAdded || 0,
+      groupsLeft: 0,
+      successRate: s.operationsCompleted ? Math.round(((s.messagesSent || 0) / s.operationsCompleted) * 100) : 0,
+    };
+  }
+
+  // Create new
+  const [newStats] = await database.insert(statistics).values({
+    userId,
+    date: targetDate,
+    messagesSent: 0,
+    membersAdded: 0,
+    operationsCompleted: 0,
+    errors: 0,
+  }).returning();
+
   return {
-    date: new Date(date),
+    date: newStats.date,
     messagesSent: 0,
     messagesFailed: 0,
     membersExtracted: 0,

@@ -9,9 +9,9 @@ import { contentClonerService } from './content-cloner.service';
 import { logger } from '../_core/logger';
 import * as db from '../db';
 import { eq } from 'drizzle-orm';
-import { Secrets } from '../_core/secrets';
-import { apexResilience } from '../_core/resilience';
 import { apexOrchestrator } from './apex-orchestrator.service';
+import { MonitoringSystem } from '../_core/monitoring-system';
+import { redis } from '../_core/queue';
 
 export class StartupService {
     /**
@@ -36,24 +36,30 @@ export class StartupService {
                 logger.error('[Startup] Integrity check failed! Critical files tampered with.');
             }
         } catch (e) {
-            logger.warn('[Startup] Integrity checker failed');
+            // 1.5. Monitoring System
+            try {
+                const monitor = MonitoringSystem.getInstance(redis as any);
+                monitor.start();
+                logger.info('[Startup] Monitoring system active 📊');
+            } catch (e) {
+                logger.warn('[Startup] Monitoring system skip: ' + (e as any).message);
+            }
+
+            try {
+                // 2. Ensure Admin exists (Self-Healing Admin)
+                await this.ensureAdminExists();
+
+                // 3. Connect all active Telegram accounts
+                await this.connectActiveAccounts();
+
+                logger.info('[Startup] All services initialized successfully');
+            } catch (error: any) {
+                logger.error('[Startup] Initialization failed', {
+                    error: error.message,
+                    stack: error.stack
+                });
+            }
         }
-
-        try {
-            // 2. Ensure Admin exists (Self-Healing Admin)
-            await this.ensureAdminExists();
-
-            // 3. Connect all active Telegram accounts
-            await this.connectActiveAccounts();
-
-            logger.info('[Startup] All services initialized successfully');
-        } catch (error: any) {
-            logger.error('[Startup] Initialization failed', {
-                error: error.message,
-                stack: error.stack
-            });
-        }
-    }
 
     private static async ensureAdminExists() {
         const email = process.env.ADMIN_EMAIL || 'admin@falcon.pro';
@@ -215,7 +221,11 @@ export class SchemaHealer {
             { table: 'extracted_members', old: 'memberPhone', new: 'member_phone' },
             { table: 'extracted_members', old: 'extractionDate', new: 'extraction_date' },
             { table: 'extracted_members', old: 'isAdded', new: 'is_added' },
-            { table: 'extracted_members', old: 'addedDate', new: 'added_date' }
+            { table: 'extracted_members', old: 'addedDate', new: 'added_date' },
+            // Learning Data
+            { table: 'learning_data', old: 'userId', new: 'user_id' },
+            { table: 'learning_data', old: 'accountId', new: 'account_id' },
+            { table: 'learning_data', old: 'operationType', new: 'operation_type' }
         ];
 
         for (const task of renames) {
@@ -234,7 +244,11 @@ export class SchemaHealer {
             { table: 'users', column: 'role', type: 'varchar(50) DEFAULT \'user\'' },
             { table: 'content_cloner_rules', column: 'source_channel_ids', type: 'text[]' },
             { table: 'content_cloner_rules', column: 'target_channel_ids', type: 'text[]' },
-            { table: 'auto_reply_rules', column: 'telegram_account_id', type: 'integer' }
+            { table: 'auto_reply_rules', column: 'telegram_account_id', type: 'integer' },
+            { table: 'learning_data', column: 'account_id', type: 'integer' },
+            { table: 'learning_data', column: 'operation_type', type: 'varchar(50)' },
+            { table: 'learning_data', column: 'features', type: 'text' },
+            { table: 'learning_data', column: 'outcome', type: 'varchar(20)' }
         ];
 
         for (const task of additions) {

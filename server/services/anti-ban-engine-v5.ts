@@ -745,7 +745,12 @@ export class AntiBanEngineV5 {
     if (!database) return;
 
     try {
+      // 0. Resolve User ID
+      const account = await db.getTelegramAccountById(context.accountId);
+      if (!account) return;
+
       const learningEntry = {
+        userId: account.userId,
         accountId: context.accountId,
         operationType: context.operationType,
         features: JSON.stringify(features),
@@ -754,7 +759,7 @@ export class AntiBanEngineV5 {
       };
 
       // 1. Persist to Postgres
-      await database.insert((db as any).learningData).values(learningEntry);
+      await database.insert(db.learningData).values(learningEntry);
 
       // 2. Update local learning data for speed
       if (this.learningData.length > 5000) this.learningData.shift();
@@ -783,15 +788,15 @@ export class AntiBanEngineV5 {
       if (database) {
         // Update the most recent entry for this account/type in Postgres
         const results = await database.select()
-          .from((db as any).learningData)
-          .where(and(eq((db as any).learningData.accountId, accountId), eq((db as any).learningData.operationType, operationType)))
-          .orderBy(desc((db as any).learningData.timestamp))
+          .from(db.learningData)
+          .where(and(eq(db.learningData.accountId, accountId), eq(db.learningData.operationType, operationType)))
+          .orderBy(desc(db.learningData.timestamp))
           .limit(1);
 
         if (results.length > 0) {
-          await database.update((db as any).learningData)
+          await database.update(db.learningData)
             .set({ outcome })
-            .where(eq((db as any).learningData.id, results[0].id));
+            .where(eq(db.learningData.id, results[0].id));
         }
       }
 

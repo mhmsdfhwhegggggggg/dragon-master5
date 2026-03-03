@@ -100,8 +100,8 @@ export class MonitoringSystem extends EventEmitter {
     const services = {
       database: false,
       redis: false,
-      jobQueue: true, // Placeholder
-      cache: true,    // Placeholder
+      jobQueue: false,
+      cache: false,
     };
 
     try {
@@ -113,6 +113,18 @@ export class MonitoringSystem extends EventEmitter {
       const pong = await this.redis.ping();
       services.redis = pong === 'PONG';
     } catch (e) { services.redis = false; }
+
+    try {
+      const jobQueue = getJobQueue();
+      const metrics = await jobQueue.getMetrics('normal');
+      services.jobQueue = !metrics.paused;
+    } catch (e) { services.jobQueue = false; }
+
+    try {
+      const cache = getCache();
+      const metrics = cache.getMetrics();
+      services.cache = metrics.hitRate >= 0;
+    } catch (e) { services.cache = false; }
 
     const metrics = this.getSystemMetrics();
 

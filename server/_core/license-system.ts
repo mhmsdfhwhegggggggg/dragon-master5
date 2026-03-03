@@ -469,18 +469,17 @@ export class LicenseSystem {
    */
   private async calculateAppChecksum(): Promise<string> {
     try {
-      // In production, calculate checksums of all critical files
-      // For now, return a placeholder
       const criticalFiles = [
-        'server/_core/index.js',
-        'server/_core/license-system.js',
-        'server/_core/hardware-id.js',
+        'server/index.ts',
+        'server/db.ts',
+        'server/_core/resilience.ts',
+        'server/_core/license-system.ts'
       ];
 
       const checksums: string[] = [];
 
       for (const file of criticalFiles) {
-        const filePath = path.join(process.cwd(), 'dist', file);
+        const filePath = path.join(process.cwd(), file);
         if (fs.existsSync(filePath)) {
           const content = fs.readFileSync(filePath);
           const hash = crypto.createHash('sha256').update(content).digest('hex');
@@ -488,13 +487,16 @@ export class LicenseSystem {
         }
       }
 
+      if (checksums.length === 0) return 'no-core-files-found';
+
       return crypto
         .createHash('sha256')
         .update(checksums.join('|'))
         .digest('hex');
 
     } catch (error) {
-      return 'unknown';
+      console.error('[License] Checksum calculation failed:', error);
+      return 'integrity-error';
     }
   }
 

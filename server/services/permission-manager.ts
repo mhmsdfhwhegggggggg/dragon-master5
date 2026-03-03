@@ -20,6 +20,10 @@ export interface Permission {
   updatedAt: Date;
 }
 
+import { getDb } from '../db';
+import { licenses } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
+
 export class PermissionManager {
   private static instance: PermissionManager;
   private permissions: Map<number, Permission> = new Map();
@@ -54,15 +58,19 @@ export class PermissionManager {
     return perm;
   }
 
-  async validatePermission(key: string, deviceId?: string): Promise<{ valid: boolean; reason?: string; permission?: Permission }> {
-    const perm = Array.from(this.permissions.values()).find(p => p.permissionKey === key);
+  async validatePermission(key: string, deviceId?: string): Promise<{ valid: boolean; reason?: string; permission?: any }> {
+    const database = await getDb();
+    const perm = await database.query.licenses.findFirst({
+      where: eq(licenses.licenseKey, key)
+    });
+
     if (!perm) return { valid: false, reason: 'Invalid key' };
     if (perm.status !== 'active') return { valid: false, reason: `Permission ${perm.status}` };
     if (perm.expiresAt && perm.expiresAt < new Date()) {
-      perm.status = 'expired';
+      await database.update(licenses).set({ status: 'expired' }).where(eq(licenses.id, perm.id));
       return { valid: false, reason: 'Permission expired' };
     }
-    if (deviceId && perm.deviceId && perm.deviceId !== deviceId) {
+    if (deviceId && perm.hardwareId && perm.hardwareId !== deviceId) {
       return { valid: false, reason: 'Device mismatch' };
     }
     return { valid: true, permission: perm };
@@ -150,8 +158,15 @@ export class PermissionManager {
   }
 
   // legacy compatibility
-  hasPermission(userId: number, permissionId: string): boolean {
-    return true; // Simplified for now
+  async hasPermission(userId: number, permissionId: string): Promise<boolean> {
+    const database = await getDb();
+    const perm = await database.query.licenses.findFirst({
+      where: and(
+        eq(licenses.userId, userId),
+        eq(licenses.status, 'active')
+      )
+    });
+    return !!perm;
   }
 }
 

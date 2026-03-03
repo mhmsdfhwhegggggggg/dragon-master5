@@ -222,10 +222,12 @@ export const contentClonerRules = pgTable('content_cloner_rules', {
 export const learningData = pgTable('learning_data', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  key: varchar('key', { length: 255 }).notNull(),
-  value: text('value').notNull(),
-  category: varchar('category', { length: 100 }),
+  accountId: integer('account_id'),
+  operationType: varchar('operation_type', { length: 50 }),
+  features: text('features'), // JSON string
+  outcome: varchar('outcome', { length: 20 }), // success, rate_limited, banned, warning
   confidence: decimal('confidence', { precision: 3, scale: 2 }).default('1.00'),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
