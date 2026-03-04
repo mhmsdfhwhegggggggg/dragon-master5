@@ -8,24 +8,24 @@ RUN npm install -g pnpm@9.12.0
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json* ./
 
 # Install dependencies
 FROM base AS dependencies
-RUN pnpm install --no-frozen-lockfile --prod=false
+RUN npm install
 
 # Build stage
 FROM base AS build
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
-RUN pnpm build && pnpm build:worker
+RUN npm run build && npm run build:worker
 
 # Production stage
 FROM base AS production
 
 # Install production dependencies only
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --no-frozen-lockfile --prod
+COPY package.json package-lock.json* ./
+RUN npm install --omit=dev
 
 # Copy built files
 COPY --from=build /app/dist ./dist
