@@ -13,111 +13,6 @@ import { apexOrchestrator } from './apex-orchestrator.service';
 import { MonitoringSystem } from '../_core/monitoring-system';
 import { redis } from '../_core/queue';
 
-export class StartupService {
-    /**
-     * Initialize all services
-     */
-    static async initializeAllServices() {
-        logger.info('[Startup] Starting services initialization...');
-
-        // 0. Auto-Heal Schema (Fixes Render migration issues)
-        // This is the CRITICAL first step. It ensures DB columns match code.
-        try {
-            await SchemaHealer.heal();
-        } catch (e) {
-            logger.error('[Startup] Schema healing failed', e);
-        }
-
-        // 1. Integrity Check
-        try {
-            const { IntegrityChecker } = await import('../_core/integrity-checker');
-            const isIntegrityOk = await IntegrityChecker.initialize();
-            if (!isIntegrityOk) {
-                logger.error('[Startup] Integrity check failed! Critical files tampered with.');
-            }
-        } catch (e) {
-            // 1.5. Monitoring System
-            try {
-                const monitor = MonitoringSystem.getInstance(redis as any);
-                monitor.start();
-                logger.info('[Startup] Monitoring system active 📊');
-            } catch (e) {
-                logger.warn('[Startup] Monitoring system skip: ' + (e as any).message);
-            }
-
-            try {
-                // 2. Ensure Admin exists (Self-Healing Admin)
-                await this.ensureAdminExists();
-
-                // 3. Connect all active Telegram accounts
-                await this.connectActiveAccounts();
-
-                logger.info('[Startup] All services initialized successfully');
-            } catch (error: any) {
-                logger.error('[Startup] Initialization failed', {
-                    error: error.message,
-                    stack: error.stack
-                });
-            }
-        }
-    }
-
-    private static async ensureAdminExists() {
-        const email = process.env.ADMIN_EMAIL || 'admin@falcon.pro';
-        const password = process.env.ADMIN_PASSWORD || process.env.JWT_SECRET?.slice(0, 20) || 'secure_admin_password';
-        const name = process.env.ADMIN_NAME || 'Falcon Admin';
-
-        const database = await db.getDb();
-        if (!database) return;
-
-        const existing = await db.getUserByEmail(email);
-        if (!existing) {
-            logger.info(`[Startup] No admin found. Creating auto-admin: ${email}...`);
-            await db.createUser({
-                email,
-                password,
-                username: name,
-                role: 'admin',
-                isActive: true
-            });
-            logger.info('[Startup] Auto-Admin created successfully! 🛡️');
-        } else {
-            logger.info('[Startup] Admin check: OK.');
-        }
-    }
-
-    private static async connectActiveAccounts() {
-        logger.info('[Startup] Connecting active Telegram accounts...');
-        const database = await db.getDb();
-        if (!database) return;
-
-        // Load rules first (Now that schema is healed)
-        await contentClonerService.initialize();
-        await autoReplyService.initializeListeners();
-
-        const accounts = await database.select().from(db.telegramAccounts).where(eq(db.telegramAccounts.isActive, true));
-
-        for (const account of accounts) {
-            try {
-                await telegramClientService.initializeClient(
-                    account.id,
-                    account.phoneNumber,
-                    account.sessionString
-                );
-
-                // [NEW] Hook Content Cloner into live message stream
-                await contentClonerService.ensureAccountMonitoring(account.id);
-
-                logger.info(`[Startup] Connected account ${account.id} (${account.phoneNumber})`);
-            } catch (error: any) {
-                logger.error(`[Startup] Failed to connect account ${account.id}`, { error: error.message });
-            }
-        }
-
-        logger.info(`[Startup] Connected ${accounts.length} accounts`);
-    }
-}
-
 /**
  * Schema Healer 🩺 - Hammer Edition 2.0 🔨
  * Enforces column existence and naming. Gracefully handles existing schema.
@@ -254,9 +149,6 @@ export class SchemaHealer {
 
         for (const task of additions) {
             try {
-                // Use ADD COLUMN IF NOT EXISTS directly — idempotent and safe.
-                // Previously used exists.length === 0 check which was broken with Drizzle
-                // (Drizzle returns an object, not an array, so .length is always undefined)
                 logger.info(`[SchemaHealer] Ensuring column "${task.column}" in "${task.table}"...`);
                 await (database as any).execute(db.sql.raw(
                     `ALTER TABLE "${task.table}" ADD COLUMN IF NOT EXISTS ${task.column} ${task.type}`
@@ -271,3 +163,113 @@ export class SchemaHealer {
         logger.info('[SchemaHealer] Hammer Strategy 2.0 completed.');
     }
 }
+
+export class StartupService {
+    /**
+     * Initialize all services
+     */
+    static async initializeAllServices() {
+        logger.info('[Startup] Starting services initialization...');
+
+        // 0. Auto-Heal Schema (Fixes Render migration issues)
+        try {
+            await SchemaHealer.heal();
+        } catch (e) {
+            logger.error('[Startup] Schema healing failed', e);
+        }
+
+        // 1. Integrity Check
+        try {
+            const { IntegrityChecker } = await import('../_core/integrity-checker');
+            const isIntegrityOk = await IntegrityChecker.initialize();
+            if (!isIntegrityOk) {
+                logger.error('[Startup] Integrity check failed! Critical files tampered with.');
+            }
+        } catch (e) {
+            logger.warn('[Startup] Integrity check error (skipping): ' + (e as any).message);
+        }
+
+        // 2. Monitoring System
+        try {
+            const monitor = MonitoringSystem.getInstance(redis as any);
+            monitor.start();
+            logger.info('[Startup] Monitoring system active 📊');
+        } catch (e) {
+            logger.warn('[Startup] Monitoring system skip: ' + (e as any).message);
+        }
+
+        // 3. Main Business Logic Services
+        try {
+            // Apex Orchestrator is initialized via singleton instantiation
+
+            // Ensure Admin exists (Self-Healing Admin)
+            await this.ensureAdminExists();
+
+            // Connect all active Telegram accounts
+            await this.connectActiveAccounts();
+
+            logger.info('[Startup] All services initialized successfully');
+        } catch (error: any) {
+            logger.error('[Startup] Initialization failed', {
+                error: error.message,
+                stack: error.stack
+            });
+        }
+    }
+
+    private static async ensureAdminExists() {
+        const email = process.env.ADMIN_EMAIL || 'admin@falcon.pro';
+        const password = process.env.ADMIN_PASSWORD || process.env.JWT_SECRET?.slice(0, 20) || 'secure_admin_password';
+        const name = process.env.ADMIN_NAME || 'Falcon Admin';
+
+        const database = await db.getDb();
+        if (!database) return;
+
+        const existing = await db.getUserByEmail(email);
+        if (!existing) {
+            logger.info(`[Startup] No admin found. Creating auto-admin: ${email}...`);
+            await db.createUser({
+                email,
+                password,
+                username: name,
+                role: 'admin',
+                isActive: true
+            });
+            logger.info('[Startup] Auto-Admin created successfully! 🛡️');
+        } else {
+            logger.info('[Startup] Admin check: OK.');
+        }
+    }
+
+    private static async connectActiveAccounts() {
+        logger.info('[Startup] Connecting active Telegram accounts...');
+        const database = await db.getDb();
+        if (!database) return;
+
+        // Load rules first (Now that schema is healed)
+        await contentClonerService.initialize();
+        await autoReplyService.initializeListeners();
+
+        const accounts = await database.select().from(db.telegramAccounts).where(eq(db.telegramAccounts.isActive, true));
+
+        for (const account of accounts) {
+            try {
+                await telegramClientService.initializeClient(
+                    account.id,
+                    account.phoneNumber,
+                    account.sessionString
+                );
+
+                // [NEW] Hook Content Cloner into live message stream
+                await contentClonerService.ensureAccountMonitoring(account.id);
+
+                logger.info(`[Startup] Connected account ${account.id} (${account.phoneNumber})`);
+            } catch (error: any) {
+                logger.error(`[Startup] Failed to connect account ${account.id}`, { error: error.message });
+            }
+        }
+
+        logger.info(`[Startup] Connected ${accounts.length} accounts`);
+    }
+}
+

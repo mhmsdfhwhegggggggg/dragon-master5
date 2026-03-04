@@ -2,7 +2,7 @@ import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import os from "os";
 import { ENV } from "../_core/env";
-import { db } from "../db";
+import { db, getDb } from "../db";
 import { sql } from "drizzle-orm";
 import { redis } from "../_core/queue";
 
@@ -36,8 +36,10 @@ export const systemRouter = router({
   // Database Health Check
   dbHealth: protectedProcedure.query(async () => {
     try {
+      const database = await getDb();
+      if (!database) return { status: "error", error: "DB not connected" };
       const start = Date.now();
-      await db.execute(sql`SELECT 1`);
+      await database.execute(sql`SELECT 1`);
       return { status: "ok", latency: Date.now() - start };
     } catch (e: any) {
       return { status: "error", error: e.message };

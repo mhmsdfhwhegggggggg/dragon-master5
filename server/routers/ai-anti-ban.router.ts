@@ -1,6 +1,7 @@
 import { router, protectedProcedure } from "../_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { db, antiBanRules } from "../db";
+import { db, antiBanRules, getDb } from "../db";
 import { eq } from "drizzle-orm";
 import { AntiBanEngineV5 } from "../services/anti-ban-engine-v5";
 

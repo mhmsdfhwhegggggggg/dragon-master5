@@ -7,10 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { ENV } from "./env";
-import { redis } from "./queue";
-
-// Type assertion for redis
-const redisClient = redis as any;
+// server/_core/index.ts
 import { db, getDb } from "../db";
 import { healthCheck, readinessCheck, livenessCheck } from "./health";
 import { CacheSystem } from "./cache-system";
@@ -38,8 +35,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   // Initialize CacheSystem with Redis (if available)
   try {
+    const { redis: redisClient } = await import("./queue");
     if (redisClient) {
-      CacheSystem.getInstance(redisClient);
+      CacheSystem.getInstance(redisClient as any);
     }
   } catch (error) {
     console.warn('[CacheSystem] Failed to initialize with Redis:', error);
@@ -102,8 +100,9 @@ async function startServer() {
     let redisOk = false;
     let dbOk = false;
     try {
-      if (redisClient && typeof redisClient.ping === 'function') {
-        const pong = await redisClient.ping();
+      const { redis: redisClient } = await import("./queue");
+      if (redisClient && typeof (redisClient as any).ping === 'function') {
+        const pong = await (redisClient as any).ping();
         redisOk = pong === "PONG";
       }
     } catch { }
@@ -123,10 +122,18 @@ async function startServer() {
   );
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  let port = preferredPort;
 
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  // Only find available port in development to avoid issues on Render/CI
+  if (!ENV.isProduction) {
+    try {
+      port = await findAvailablePort(preferredPort);
+      if (port !== preferredPort) {
+        console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+      }
+    } catch (error) {
+      console.warn(`[Port] Could not find available port, sticking to ${preferredPort}`);
+    }
   }
 
   server.listen(port, () => {

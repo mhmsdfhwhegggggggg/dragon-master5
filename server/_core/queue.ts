@@ -102,8 +102,9 @@ class MockQueue {
 }
 
 // Try to connect to Redis, fallback to mock if it fails
+export let redis: IORedis | null = null;
 let connection: IORedis | null = null;
-let bulkOpsQueue: Queue | MockQueue;
+let bulkOpsQueue: Queue | MockQueue = new MockQueue();
 let bulkOpsEvents: QueueEvents | null = null;
 
 async function initializeQueue() {
@@ -143,6 +144,7 @@ async function initializeQueue() {
       // Socket
       keepAlive: 30000,
       noDelay: true,
+      enableOfflineQueue: false, // Don't queue commands while connecting (Upstash)
     };
 
     // TLS for rediss://
@@ -173,10 +175,10 @@ async function initializeQueue() {
     connection.on('close', () => console.warn('[Queue] Redis connection closed'));
     connection.on('reconnecting', () => console.info('[Queue] Redis reconnecting...'));
 
-    // Test with timeout
+    // Test with timeout - Upstash can take 15-30s to wake up
     const testPromise = connection.ping();
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Redis connection timeout (10s)')), 10000)
+      setTimeout(() => reject(new Error('Redis connection timeout (60s)')), 60000)
     );
     await Promise.race([testPromise, timeoutPromise]);
 
@@ -189,8 +191,12 @@ async function initializeQueue() {
     console.info('[Queue] ✅ Redis queue initialized successfully');
   } catch (error: any) {
     console.error('[Queue] ❌ Failed to connect to Redis:', error.message);
+    if (connection) {
+      try { connection.disconnect(); } catch (e) { }
+    }
     console.info('[Queue] Falling back to mock queue for this session');
     connection = null;
+    redis = null;
     bulkOpsQueue = new MockQueue();
   }
 }
@@ -232,7 +238,6 @@ class BullJobQueue {
 }
 
 export const JobQueue = new BullJobQueue();
-export let redis: IORedis | null = null;
 
 export async function cancelJob(jobId: string) {
   const job = await bulkOpsQueue.getJob(jobId);
