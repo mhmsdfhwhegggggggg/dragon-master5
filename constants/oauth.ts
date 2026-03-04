@@ -46,7 +46,7 @@ export function getApiBaseUrl(): string {
   }
 
   // Fallback to production URL
-  return "https://dragon-telegram-pro.onrender.com";
+  return "https://dragon-master5.onrender.com";
 }
 
 export const SESSION_TOKEN_KEY = "app_session_token";
