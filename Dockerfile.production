@@ -12,7 +12,7 @@ COPY package.json package-lock.json* ./
 
 # Install dependencies
 FROM base AS dependencies
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Build stage
 FROM base AS build
@@ -25,7 +25,7 @@ FROM base AS production
 
 # Install production dependencies only
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev --legacy-peer-deps
 
 # Copy built files
 COPY --from=build /app/dist ./dist
