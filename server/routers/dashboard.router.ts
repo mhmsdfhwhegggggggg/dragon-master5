@@ -11,16 +11,8 @@ export const dashboardRouter = router({
       const totalAccounts = accounts.length;
       const activeAccounts = accounts.filter((a) => a.isActive).length;
 
-      // Get total members extracted
-      const accountIds = accounts.map((a) => a.id);
-      let membersExtracted = 0;
-      
-      if (accountIds.length > 0) {
-        for (const accountId of accountIds) {
-          const members = await dbHelper.getExtractedMembersByAccountAndGroup(accountId, ""); // Empty group means all for this account in this context
-          membersExtracted += members.length;
-        }
-      }
+      // Get total members extracted (Fixed: logic was using accountId instead of userId, and resolved N+1 issue)
+      const membersExtracted = await dbHelper.getTotalExtractedMembersByUserId(ctx.user.id);
 
       // Get messages sent today
       const today = new Date().toISOString().split("T")[0];
@@ -48,7 +40,7 @@ export const dashboardRouter = router({
     try {
       const accounts = await dbHelper.getTelegramAccountsByUserId(ctx.user.id);
       const accountIds = accounts.map((a) => a.id);
-      
+
       if (accountIds.length === 0) {
         return [];
       }
@@ -58,7 +50,7 @@ export const dashboardRouter = router({
         const logs = await dbHelper.getActivityLogsByAccountId(accountId, 10);
         activities.push(...logs);
       }
-      
+
       activities.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       activities = activities.slice(0, 10);
 

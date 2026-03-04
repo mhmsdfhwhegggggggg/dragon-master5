@@ -138,6 +138,16 @@ class Logger {
     // Console output
     if (level >= LogLevel.ERROR) {
       console.error(formatted);
+
+      // Send to Sentry if available
+      if (error && ENV.sentryDsn) {
+        import("@sentry/node").then(Sentry => {
+          Sentry.captureException(error, {
+            extra: data,
+            tags: { context: this.context || 'global' }
+          });
+        });
+      }
     } else if (level >= LogLevel.WARN) {
       console.warn(formatted);
     } else {

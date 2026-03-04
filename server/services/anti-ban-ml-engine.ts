@@ -1,6 +1,7 @@
+/**
  * Anti - Ban ML Engine - Basic machine learning for ban detection
-  * Provides pattern recognition and risk assessment
-    */
+ * Provides pattern recognition and risk assessment
+ */
 import { LRUCache } from 'lru-cache';
 
 export interface RiskAssessment {

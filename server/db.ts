@@ -231,6 +231,13 @@ export async function getExtractedMembersByUserId(userId: number) {
   return db.select().from(extractedMembers).where(eq(extractedMembers.userId, userId));
 }
 
+export async function getTotalExtractedMembersByUserId(userId: number): Promise<number> {
+  const db = (await getDb()) as any;
+  if (!db) return 0;
+  const result = await db.execute(sql`SELECT count(*) as count FROM extracted_members WHERE user_id = ${userId}`);
+  return Number(result[0]?.count) || 0;
+}
+
 // Bulk Operations
 export async function createBulkOperation(data: InsertBulkOperation) {
   const db = await getDb();

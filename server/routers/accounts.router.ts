@@ -1,4 +1,5 @@
 import { router, protectedProcedure } from "../_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { JobQueue } from "../_core/queue";
 import * as dbHelper from "../db";
@@ -54,26 +55,16 @@ export const accountsRouter = router({
       return { success: true, account: newAccount };
     }),
 
-  // Delete an account
-  deleteAccount: protectedProcedure
+  // Delete an account (fixed name to match frontend)
+  delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
-      const database = await getDb();
-      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
-
-      // Verify ownership
-      const account = await database.query.telegramAccounts.findFirst({
-        where: and(
-          eq(db.telegramAccounts.id, input.id),
-          eq(db.telegramAccounts.userId, ctx.user.id)
-        ),
-      });
-
-      if (!account) {
+      const account = await dbHelper.getTelegramAccountById(input.id);
+      if (!account || account.userId !== ctx.user.id) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Account not found or access denied" });
       }
 
-      await database.delete(db.telegramAccounts).where(eq(db.telegramAccounts.id, input.id));
+      await dbHelper.deleteTelegramAccount(input.id);
       return { success: true };
     }),
 
@@ -86,25 +77,12 @@ export const accountsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const database = await getDb();
-      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not connected" });
-
-      // Verify ownership
-      const account = await database.query.telegramAccounts.findFirst({
-        where: and(
-          eq(db.telegramAccounts.id, input.id),
-          eq(db.telegramAccounts.userId, ctx.user.id)
-        ),
-      });
-
-      if (!account) {
+      const account = await dbHelper.getTelegramAccountById(input.id);
+      if (!account || account.userId !== ctx.user.id) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Account not found or access denied" });
       }
 
-      await database.update(db.telegramAccounts)
-        .set({ isActive: input.isActive })
-        .where(eq(db.telegramAccounts.id, input.id));
-
+      await dbHelper.updateTelegramAccount(input.id, { isActive: input.isActive } as any);
       return { success: true };
     }),
 
@@ -138,3 +116,4 @@ export const accountsRouter = router({
     };
   }),
 });
+

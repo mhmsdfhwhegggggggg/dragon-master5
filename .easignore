@@ -1,12 +1,24 @@
 # .easignore
 # Overrides .gitignore for EAS Build
 
-# Include .env files so Expo can use them during the build
-!.env
-!.env.production
-
-# Keep ignoring node_modules and other large/private folders
+node_modules
 node_modules/
-.git/
+**/node_modules
+.expo/
 dist/
+dist-obfuscated/
 build/
+android/
+ios/
+backups/
+.git/
+.secrets.json
+*.db
+*.sqlite
+*.sqlite3
+*.zip
+*.tar.gz
+*.apk
+*.log
+! .env
+! .env.production

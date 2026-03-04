@@ -1,57 +1,32 @@
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import * as schema from "../server/db/schema";
+import { getDb } from "../server/db";
 import { hashPassword } from "../server/_core/crypto";
-import { eq } from "drizzle-orm";
+import { users } from "../server/db/schema";
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-    console.error("❌ DATABASE_URL is not set!");
-    process.exit(1);
-}
-
-const client = postgres(connectionString);
-const db = drizzle(client, { schema });
-
-async function createAdmin() {
-    const email = process.argv[2] || "admin@falcon.pro";
-    const password = process.argv[3] || "admin123";
-    const username = process.argv[4] || "Admin";
-
-    console.log(`🔐 Creating Admin User...`);
-    console.log(`   Email: ${email}`);
-    console.log(`   Username: ${username}`);
+async function main() {
+    const db = await getDb();
+    if (!db) {
+        console.error("Failed to connect to database");
+        process.exit(1);
+    }
 
     try {
-        // Check if user exists
-        const existing = await db.query.users.findFirst({
-            where: eq(schema.users.email, email)
-        });
+        const adminEmail = "admin@example.com";
+        const adminPassword = "password123"; // TODO: Change this immediately in production
 
-        if (existing) {
-            console.log("⚠️ User already exists. Updating to Admin role...");
-            await db.update(schema.users)
-                .set({ role: "admin", password: hashPassword(password) })
-                .where(eq(schema.users.email, email));
-            console.log("✅ User updated to Admin successfully!");
-        } else {
-            const hashedPassword = hashPassword(password);
-            await db.insert(schema.users).values({
-                email,
-                username,
-                password: hashedPassword,
-                isActive: true,
-                role: "admin"
-            });
-            console.log("✅ Admin user created successfully!");
-        }
+        await db.insert(users).values({
+            email: adminEmail,
+            password: await hashPassword(adminPassword),
+            username: "admin",
+            role: "admin",
+        } as any).onConflictDoNothing();
+
+        console.log(`Admin user '${adminEmail}' created successfully or already exists.`);
     } catch (error) {
-        console.error("❌ Failed to create admin:", error);
+        console.error("Error creating admin user:", error);
     } finally {
-        await client.end();
+        process.exit(0);
     }
 }
 
-createAdmin().catch(console.error);
+main();

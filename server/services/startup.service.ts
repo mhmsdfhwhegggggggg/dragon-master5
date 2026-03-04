@@ -60,6 +60,7 @@ export class StartupService {
                 });
             }
         }
+    }
 
     private static async ensureAdminExists() {
         const email = process.env.ADMIN_EMAIL || 'admin@falcon.pro';

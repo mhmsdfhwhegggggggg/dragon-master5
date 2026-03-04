@@ -31,7 +31,10 @@
     "start:protected": "cross-env NODE_ENV=production node dist-obfuscated/index.js",
     "integrity:generate": "tsx -e \"import {IntegrityChecker} from './server/_core/integrity-checker'; IntegrityChecker.generateManifest('./integrity-manifest.json');\"",
     "build:dev": "eas build --platform android --profile development",
-    "build:prod": "eas build --platform android --profile production"
+    "build:prod": "eas build --platform android --profile production",
+    "worker:dev": "cross-env NODE_ENV=development tsx server/worker.ts",
+    "db:setup": "cross-env NODE_ENV=development tsx scripts/create-admin.ts",
+    "db:diag": "tsx scripts/db-diag.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",

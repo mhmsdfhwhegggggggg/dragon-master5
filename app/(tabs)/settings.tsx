@@ -166,6 +166,34 @@ export default function SettingsScreen() {
             <Text className="text-error font-bold text-lg">تسجيل الخروج</Text>
           </TouchableOpacity>
 
+          {/* Advanced Screens Navigation */}
+          <SettingSection title="الأدوات المتقدمة" icon="sparkles">
+            {[
+              { label: "Apex Core", route: "/apex-dashboard", icon: "sparkles" },
+              { label: "استخراج + إضافة", route: "/extract-and-add", icon: "arrow.up.arrow.down" },
+              { label: "إدارة القنوات", route: "/channel-management", icon: "list.bullet" },
+              { label: "الردود التلقائية", route: "/auto-reply", icon: "bubble.left.and.bubble.right" },
+              { label: "نسخ المحتوى", route: "/content-cloner", icon: "doc.on.doc.fill" },
+              { label: "البروكسي", route: "/proxies", icon: "network" },
+              { label: "Onboarding", route: "/onboarding", icon: "person.badge.plus" },
+              { label: "الإحصائيات", route: "/stats", icon: "chart.bar.fill" },
+              { label: "Anti-Ban", route: "/anti-ban-dashboard", icon: "shield.fill" },
+              { label: "لوحة المطور", route: "/developer-dashboard", icon: "lock.shield.fill" },
+            ].map((screen, index, array) => (
+              <TouchableOpacity
+                key={screen.route}
+                onPress={() => router.push(screen.route as any)}
+                className={`flex-row items-center justify-between p-4 ${index !== array.length - 1 ? 'border-b border-border' : ''}`}
+              >
+                <View className="flex-row items-center gap-3">
+                  <IconSymbol name={screen.icon as any} size={20} color={colors.muted} />
+                  <Text className="text-base font-medium text-foreground">{screen.label}</Text>
+                </View>
+                <IconSymbol name="chevron.right" size={16} color={colors.muted} />
+              </TouchableOpacity>
+            ))}
+          </SettingSection>
+
           {/* Version Info */}
           <View className="items-center py-8">
             <Text className="text-xs text-muted">Dragaan Pro v1.0.0 (Build 20260207)</Text>
