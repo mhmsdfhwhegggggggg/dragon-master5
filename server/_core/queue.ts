@@ -107,6 +107,60 @@ let connection: IORedis | null = null;
 let bulkOpsQueue: Queue | MockQueue = new MockQueue();
 let bulkOpsEvents: QueueEvents | null = null;
 
+async function connectToRedis(url: string, purpose: string): Promise<IORedis> {
+  const redisOptions: any = {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    lazyConnect: true,
+    reconnectOnError: (err: Error) => {
+      if (err.message.includes('READONLY')) return true;
+      return false;
+    },
+    retryStrategy: (times: number) => {
+      if (times > 10) return null; // Increased retries for cold start
+      return Math.min(times * 500, 5000);
+    },
+    connectTimeout: 30000,
+    keepAlive: 30000,
+    noDelay: true,
+  };
+
+  if (url.startsWith('rediss://')) {
+    redisOptions.tls = {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2',
+    };
+  }
+
+  const conn = new IORedis(url, redisOptions);
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      conn.disconnect();
+      reject(new Error(`Redis connection timeout for ${purpose} (60s)`));
+    }, 60000);
+
+    conn.once('ready', () => {
+      clearTimeout(timeout);
+      console.info(`[Queue] ✅ Redis ${purpose} ready`);
+      resolve(conn);
+    });
+
+    conn.once('error', (err) => {
+      clearTimeout(timeout);
+      console.error(`[Queue] Redis ${purpose} error:`, err.message);
+      // Don't reject immediately on error if we are still within timeout, 
+      // but 'ready' already handles the success case.
+      // If it's a critical early error, we should fail.
+      if (!conn.status || conn.status === 'end') {
+        reject(err);
+      }
+    });
+
+    conn.connect().catch(reject);
+  });
+}
+
 async function initializeQueue() {
   const redisUrl = Secrets.getRedisUrl() || (ENV.redisUrl && ENV.redisUrl !== 'redis://127.0.0.1:6379' ? ENV.redisUrl : null);
 
@@ -118,82 +172,45 @@ async function initializeQueue() {
   }
 
   try {
-    // Comprehensive Redis options
-    const redisOptions: any = {
-      // BullMQ requirements
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
+    console.info('[Queue] Initializing Redis connections (Upstash-optimized)...');
 
-      // Connection handling
-      lazyConnect: false,
-      reconnectOnError: (err: Error) => {
-        if (err.message.includes('READONLY')) return true;
-        return false;
-      },
+    // 1. Establish main connection for general use
+    connection = await connectToRedis(redisUrl, "main");
+    redis = connection;
 
-      // Retry config
-      retryStrategy: (times: number) => {
-        if (times > 5) return null; // Give up after 5 retries
-        return Math.min(times * 200, 2000);
-      },
+    // 2. Establish dedicated connection for BullMQ (Required for stability)
+    const bullConnection = await connectToRedis(redisUrl, "bullmq");
 
-      // Timeouts
-      connectTimeout: 30000,
-      commandTimeout: 10000,
-
-      // Socket
-      keepAlive: 30000,
-      noDelay: true,
-      enableOfflineQueue: false, // Don't queue commands while connecting (Upstash)
-    };
-
-    // TLS for rediss://
-    if (redisUrl.startsWith('rediss://')) {
-      redisOptions.tls = {
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2',
-      };
-    }
-
-    console.info('[Queue] Initializing Redis connection:', {
-      url: redisUrl.replace(/:[^@]*@/, ':***@'),
-      isTLS: redisUrl.startsWith('rediss://'),
-    });
-
-    connection = new IORedis(redisUrl, redisOptions);
-
-    // Event handlers
-    connection.on('connect', () => console.info('[Queue] ✅ Redis connected'));
-    connection.on('ready', () => console.info('[Queue] ✅ Redis ready'));
-    connection.on('error', (err) => {
-      console.error('[Queue] Redis error:', err.message);
-      if (connection) {
-        connection = null;
-        bulkOpsQueue = new MockQueue();
+    bulkOpsQueue = new Queue("bulkOps", {
+      connection: bullConnection as any,
+      defaultJobOptions: {
+        removeOnComplete: true,
+        removeOnFail: false,
       }
     });
-    connection.on('close', () => console.warn('[Queue] Redis connection closed'));
-    connection.on('reconnecting', () => console.info('[Queue] Redis reconnecting...'));
 
-    // Test with timeout - Upstash can take 15-30s to wake up
-    const testPromise = connection.ping();
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Redis connection timeout (60s)')), 60000)
-    );
-    await Promise.race([testPromise, timeoutPromise]);
+    bulkOpsEvents = new QueueEvents("bulkOps", { connection: bullConnection as any });
 
-    redis = connection;
-    bulkOpsQueue = new Queue("bulkOps", { connection: connection as any });
-    bulkOpsEvents = new QueueEvents("bulkOps", { connection: connection as any });
     if (bulkOpsEvents.waitUntilReady) {
       await bulkOpsEvents.waitUntilReady();
     }
+
     console.info('[Queue] ✅ Redis queue initialized successfully');
+
+    // Handle global connection errors after initialization
+    connection.on('error', (err) => {
+      console.error('[Queue] Runtime Redis error:', err.message);
+      // We don't necessarily switch to mock here if it's a intermittent error,
+      // but we log it. IORedis will try to reconnect.
+    });
+
   } catch (error: any) {
     console.error('[Queue] ❌ Failed to connect to Redis:', error.message);
+
     if (connection) {
       try { connection.disconnect(); } catch (e) { }
     }
+
     console.info('[Queue] Falling back to mock queue for this session');
     connection = null;
     redis = null;
