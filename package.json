@@ -95,7 +95,6 @@
     "react-native-screens": "~4.4.0",
     "react-native-svg": "15.8.0",
     "react-native-web": "~0.19.0",
-    "react-native-worklets": "0.5.1",
     "superjson": "^2.0.0",
     "tailwind-merge": "^2.3.0",
     "telegram": "^2.26.0",
