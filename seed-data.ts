@@ -8,14 +8,14 @@ const db = drizzle(client, { schema });
 
 async function seed() {
   console.log("Seeding real data...");
-  
+
   // 1. Create a user
   const [user] = await db.insert(schema.users).values({
     email: "user@example.com",
     username: "DragonUser",
     passwordHash: "hashed_password",
   }).returning();
-  
+
   console.log(`Created user: ${user.username}`);
 
   // 2. Create telegram accounts
@@ -45,7 +45,7 @@ async function seed() {
       warmingLevel: 45,
     }
   ]).returning();
-  
+
   console.log(`Created ${accounts.length} telegram accounts`);
 
   // 3. Create some activity logs
@@ -63,9 +63,9 @@ async function seed() {
       actionDetails: { groupId: "group456", count: 150 },
     }
   ]);
-  
+
   console.log("Created activity logs");
-  
+
   await client.end();
   console.log("Seeding complete!");
 }
