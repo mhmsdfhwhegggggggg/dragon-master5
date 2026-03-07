@@ -15,7 +15,7 @@ export const exportRouter = router({
         }))
         .mutation(async ({ input, ctx }) => {
             const { groupId, format, filters } = input;
-            const userId = ctx.user?.id || 1;
+            const userId = ctx.user!.id;
 
             try {
                 const members = await db.getExtractedMembersByAccountAndGroup(userId, groupId);

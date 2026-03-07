@@ -34,7 +34,8 @@
     "build:prod": "eas build --platform android --profile production",
     "worker:dev": "cross-env NODE_ENV=development tsx server/worker.ts",
     "db:setup": "cross-env NODE_ENV=development tsx scripts/create-admin.ts",
-    "db:diag": "tsx scripts/db-diag.ts"
+    "db:diag": "tsx scripts/db-diag.ts",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@expo/vector-icons": "~14.0.4",
@@ -95,6 +96,7 @@
     "react-native-screens": "~4.4.0",
     "react-native-svg": "15.8.0",
     "react-native-web": "~0.19.0",
+    "react-refresh": "^0.14.0",
     "superjson": "^2.0.0",
     "tailwind-merge": "^2.3.0",
     "telegram": "^2.26.0",
@@ -109,10 +111,12 @@
     "@types/node": "^20.0.0",
     "@types/qrcode": "^1.5.0",
     "@types/react": "~18.3.0",
+    "autoprefixer": "^10.4.27",
     "cross-env": "^7.0.3",
     "esbuild": "^0.23.0",
     "eslint": "^8.0.0",
     "eslint-config-expo": "~8.0.1",
+    "patch-package": "^8.0.1",
     "prettier": "^3.3.0",
     "qrcode": "^1.5.0",
     "tailwindcss": "^3.4.0",

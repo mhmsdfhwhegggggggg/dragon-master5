@@ -36,6 +36,23 @@ export default function ExtractionScreen() {
   const extractEngagedMutation = trpcAny.extraction.extractEngagedMembers.useMutation();
 
   const extractAdminsMutation = trpcAny.extraction.extractAdmins.useMutation();
+  const exportMutation = trpcAny.export.exportMembers.useMutation();
+
+  const handleExport = (format: 'txt' | 'csv') => {
+    if (!groupId) return Alert.alert("تنبيه", "يرجى إدخال معرّف الجروب المستخرج منه");
+    exportMutation.mutate(
+      { groupId, format, filters: { hasUsername: hasUsername || undefined } },
+      {
+        onSuccess: (data: any) => {
+          Alert.alert("نجاح", `تم تصدير ${data.count} عضو بصيغة ${format.toUpperCase()}`);
+          if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(data.content);
+          }
+        },
+        onError: (e: any) => Alert.alert("خطأ", e.message || "فشل التصدير"),
+      }
+    );
+  };
 
   const handleStartExtraction = () => {
     if (!selectedAccountId) return Alert.alert("تنبيه", "يرجى اختيار حساب أولاً");
@@ -184,6 +201,31 @@ export default function ExtractionScreen() {
             </View>
           </View>
 
+          {/* Export Section - Always visible when groupId is set */}
+          {groupId.trim().length > 0 && (
+            <View className="gap-2 bg-surface rounded-2xl p-4 border border-border">
+              <Text className="text-sm font-semibold text-foreground">تصدير الأعضاء المستخرجين</Text>
+              <View className="flex-row gap-2">
+                <Pressable
+                  onPress={() => handleExport('txt')}
+                  disabled={exportMutation.isPending}
+                  className="flex-1 py-3 rounded-xl bg-primary/20 border border-primary items-center"
+                >
+                  <Text className="text-primary font-semibold">
+                    {exportMutation.isPending ? 'جاري...' : 'تصدير TXT'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleExport('csv')}
+                  disabled={exportMutation.isPending}
+                  className="flex-1 py-3 rounded-xl bg-primary/20 border border-primary items-center"
+                >
+                  <Text className="text-primary font-semibold">تصدير CSV</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
           {/* Action Button */}
           <Pressable
             onPress={handleStartExtraction}
@@ -244,13 +286,15 @@ export default function ExtractionScreen() {
               </View>
 
               {extractedCount > 0 && !isLoading && (
-                <View className="bg-success/10 border border-success/20 rounded-2xl p-4 flex-row items-center gap-4">
-                  <View className="w-12 h-12 rounded-full bg-success/20 items-center justify-center">
-                    <IconSymbol name="checkmark.circle.fill" size={24} color={colors.success} />
-                  </View>
-                  <View>
-                    <Text className="text-lg font-bold text-success">تم الاستخراج بنجاح</Text>
-                    <Text className="text-foreground">تم تخزين كافة البيانات في قاعدة البيانات المشفرة.</Text>
+                <View className="gap-4">
+                  <View className="bg-success/10 border border-success/20 rounded-2xl p-4 flex-row items-center gap-4">
+                    <View className="w-12 h-12 rounded-full bg-success/20 items-center justify-center">
+                      <IconSymbol name="checkmark.circle.fill" size={24} color={colors.success} />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-lg font-bold text-success">تم الاستخراج بنجاح</Text>
+                      <Text className="text-foreground">تم تخزين كافة البيانات في قاعدة البيانات المشفرة.</Text>
+                    </View>
                   </View>
                 </View>
               )}

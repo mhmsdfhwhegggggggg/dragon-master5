@@ -60,7 +60,6 @@ export const extractionRouter = router({
           memberUsername: member.username,
           memberFirstName: member.firstName,
           memberLastName: member.lastName,
-          addedDate: new Date(),
         }));
 
         await db.createExtractedMembers(extractedMembers);
@@ -153,7 +152,6 @@ export const extractionRouter = router({
           memberUsername: member.username,
           memberFirstName: member.firstName,
           memberLastName: member.lastName,
-          addedDate: new Date(),
         }));
 
         await db.createExtractedMembers(extractedMembers);
@@ -224,7 +222,6 @@ export const extractionRouter = router({
           memberUsername: admin.username,
           memberFirstName: admin.firstName,
           memberLastName: admin.lastName,
-          addedDate: new Date(),
         }));
 
         await db.createExtractedMembers(extractedAdmins);

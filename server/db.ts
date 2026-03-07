@@ -67,11 +67,12 @@ export async function getDb() {
   const url = Secrets.getDatabaseUrl();
   if (!_db && url) {
     try {
+      const isLocalhost = url.includes('localhost') || url.includes('127.0.0.1');
       _client = postgres(url, {
         connect_timeout: 30,
         idle_timeout: 20,
         max: 10,
-        ssl: 'require'
+        ssl: isLocalhost ? false : 'require',
       });
       _db = drizzle(_client, { schema });
       // Verify connection with a simple query
