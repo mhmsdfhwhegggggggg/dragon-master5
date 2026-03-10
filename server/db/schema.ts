@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, varchar, text, boolean, timestamp, decimal } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, varchar, text, boolean, timestamp, decimal, index } from 'drizzle-orm/pg-core';
 
 // Users table
 export const users = pgTable('users', {
@@ -98,6 +98,12 @@ export const extractedMembers = pgTable('extracted_members', {
   extractionDate: timestamp('extraction_date').defaultNow().notNull(),
   isAdded: boolean('is_added').default(false).notNull(),
   addedDate: timestamp('added_date'),
+}, (table) => {
+  return {
+    memberTgIdIdx: index('member_tg_id_idx').on(table.memberTelegramId),
+    sourceGroupIdx: index('source_group_idx').on(table.sourceGroupId),
+    userIdIdx: index('user_id_idx').on(table.userId),
+  };
 });
 
 // Bulk operations table (existing)
@@ -120,6 +126,11 @@ export const bulkOperations = pgTable('bulk_operations', {
   completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    opStatusIdx: index('op_status_idx').on(table.status),
+    opUserIdIdx: index('op_user_id_idx').on(table.userId),
+  };
 });
 
 // Activity logs table (existing)
@@ -131,6 +142,11 @@ export const activityLogs = pgTable('activity_logs', {
   details: text('details'),
   status: varchar('status', { length: 50 }).notNull(), // success, error, warning
   timestamp: timestamp('timestamp').defaultNow().notNull(),
+}, (table) => {
+  return {
+    logUserIdIdx: index('log_user_id_idx').on(table.userId),
+    logTimestampIdx: index('log_timestamp_idx').on(table.timestamp),
+  };
 });
 
 // Statistics table (existing)

@@ -113,9 +113,8 @@ async function handleExtractAndAdd(job: Job) {
   let extractedCount = 0;
   let success = 0;
   let failed = 0;
-  const toAdd: any[] = [];
 
-  // 2. Quantum Extraction (Streaming)
+  // 2. Quantum Extraction (Durability Boost: Save to DB in batches)
   await quantumExtractor.extract(
     client,
     p.accountId,
@@ -127,34 +126,62 @@ async function handleExtractAndAdd(job: Job) {
     },
     {
       onBatch: async (batch) => {
-        toAdd.push(...batch);
+        const membersToInsert = batch.map(u => ({
+          userId: account.userId,
+          telegramAccountId: p.accountId,
+          sourceGroupId: p.source,
+          memberTelegramId: String(u.id),
+          memberUsername: u.username,
+          memberFirstName: u.firstName,
+          memberLastName: u.lastName,
+          extractionDate: new Date(),
+          isAdded: false
+        }));
+
+        await db.createExtractedMembers(membersToInsert);
         extractedCount += batch.length;
+
+        if (bulkOp) {
+          await db.updateBulkOperation(bulkOp.id, {
+            totalMembers: extractedCount,
+            processedMembers: extractedCount,
+          });
+        }
+
         await job.updateProgress(Math.min(20, Math.floor((extractedCount / (p.limit || 1000)) * 20)));
       }
     }
   );
 
-  if (bulkOp) {
-    await db.updateBulkOperation(bulkOp.id, {
-      totalMembers: toAdd.length,
-      processedMembers: toAdd.length,
-    });
-  }
+  // 3. High-Speed Addition (Processing from DB for Memory Efficiency)
+  const totalPending = await db.getPendingExtractedMembersCount(account.userId, p.source);
+  let processedInThisJob = 0;
 
-  // 3. High-Speed Addition
-  for (let i = 0; i < toAdd.length; i++) {
-    const user = toAdd[i];
-    const res = await highSpeedAdder.addUser(client, p.accountId, p.target, user.id);
+  while (true) {
+    // Pull batch from DB
+    const batch = await db.getPendingExtractedMembersPaginated(account.userId, p.source, 100);
+    if (batch.length === 0) break;
 
-    if (res.success) success++; else failed++;
+    for (const member of batch) {
+      const res = await highSpeedAdder.addUser(client, p.accountId, p.target, member.memberTelegramId);
 
-    // Progress: 20% to 100%
-    const progress = 20 + Math.floor(((i + 1) / toAdd.length) * 80);
-    await job.updateProgress(progress);
+      if (res.success) {
+        success++;
+        // Mark as added in DB for durability
+        await db.updateExtractedMember(member.id, { isAdded: true, addedDate: new Date() });
+      } else {
+        failed++;
+      }
 
-    // Dynamic Delay with Jitter
-    const delay = res.waitMs || p.delayMs || 2000;
-    await new Promise(r => setTimeout(r, delay + Math.random() * 500));
+      processedInThisJob++;
+      // Progress: 20% to 100%
+      const progress = 20 + Math.floor((processedInThisJob / (totalPending || 1)) * 80);
+      await job.updateProgress(progress);
+
+      // Dynamic Delay with Jitter
+      const delay = res.waitMs || p.delayMs || 2000;
+      await new Promise(r => setTimeout(r, delay + Math.random() * 500));
+    }
   }
 
   // 4. Finalize

@@ -71,7 +71,7 @@ export async function getDb() {
       _client = postgres(url, {
         connect_timeout: 30,
         idle_timeout: 20,
-        max: 10,
+        max: isLocalhost ? 10 : 50, // Increased for production high-load
         ssl: isLocalhost ? false : 'require',
       });
       _db = drizzle(_client, { schema });
@@ -218,6 +218,12 @@ export async function createExtractedMembers(members: InsertExtractedMember[]) {
   return db.insert(extractedMembers).values(members).returning();
 }
 
+export async function updateExtractedMember(id: number, data: Partial<InsertExtractedMember>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not connected");
+  return db.update(extractedMembers).set(data).where(eq(extractedMembers.id, id)).returning();
+}
+
 export async function getExtractedMembersByAccountAndGroup(userId: number, groupId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
@@ -230,6 +236,25 @@ export async function getExtractedMembersByUserId(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not connected");
   return db.select().from(extractedMembers).where(eq(extractedMembers.userId, userId));
+}
+
+export async function getPendingExtractedMembersCount(userId: number, groupId: string) {
+  const db = (await getDb()) as any;
+  if (!db) return 0;
+  const result = await db.execute(sql`SELECT count(*) as count FROM extracted_members WHERE user_id = ${userId} AND source_group_id = ${groupId} AND is_added = false`);
+  return Number(result[0]?.count) || 0;
+}
+
+export async function getPendingExtractedMembersPaginated(userId: number, groupId: string, limit: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not connected");
+  return db.select().from(extractedMembers).where(
+    and(
+      eq(extractedMembers.userId, userId),
+      eq(extractedMembers.sourceGroupId, groupId),
+      eq(extractedMembers.isAdded, false)
+    )
+  ).limit(limit);
 }
 
 export async function getTotalExtractedMembersByUserId(userId: number): Promise<number> {
