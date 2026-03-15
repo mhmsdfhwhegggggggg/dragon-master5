@@ -28,6 +28,5 @@ drizzle/
 **/*.spec.ts
 tests/
 !e2e/
-scripts/
 patches/
 *.bak
