@@ -1,10 +1,9 @@
-# .easignore
-# Overrides .gitignore for EAS Build
-
+# .easignore - Overrides .gitignore for EAS Build (reduce upload size)
 node_modules
 node_modules/
 **/node_modules
 .expo/
+.expo/web/
 dist/
 dist-obfuscated/
 build/
@@ -13,6 +12,7 @@ ios/
 backups/
 .git/
 .secrets.json
+server/.secrets.json
 *.db
 *.sqlite
 *.sqlite3
@@ -20,5 +20,14 @@ backups/
 *.tar.gz
 *.apk
 *.log
-! .env
-! .env.production
+**/*.md
+!README.md
+test_reports/
+drizzle/
+**/*.test.ts
+**/*.spec.ts
+tests/
+!e2e/
+scripts/
+patches/
+*.bak

@@ -150,12 +150,12 @@ export class SmartDelaySystem {
    */
   private getBaseDelay(operationType: OperationType): number {
     const delays = {
-      'message': 2000,
-      'join_group': 8000,
-      'add_user': 5000,
-      'leave_group': 3000,
-      'extract_members': 15000,
-      'boost_engagement': 4000
+      'message': 8000,
+      'join_group': 30000,
+      'add_user': 20000,
+      'leave_group': 10000,
+      'extract_members': 45000,
+      'boost_engagement': 12000
     };
 
     return delays[operationType] || 3000;

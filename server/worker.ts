@@ -85,7 +85,7 @@ const worker = new Worker(
   }
 );
 
-async function handleExtractAndAdd(job: Job) {
+export async function handleExtractAndAdd(job: Job) {
   const p = job.data as ExtractAndAddPayload;
   const account = await db.getTelegramAccountById(p.accountId);
   if (!account) throw new Error("Account not found");
@@ -200,7 +200,7 @@ async function handleExtractAndAdd(job: Job) {
 /**
  * Handle Mass Messaging
  */
-async function handleBulkMessages(job: Job) {
+export async function handleBulkMessages(job: Job) {
   const p = job.data as SendBulkMessagesPayload;
   const account = await db.getTelegramAccountById(p.accountId);
   if (!account) throw new Error("Account not found");
@@ -227,7 +227,7 @@ async function handleBulkMessages(job: Job) {
 /**
  * Handle Mass Group/Channel Joining
  */
-async function handleJoinGroups(job: Job) {
+export async function handleJoinGroups(job: Job) {
   const p = job.data as JoinGroupsPayload;
   const account = await db.getTelegramAccountById(p.accountId);
   if (!account) throw new Error("Account not found");

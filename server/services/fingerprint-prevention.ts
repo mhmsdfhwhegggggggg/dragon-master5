@@ -155,8 +155,8 @@ export class FingerprintPrevention {
       }
 
       // Generate new profile
-      const typingSpeed = 40 + Math.random() * 80; // 40-120 WPM
-      const thinkingDelay = 1000 + Math.random() * 4000; // 1-5 seconds
+      const typingSpeed = 20 + Math.random() * 40; // 20-60 WPM (Slowed for safety)
+      const thinkingDelay = 3000 + Math.random() * 5000; // 3-8 seconds (Slowed)
 
       const onlinePatterns: BehaviorProfile['onlinePattern'][] = [
         'active',
@@ -205,8 +205,8 @@ export class FingerprintPrevention {
 
       // Return default
       return {
-        typingSpeed: 80,
-        thinkingDelay: 2000,
+        typingSpeed: 40,
+        thinkingDelay: 5000,
         onlinePattern: 'recently',
         activeHours: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
         timezone: 'America/New_York',
@@ -381,9 +381,9 @@ export class FingerprintPrevention {
     // Base delays for different operations
     const baseDelays = {
       message: profile.pauseBetweenMessages,
-      join: 5000 + Math.random() * 10000, // 5-15 seconds
-      add_user: 3000 + Math.random() * 7000, // 3-10 seconds
-      extract: 1000 + Math.random() * 2000, // 1-3 seconds
+      join: 20000 + Math.random() * 20000, // 20-40 seconds
+      add_user: 15000 + Math.random() * 15000, // 15-30 seconds
+      extract: 10000 + Math.random() * 10000, // 10-20 seconds
     };
 
     let delay = baseDelays[operationType];

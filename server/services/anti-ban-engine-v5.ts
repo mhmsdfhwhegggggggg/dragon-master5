@@ -126,10 +126,10 @@ export class AntiBanEngineV5 {
   private behaviorPatterns = new Map<string, BehaviorPattern>();
   private learningData: LearningData[] = [];
   private anomalyThresholds = {
-    burstActivity: 10, // operations per minute
-    unusualTiming: 0.8, // deviation from normal
-    patternDeviation: 0.7,
-    riskSpike: 70 // Lowered from 80 for higher safety in God Mode
+    burstActivity: 4, // operations per minute
+    unusualTiming: 0.4, // deviation from normal
+    patternDeviation: 0.5,
+    riskSpike: 50 // Lowered from 70 for extreme safety
   };
 
   private godModeEnabled = true; // Default to true for industrial strength
@@ -166,25 +166,34 @@ export class AntiBanEngineV5 {
       } catch (e) { /* Fallback to generation */ }
     }
 
-    // GHOST MODE 2.0: Advanced Kernel-Level Virtualization
+    // GHOST MODE 3.0: Ultra Advanced Kernel-Level Virtualization
     const devices = [
       { model: 'iPhone 17 Pro Max', os: 'iOS 19.4.2', build: '23F79', kernel: 'Darwin 24.5.0' },
+      { model: 'iPhone 16 Pro', os: 'iOS 18.2.1', build: '21C62', kernel: 'Darwin 23.3.0' },
+      { model: 'iPhone 15 Pro Max', os: 'iOS 17.6', build: '21G79', kernel: 'Darwin 23.0.0' },
       { model: 'Samsung Galaxy S26 Ultra', os: 'Android 16', build: 'U1A.260224.001', kernel: 'Linux 6.12.5-falcon' },
+      { model: 'Samsung Galaxy S25 Ultra', os: 'Android 15', build: 'UP1A.231005.007', kernel: 'Linux 6.6.13-samsung' },
       { model: 'Google Pixel 10 Pro', os: 'Android 16', build: 'AP2A.260224.005', kernel: 'Linux 6.11.0-apex' },
-      { model: 'Xiaomi 16 Pro', os: 'HyperOS 3.0', build: '26.2.24.DEV', kernel: 'Linux 6.12.0' }
+      { model: 'Google Pixel 9 Pro Fold', os: 'Android 15', build: 'AP1A.240405.002', kernel: 'Linux 6.1.68-gki' },
+      { model: 'Xiaomi 16 Pro', os: 'HyperOS 3.0', build: '26.2.24.DEV', kernel: 'Linux 6.12.0' },
+      { model: 'OnePlus 13', os: 'OxygenOS 15', build: 'CPH2581_15.0.0', kernel: 'Linux 6.6.0-perf' }
     ];
 
     const selected = devices[Math.floor(Math.random() * devices.length)];
 
+    const langCodes = ['en-US', 'en-GB', 'ar-SA', 'ar-AE', 'es-ES', 'ru-RU', 'de-DE'];
+    const timezones = ['America/New_York', 'Europe/London', 'Asia/Riyadh', 'Asia/Dubai', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Berlin'];
+    const idx = Math.floor(Math.random() * langCodes.length);
+
     const signature = {
       ...selected,
-      lang: 'ar-SA',
-      tz: 'Asia/Riyadh',
-      hardwareId: `APEX-${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
-      serialNumber: Buffer.from(Math.random().toString()).toString('hex').substring(0, 12).toUpperCase(),
-      gpu: selected.model.includes('iPhone') ? 'Apple A19 Bionic' : 'Adreno 840',
-      ram: '16GB',
-      appVersion: `11.4.${Math.floor(Math.random() * 9)}`,
+      lang: langCodes[idx],
+      tz: timezones[idx],
+      hardwareId: `APEX-GHOST-${crypto.randomUUID().substring(0, 15).toUpperCase()}`,
+      serialNumber: Buffer.from(Math.random().toString()).toString('hex').substring(0, 16).toUpperCase(),
+      gpu: selected.model.includes('iPhone') ? 'Apple Silicon G-Tier' : 'Adreno Elite/Mali-G',
+      ram: Math.random() > 0.5 ? '16GB' : '12GB',
+      appVersion: `11.5.${Math.floor(Math.random() * 10)}`,
     };
 
     // Persist to DB for Identity Binding
@@ -235,21 +244,24 @@ export class AntiBanEngineV5 {
 
     switch (chosen) {
       case 'scroll':
-        // Stochastic Scrolling
-        const offset = Math.floor(Math.random() * 50);
-        await client.getMessages(chatId, { limit: 10, addOffset: offset });
+        // Stochastic Scrolling / Deep Reading
+        const offset = Math.floor(Math.random() * 100);
+        await client.getMessages(chatId, { limit: 15, addOffset: offset });
+        await new Promise(r => setTimeout(r, 5000 + Math.random() * 10000)); // Heavy read pause
         break;
       case 'view_profile':
         // Simulate looking at group info
         try { await client.invoke(new Api.channels.GetFullChannel({ channel: chatId })); } catch (e: any) { this.logger.debug(`[AntiBanV5] Optional browsing failed: ${e.message}`); }
+        await new Promise(r => setTimeout(r, 2000 + Math.random() * 4000));
         break;
       case 'read_top':
         // View pinned message
-        try { await client.getMessages(chatId, { limit: 1 }); } catch (e: any) { this.logger.debug(`[AntiBanV5] Optional message view failed: ${e.message}`); }
+        try { await client.getMessages(chatId, { limit: 2 }); } catch (e: any) { this.logger.debug(`[AntiBanV5] Optional message view failed: ${e.message}`); }
+        await new Promise(r => setTimeout(r, 3000 + Math.random() * 5000));
         break;
       default:
-        // Dynamic Thinking
-        await new Promise(r => setTimeout(r, 3000 + Math.random() * 7000));
+        // Long Dynamic Thinking
+        await new Promise(r => setTimeout(r, 8000 + Math.random() * 12000));
     }
   }
 

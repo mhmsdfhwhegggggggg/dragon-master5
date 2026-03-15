@@ -26,7 +26,9 @@
       "predictiveBackGestureEnabled": false,
       "package": "space.manus.falcon.telegram.pro.mobile.t20260204132529",
       "permissions": [
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "intentFilters": [
         {
@@ -95,9 +97,13 @@
       "reactCompiler": false
     },
     "extra": {
+      "router": {
+        "origin": false
+      },
       "eas": {
-        "projectId": "58444108-1925-4a14-acfc-c0ceb5d8931f"
+        "projectId": "30d2b113-796d-42f3-b2f4-2ec5a86a62be"
       }
-    }
+    },
+    "owner": "asdfgdfg"
   }
 }

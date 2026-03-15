@@ -19,7 +19,7 @@ export interface ShieldConfig {
     channelId: string;
     isProtected: boolean;
     maxAddsPerDay: number;
-    sensitivityLevel: 'safe' | 'normal' | 'strict';
+    sensitivityLevel: 'safe' | 'normal' | 'strict' | 'invisible';
     autoCooldown: boolean;
 }
 
@@ -62,11 +62,22 @@ export class ChannelShield {
 
         // 2. Growth Spike Check
         const recentAdds = await this.getRecentAdds(channelId, '1h');
+        
+        // 2.1 SLOW-DRIP CONSTRAINT (Invisible Protocol)
+        // Strictly prevent more than 5 adds per hour regardless of config
+        if (config.sensitivityLevel === 'invisible' && recentAdds >= 5) {
+             return {
+                safe: false,
+                reason: 'INVISIBLE DRIP LIMIT: Max 5 users per hour reached.',
+                suggestedDelayMultiplier: 30.0 
+            };
+        }
+
         if (recentAdds > this.getBurstLimit(config.sensitivityLevel)) {
             return {
                 safe: false,
                 reason: 'Growth spike detected - potential Spam Trap',
-                suggestedDelayMultiplier: 5.0
+                suggestedDelayMultiplier: 8.0 // Increased from 5.0
             };
         }
 
@@ -100,14 +111,14 @@ export class ChannelShield {
         const leaverRatio = (leaves / adds) * 100;
 
         // FALCON SENTINEL: LEAVER-KILL-SWITCH (LKS)
-        // If ratio > 15% after at least 10 adds, it's a confirmed trap
-        if (adds >= 10 && leaverRatio > 15) {
+        // INVISIBLE PROTOCOL: If ratio > 5% after at least 5 adds, freeze immediately
+        if (adds >= 5 && leaverRatio > 5) {
             this.logger.error(`[ChannelShield] SENTINEL LKS TRIGGERED for ${channelId}: High leaver ratio (${leaverRatio.toFixed(1)}%)!`);
             return true;
         }
 
         // Traditional immediate burst detection
-        if (leaves > 8) {
+        if (leaves > 3) {
             this.logger.warn(`[ChannelShield] HONEYPOT ALERT for ${channelId}: High immediate leave volume!`);
             return true;
         }
@@ -118,11 +129,11 @@ export class ChannelShield {
      * Calculate Ghost-Adding multiplier (Non-linear randomization) prince
      */
     private calculateGhostMultiplier(recentCount: number, level: string): number {
-        const base = level === 'strict' ? 3.0 : level === 'normal' ? 1.5 : 1.0;
+        const base = level === 'invisible' ? 10.0 : level === 'strict' ? 5.0 : level === 'normal' ? 2.5 : 1.0;
 
         // As count increases, delay increases exponentially to simulate "exhaustion" prince
-        const exhaustionFactor = Math.pow(1.1, recentCount);
-        const pulseFactor = 1 + (Math.sin(Date.now() / 100000) * 0.5); // Pulse logic prince
+        const exhaustionFactor = Math.pow(1.2, recentCount); // Increased from 1.1
+        const pulseFactor = 1 + (Math.sin(Date.now() / 100000) * 1.0); // Doubled pulse logic
 
         return base * exhaustionFactor * pulseFactor;
     }
@@ -159,9 +170,10 @@ export class ChannelShield {
     }
 
     private getBurstLimit(level: string): number {
+        if (level === 'invisible') return 5;
         if (level === 'strict') return 10;
-        if (level === 'normal') return 30;
-        return 50;
+        if (level === 'normal') return 20;
+        return 30;
     }
 }
 
