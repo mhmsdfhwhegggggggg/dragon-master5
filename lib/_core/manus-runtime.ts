@@ -104,7 +104,7 @@ export function subscribeSafeAreaInsets(callback: SafeAreaCallback): () => void 
  * Initialize Manus Runtime - just notifies parent that app is ready
  */
 export function initManusRuntime(): void {
-  if (!isWeb() || !isInIframe()) return;
+  if (Platform.OS !== "web" || !isInIframe()) return;
   if (initialized) return;
   initialized = true;
 
