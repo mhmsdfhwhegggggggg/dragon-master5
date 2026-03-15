@@ -35,7 +35,7 @@
     "worker:dev": "cross-env NODE_ENV=development tsx server/worker.ts",
     "db:setup": "cross-env NODE_ENV=development tsx scripts/create-admin.ts",
     "db:diag": "tsx scripts/db-diag.ts",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package && node scripts/fix-css-interop.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "~14.0.4",
