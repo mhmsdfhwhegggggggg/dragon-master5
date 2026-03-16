@@ -13,6 +13,11 @@ export const themeColors: {
 
 declare const themeConfig: {
   themeColors: typeof themeColors;
+  theme?: {
+    colors: Record<string, string>;
+    spacing: Record<string, number>;
+    borderRadius: Record<string, number>;
+  };
 };
 
 export default themeConfig;
