@@ -11,16 +11,51 @@ type ThemeColorName = keyof ThemeColorTokens;
 type SchemePalette = Record<ColorScheme, Record<ThemeColorName, string>>;
 type SchemePaletteItem = SchemePalette[ColorScheme];
 
-function buildSchemePalette(colors: ThemeColorTokens): SchemePalette {
+function buildSchemePalette(colors: any): SchemePalette {
   const palette: SchemePalette = {
-    light: {} as SchemePalette["light"],
-    dark: {} as SchemePalette["dark"],
+    light: {} as any,
+    dark: {} as any,
   };
 
-  (Object.keys(colors) as ThemeColorName[]).forEach((name) => {
-    const swatch = colors[name];
-    palette.light[name] = swatch.light;
-    palette.dark[name] = swatch.dark;
+  const defaultColors = {
+    background: "#ffffff",
+    foreground: "#000000",
+    primary: "#2563eb",
+    muted: "#64748b",
+    border: "#e2e8f0",
+  };
+
+  // If we have a flat structure (like in theme.config.js theme.colors)
+  const flatColors = themeConfig?.theme?.colors || {};
+  
+  const mergedColors = {
+    ...defaultColors,
+    ...flatColors,
+  };
+
+  // Initialize with flat colors for both schemes as a baseline
+  Object.keys(mergedColors).forEach(key => {
+    palette.light[key] = mergedColors[key];
+    palette.dark[key] = mergedColors[key];
+  });
+
+  // Overwrite with nested structure if it exists
+  if (colors && typeof colors === 'object') {
+    (Object.keys(colors) as ThemeColorName[]).forEach((name) => {
+      const swatch = colors[name];
+      if (swatch && typeof swatch === 'object') {
+        if (swatch.light) palette.light[name] = swatch.light;
+        if (swatch.dark) palette.dark[name] = swatch.dark;
+      }
+    });
+  }
+
+  // Ensure critical keys exist for buildRuntimePalette fallback
+  const criticalKeys = ['background', 'foreground', 'primary', 'muted', 'border'];
+  [palette.light, palette.dark].forEach(scheme => {
+    criticalKeys.forEach(key => {
+      if (!scheme[key]) scheme[key] = defaultColors[key as keyof typeof defaultColors];
+    });
   });
 
   return palette;
